@@ -253,7 +253,8 @@ table.rk tr:hover td{background:var(--row-a)}
   <div class="card noprint"><div class="row">
     <div class="field"><label>عنوان الفترة</label><input class="inp" id="apxMonth" placeholder="Month May &amp; June" style="min-width:230px"></div>
     <div class="field"><label>الجداول المحفوظة</label><select class="inp" id="apxPick" style="min-width:200px"></select></div>
-  </div></div>
+  </div>
+  <div class="hint">صفوف Bleeder Apheresis تُضاف/تُحدَّث هنا تلقائياً من الجدول الأسبوعي فور اعتماده (💾 حفظ أو 📲 حفظ ومشاركة واتساب) — لا حاجة لإدخالها يدوياً، ويمكنك تعديلها هنا كالمعتاد.</div></div>
   <div id="apxSheet" style="background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden">
     <div class="sh-title">🩸 Apheresis Schedule · جدول سحب الصفائح</div>
     <div class="sh-title" style="background:var(--teal);font-size:13px">Central Blood Bank In Dammam</div>
@@ -435,11 +436,32 @@ function confirmOverwriteIfPublished(w){
   if(w.status!=='published' && w.status!=='closed') return true;
   return confirm(`أنت على وشك استبدال جدول أسبوع ${w.label} (${w.status==='closed'?'مكتمل':'معتمد'} مسبقاً) بالتوزيع المعروض حالياً على الشاشة.\n\nتأكّد من الشريط الأزرق أعلى الصفحة أن هذا هو الأسبوع الصحيح قبل المتابعة.\n\nمتابعة الحفظ؟`);
 }
+/* ============ مزامنة سحب الصفائح (Bleeder Apheresis) مع جدول الصفائح ============ */
+function apxMonthKey(dateFrom){ const d=new Date(dateFrom); return `apx-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
+function apxRangeLabel(w){
+  const f=new Date(w.dateFrom), t=new Date(w.dateTo);
+  const fm=MON[f.getMonth()].toUpperCase(), tm=MON[t.getMonth()].toUpperCase();
+  return fm===tm ? `${f.getDate()} TO ${t.getDate()} ${tm}` : `${f.getDate()} ${fm} TO ${t.getDate()} ${tm}`;
+}
+async function syncApxFromWeek(w){
+  const staffIds=(w.assignments['t7']||[]).filter(Boolean);
+  const key=apxMonthKey(w.dateFrom), range=apxRangeLabel(w);
+  if(!APX[key]) APX[key]={month:`${MON[new Date(w.dateFrom).getMonth()]} ${new Date(w.dateFrom).getFullYear()}`, rows:[]};
+  const rows=APX[key].rows=APX[key].rows||[];
+  const idx=rows.findIndex(r=>r.range===range);
+  if(!staffIds.length){
+    if(idx>=0){ rows.splice(idx,1); await cloudSet('apheresis',key,APX[key]); renderApx(); }
+    return;
+  }
+  rows[idx>=0?idx:rows.length]={s1:sName(staffIds[0])||'',s2:sName(staffIds[1])||'',range,period:w.label};
+  await cloudSet('apheresis',key,APX[key]); renderApx();
+}
 $('#saveSchedBtn').onclick=async()=>{
   const w=WEEKS[curWeek];
   if(!confirmOverwriteIfPublished(w)) return;
   w.status='published';
-  await cloudSet('weeks',curWeek,w); toast('تم حفظ الجدول ✓'); renderSheet(); renderAlerts(); renderArchive();
+  await cloudSet('weeks',curWeek,w); await syncApxFromWeek(w);
+  toast('تم حفظ الجدول ومزامنة سحب الصفائح ✓'); renderSheet(); renderAlerts(); renderArchive();
 };
 /* ============ PDF ↔ واتساب ============ */
 async function elementToPdfBlob(el){
@@ -486,8 +508,8 @@ $('#shareWaBtn').onclick=async()=>{
   const w=WEEKS[curWeek];
   if(!confirmOverwriteIfPublished(w)) return;
   w.status='published';
-  await cloudSet('weeks',curWeek,w); renderSheet(); renderAlerts(); renderArchive();
-  toast('تم الحفظ — جارٍ تجهيز PDF...');
+  await cloudSet('weeks',curWeek,w); await syncApxFromWeek(w); renderSheet(); renderAlerts(); renderArchive();
+  toast('تم الحفظ ومزامنة سحب الصفائح — جارٍ تجهيز PDF...');
   try{
     await shareOrDownloadPdf($('#sheet'), `Weekly_Schedule_${w.label.replace(/ /g,'_')}`, `📅 جدول أسبوع ${w.label}\nCentral Blood Bank In Dammam`);
   }catch(e){ console.error(e); toast('تعذّر تجهيز ملف الـPDF'); }
