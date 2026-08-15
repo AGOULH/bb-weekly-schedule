@@ -639,17 +639,19 @@ function aggregate(f,t){
   const ks=Object.keys(WEEKS).filter(k=>inRange(k,f,t)).sort();
   const per={}, dept={donors:0,rhNegative:0,apheresisDonors:0,days:0,weeks:ks.length};
   const blankRatings=()=>({excellent:0,satisfactory:0,unsatisfactory:0});
-  activeStaff().forEach(s=>per[s.id]={name:s.name,total:0,tasks:{},assigned:0,ratingCounts:blankRatings(),ratingTotal:0,ratingScoreSum:0,variety:new Set(),weeks:{}});
+  const blankPerson=name=>({name,total:0,tasks:{},taskAssigned:{},assigned:0,countAssigned:0,ratingCounts:blankRatings(),ratingTotal:0,ratingScoreSum:0,variety:new Set(),weeks:{}});
+  activeStaff().forEach(s=>per[s.id]=blankPerson(s.name));
   ks.forEach(k=>{
     const w=WEEKS[k];
     dept.donors+=w.totals?.donors||0; dept.rhNegative+=w.totals?.rhNegative||0;
     dept.apheresisDonors+=w.totals?.apheresisDonors||0; dept.days+=w.totals?.workDays||5;
     TASKS.forEach(T=>{
       (w.assignments[T.id]||[]).forEach(sid=>{
-        if(!per[sid]) per[sid]={name:sName(sid)||'—',total:0,tasks:{},assigned:0,ratingCounts:blankRatings(),ratingTotal:0,ratingScoreSum:0,variety:new Set(),weeks:{}};
+        if(!per[sid]) per[sid]=blankPerson(sName(sid)||'—');
         const p=per[sid]; p.assigned++; p.variety.add(T.id);
+        p.taskAssigned[T.id]=(p.taskAssigned[T.id]||0)+1;
         const v=w.results?.[T.id]?.[sid];
-        if(T.type==='count'){ const n=+v||0; p.total+=n; p.tasks[T.id]=(p.tasks[T.id]||0)+n; p.weeks[k]=(p.weeks[k]||0)+n; }
+        if(T.type==='count'){ const n=+v||0; p.total+=n; p.tasks[T.id]=(p.tasks[T.id]||0)+n; p.weeks[k]=(p.weeks[k]||0)+n; p.countAssigned++; }
         else if(v){ p.ratingCounts[v]=(p.ratingCounts[v]||0)+1; p.ratingTotal++; p.ratingScoreSum+=RATINGS.find(r=>r.v===v)?.score||0; }
       });
     });
@@ -666,8 +668,10 @@ function renderStats(){
   const delta=(c,p)=>!p?'<span class="flat">— لا مقارنة</span>':(()=>{const d=Math.round((c-p)/p*100);return `<span class="${d>0?'up':d<0?'down':'flat'}">${d>0?'▲':d<0?'▼':'●'} ${Math.abs(d)}% عن الفترة السابقة</span>`})();
   const avgDay=dept.days?Math.round(dept.donors/dept.days):0;
 
-  const list=Object.values(per).filter(p=>p.assigned>0).sort((a,b)=>b.total-a.total);
-  const max=Math.max(1,...list.map(p=>p.total));
+  const list=Object.values(per).filter(p=>p.assigned>0)
+    .map(p=>({...p, rate: p.countAssigned? p.total/p.countAssigned : 0}))
+    .sort((a,b)=>b.rate-a.rate);
+  const maxRate=Math.max(0.01,...list.map(p=>p.rate));
   const medal=i=>['🥇','🥈','🥉'][i]||'';
 
   let html=`
@@ -679,45 +683,49 @@ function renderStats(){
     <div class="kpi"><div class="lb">عدد الأسابيع</div><div class="vl">${dept.weeks}</div><div class="dt flat">${ks[0]} ← ${ks[ks.length-1]}</div></div>
   </div>`;
 
-  html+=`<div class="card"><h3>🏆 ترتيب الموظفين حسب الحالات المنجزة</h3>
-  <table class="rk"><thead><tr><th>#</th><th style="text-align:right">الموظف</th><th>إجمالي الحالات</th><th>متوسط أسبوعي</th><th>تنوع المهام</th><th>تقييم المهام الرقابية</th><th>الأداء النسبي</th></tr></thead><tbody>`;
+  html+=`<div class="card"><h3>🏆 ترتيب الموظفين حسب معدّل الإنتاجية لكل تكليف</h3>
+  <table class="rk"><thead><tr><th>#</th><th style="text-align:right">الموظف</th><th>إجمالي الحالات</th><th>مرات التكليف</th><th>المعدّل لكل تكليف</th><th>تنوع المهام</th><th>تقييم المهام الرقابية</th><th>الأداء النسبي</th></tr></thead><tbody>`;
   list.forEach((p,i)=>{
-    const wk=Object.keys(p.weeks).length||1;
     const rc=p.ratingCounts||{excellent:0,satisfactory:0,unsatisfactory:0};
     const rIndex=p.ratingTotal?Math.round(p.ratingScoreSum/p.ratingTotal):null;
-    html+=`<tr><td>${medal(i)||i+1}</td><td class="nm">${p.name}</td><td><b>${p.total}</b></td><td>${Math.round(p.total/wk)}</td>
+    html+=`<tr><td>${medal(i)||i+1}</td><td class="nm">${p.name}</td><td><b>${p.total}</b></td><td>${p.countAssigned}</td><td><b>${p.rate.toFixed(1)}</b></td>
     <td>${p.variety.size} / ${TASKS.length}</td>
     <td>${rIndex===null?'—':`<div style="font-size:11px;color:var(--muted)">✅${rc.excellent} · ➖${rc.satisfactory} · ⚠️${rc.unsatisfactory}</div><span class="${rIndex>=85?'up':rIndex>=60?'flat':'down'}"><b>${rIndex}%</b></span>`}</td>
-    <td><div class="bar"><i style="width:${Math.round(p.total/max*100)}%"></i></div></td></tr>`;
+    <td><div class="bar"><i style="width:${Math.round(p.rate/maxRate*100)}%"></i></div></td></tr>`;
   });
-  html+=`</tbody></table><div class="hint">«إجمالي الحالات» = مجموع الأعداد المُدخلة في المهام العددية. «تقييم المهام الرقابية» = أعداد كل تقييم (✅ Excellent · ➖ Satisfactory · ⚠️ Unsatisfactory) لمهام QC / Registration / Cleaning، والنسبة مؤشر جودة مرجّح (Excellent=100، Satisfactory=60، Unsatisfactory=20).</div></div>`;
+  html+=`</tbody></table><div class="hint">«المعدّل لكل تكليف» = إجمالي الحالات ÷ عدد مرات التكليف بمهام عددية، وهو أساس الترتيب و«الأداء النسبي» — لمقارنة عادلة لا تتأثر بمن كُلّف مرات أكثر أو بمهام ذات أعداد كبيرة طبيعياً (مثل السحب). «إجمالي الحالات» = مجموع الأعداد المُدخلة في المهام العددية. «تقييم المهام الرقابية» = أعداد كل تقييم (✅ Excellent · ➖ Satisfactory · ⚠️ Unsatisfactory) لمهام QC / Registration / Cleaning، والنسبة مؤشر جودة مرجّح (Excellent=100، Satisfactory=60، Unsatisfactory=20).</div></div>`;
 
   const apxCov=apxCoverage(f,t);
-  const apxList=list.map(p=>({
-    name:p.name,
-    schedule:p.tasks['t6']||0,
-    bleeder:p.tasks['t7']||0,
-    combined:(p.tasks['t6']||0)+(p.tasks['t7']||0),
-    coverage:apxCov[p.name]||0
-  })).filter(x=>x.combined>0||x.coverage>0).sort((a,b)=>b.combined-a.combined);
+  const apxList=list.map(p=>{
+    const assigned=(p.taskAssigned['t6']||0)+(p.taskAssigned['t7']||0);
+    const combined=(p.tasks['t6']||0)+(p.tasks['t7']||0);
+    return {
+      name:p.name,
+      schedule:p.tasks['t6']||0,
+      bleeder:p.tasks['t7']||0,
+      combined, assigned,
+      rate: assigned? combined/assigned : 0,
+      coverage:apxCov[p.name]||0
+    };
+  }).filter(x=>x.combined>0||x.coverage>0).sort((a,b)=>b.rate-a.rate);
   if(apxList.length){
-    const maxApx=Math.max(1,...apxList.map(x=>x.combined));
+    const maxApxRate=Math.max(0.01,...apxList.map(x=>x.rate));
     const avgApxWk=dept.weeks?Math.round(dept.apheresisDonors/dept.weeks):0;
     html+=`<div class="card"><h3>🩸 إحصائيات الصفائح (Apheresis)</h3>
     <div class="kpis" style="margin-bottom:14px">
       <div class="kpi g"><div class="lb">متبرعو الصفائح</div><div class="vl">${dept.apheresisDonors}</div><div class="dt">${delta(dept.apheresisDonors,prev.aph)}</div></div>
       <div class="kpi"><div class="lb">متوسط أسبوعي</div><div class="vl">${avgApxWk}</div><div class="dt flat">خلال ${dept.weeks} أسبوع</div></div>
     </div>
-    <table class="rk"><thead><tr><th>#</th><th style="text-align:right">الموظف</th><th>Schedule Apheresis Donor</th><th>Bleeder Apheresis</th><th>الإجمالي</th><th>مرات تغطية الجدول الشهري</th><th>الأداء النسبي</th></tr></thead><tbody>`;
+    <table class="rk"><thead><tr><th>#</th><th style="text-align:right">الموظف</th><th>Schedule Apheresis Donor</th><th>Bleeder Apheresis</th><th>الإجمالي</th><th>مرات التكليف</th><th>المعدّل لكل تكليف</th><th>مرات تغطية الجدول الشهري</th><th>الأداء النسبي</th></tr></thead><tbody>`;
     apxList.forEach((x,i)=>{
-      html+=`<tr><td>${medal(i)||i+1}</td><td class="nm">${x.name}</td><td>${x.schedule}</td><td>${x.bleeder}</td><td><b>${x.combined}</b></td><td>${x.coverage}</td>
-      <td><div class="bar"><i style="width:${Math.round(x.combined/maxApx*100)}%"></i></div></td></tr>`;
+      html+=`<tr><td>${medal(i)||i+1}</td><td class="nm">${x.name}</td><td>${x.schedule}</td><td>${x.bleeder}</td><td><b>${x.combined}</b></td><td>${x.assigned}</td><td><b>${x.rate.toFixed(1)}</b></td><td>${x.coverage}</td>
+      <td><div class="bar"><i style="width:${Math.round(x.rate/maxApxRate*100)}%"></i></div></td></tr>`;
     });
-    html+=`</tbody></table><div class="hint">الأعمدة الرقمية من نتائج مهمتَي «Schedule Apheresis Donor» و«Bleeder Apheresis» المُدخلة أسبوعياً. «مرات تغطية الجدول الشهري» = عدد ظهور الموظف (STAFF 1/2) في جدول الصفائح الشهري خلال المدى المحدد.</div>
+    html+=`</tbody></table><div class="hint">«المعدّل لكل تكليف» = الإجمالي ÷ مرات التكليف بمهمتَي «Schedule Apheresis Donor» و«Bleeder Apheresis»، وهو أساس الترتيب و«الأداء النسبي» لمقارنة عادلة بين من كُلّف مرات أكثر أو أقل. «مرات تغطية الجدول الشهري» = عدد ظهور الموظف (STAFF 1/2) في جدول الصفائح الشهري خلال المدى المحدد.</div>
     <div class="chartbox" style="margin-top:12px"><canvas id="cApx"></canvas></div></div>`;
   }
 
-  html+=`<div class="card"><h3>📊 مقارنة الإنتاجية</h3><div class="chartbox"><canvas id="cRank"></canvas></div></div>
+  html+=`<div class="card"><h3>📊 مقارنة الإنتاجية (معدّل لكل تكليف)</h3><div class="chartbox"><canvas id="cRank"></canvas></div></div>
   <div class="card"><h3>📈 تطور أداء الفريق أسبوعياً</h3><div class="chartbox"><canvas id="cTrend"></canvas></div></div>
   <div class="card"><h3>🎯 مقارنة مباشرة بين موظفَين</h3>
     <div class="row noprint" style="margin-bottom:12px">
@@ -730,7 +738,7 @@ function renderStats(){
   const A='#0D7377',B='#F0A500',N='#1B3A6B';
 
   charts.rank=new Chart($('#cRank'),{type:'bar',data:{labels:list.map(p=>p.name),
-    datasets:[{label:'إجمالي الحالات',data:list.map(p=>p.total),backgroundColor:list.map((_,i)=>i<3?B:A),borderRadius:6}]},
+    datasets:[{label:'المعدّل لكل تكليف',data:list.map(p=>+p.rate.toFixed(2)),backgroundColor:list.map((_,i)=>i<3?B:A),borderRadius:6}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
 
   charts.trend=new Chart($('#cTrend'),{type:'line',data:{labels:ks.map(k=>WEEKS[k].label),
