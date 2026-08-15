@@ -6,6 +6,8 @@
 <title>Weekly Schedule — Central Blood Bank Dammam</title>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <style>
 :root{
   --navy:#1B3A6B; --amber:#F0A500; --gold:#C8860A; --teal:#0D7377;
@@ -55,8 +57,16 @@ input,select{font-family:inherit}
 
 /* ===== Schedule sheet (الهوية) ===== */
 #sheet{background:#fff;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
-.sh-title{background:var(--navy);color:#fff;font-family:Arial,sans-serif;font-weight:700;font-size:16px;text-align:center;padding:11px;letter-spacing:.3px}
-.sh-sub{background:var(--amber);color:var(--ink);font-family:Arial,sans-serif;font-weight:700;font-size:13px;text-align:center;padding:8px}
+.sh-title{background:var(--navy);color:#fff;font-family:Arial,sans-serif;font-weight:700;font-size:16px;text-align:center;padding:11px;letter-spacing:.3px;direction:ltr}
+.sh-sub{background:var(--amber);color:var(--ink);font-family:Arial,sans-serif;font-weight:700;font-size:13px;text-align:center;padding:8px;direction:ltr}
+/* أسماء وتواريخ إنجليزية داخل صفحة RTL — تُفرض LTR لمنع اختلاط اتجاه النص */
+.nm,.tagname,#weekPick,#resWeekPick,#apxPick{direction:ltr}
+.nm{text-align:right}
+#weekPick,#resWeekPick,#apxPick{text-align:right}
+.wkband{background:var(--navy);color:#fff;border-radius:10px;padding:12px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;box-shadow:0 2px 8px rgba(27,58,107,.18)}
+.wkband .lb{font-size:11.5px;color:#bcd0ec;font-weight:700}
+.wkband .dt{font-family:Arial,sans-serif;direction:ltr;font-size:17px;font-weight:900;letter-spacing:.2px}
+.wkband .pill.wkband-pill{background:rgba(255,255,255,.16);color:#fff}
 table.sh{width:100%;border-collapse:collapse;font-family:Arial,sans-serif;font-size:12px}
 table.sh th{background:var(--navy);color:#fff;font-weight:700;padding:8px 6px;font-size:11px;border:1px solid #16305a;text-align:center}
 table.sh td{border:1px solid var(--line);padding:5px 6px;text-align:center;font-weight:700;color:var(--ink)}
@@ -163,9 +173,11 @@ table.rk tr:hover td{background:var(--row-a)}
     <div style="display:flex;gap:8px">
       <button class="btn ghost" id="newWeekBtn">＋ أسبوع جديد</button>
       <button class="btn amber" id="printBtn">🖨️ تصدير PDF</button>
+      <button class="btn teal" id="shareWaBtn">📲 حفظ ومشاركة واتساب</button>
       <button class="btn" id="saveSchedBtn">💾 حفظ</button>
     </div>
   </div>
+  <div class="wkband noprint" id="wkBandSched"></div>
   <div class="card noprint">
     <div class="row">
       <div class="field"><label>من تاريخ</label><input type="date" class="inp" id="wFrom"></div>
@@ -173,7 +185,7 @@ table.rk tr:hover td{background:var(--row-a)}
       <div class="field"><label>الأسبوع المعروض</label><select class="inp" id="weekPick" style="min-width:230px"></select></div>
       <div class="field"><label>الحالة</label><div id="wStatus"></div></div>
     </div>
-    <div class="hint">الأسبوع = ٧ أيام تبدأ من التاريخ المختار. اسم ملف الـPDF يُضبط تلقائياً بتاريخ الأسبوع. عند إنشاء أسبوع جديد يُنسخ توزيع آخر أسبوع تلقائياً — يكفي تعديل ما تغيّر بدل التعبئة من جديد.</div>
+    <div class="hint">الأسبوع = ٧ أيام تبدأ من التاريخ المختار. اسم ملف الـPDF يُضبط تلقائياً بتاريخ الأسبوع. عند إنشاء أسبوع جديد يُنسخ توزيع آخر أسبوع تلقائياً — يكفي تعديل ما تغيّر بدل التعبئة من جديد. تأكد دائماً من الشريط الأزرق أعلاه قبل التعديل أو التصدير — هو الأسبوع الذي سيُحفظ فعلياً.</div>
   </div>
   <div id="sheet">
     <div class="sh-title">Central Blood Bank In Dammam</div>
@@ -196,6 +208,7 @@ table.rk tr:hover td{background:var(--row-a)}
       <button class="btn" id="saveResBtn">💾 حفظ النتائج</button>
     </div>
   </div>
+  <div class="wkband noprint" id="wkBandRes"></div>
   <div class="card">
     <div class="row">
       <div class="field"><label>الأسبوع</label><select class="inp" id="resWeekPick" style="min-width:240px"></select></div>
@@ -393,11 +406,19 @@ $('#weekPick').onchange=e=>{curWeek=e.target.value;renderSheet();renderAlerts()}
 $('#resWeekPick').onchange=e=>{curWeek=e.target.value;renderResults();renderSheet()};
 $('#wFrom').onchange=e=>{ if(!e.target.value)return; $('#wTo').value=addDays(e.target.value,6); };
 
+function renderWkBand(elId){
+  const el=$(elId); if(!el)return;
+  const w=WEEKS[curWeek];
+  if(!w){ el.innerHTML=''; return; }
+  const statusLbl={draft:'مسودة',published:'معتمد',closed:'مكتمل'}[w.status]||w.status;
+  el.innerHTML=`<div><div class="lb">📅 الأسبوع المعروض والمُحرَّر الآن</div><div class="dt">${w.label}</div></div><span class="pill wkband-pill">${statusLbl}</span>`;
+}
 function renderSheet(){
   const w=WEEKS[curWeek]; if(!w)return;
   $('#wFrom').value=w.dateFrom; $('#wTo').value=w.dateTo;
   $('#shSub').innerHTML=`Weekly Schedule&nbsp;&nbsp; Date ${w.label}`;
   $('#wStatus').innerHTML=`<span class="pill ${w.status==='draft'?'dr':'pb'}">${w.status==='draft'?'مسودة':'معتمد'}</span>`;
+  renderWkBand('#wkBandSched');
   const opts=id=>`<option value="">—</option>`+activeStaff().map(s=>`<option value="${s.id}" ${s.id===id?'selected':''}>${s.name}</option>`).join('');
   $('#shBody').innerHTML=TASKS.map((t,i)=>{
     const a=w.assignments[t.id]||[];
@@ -410,13 +431,71 @@ function renderSheet(){
   });
   $('#printBtn').onclick=()=>{ const old=document.title; document.title=`Weekly_Schedule_${w.label.replace(/ /g,'_')}`; window.print(); setTimeout(()=>document.title=old,700); };
 }
+function confirmOverwriteIfPublished(w){
+  if(w.status!=='published' && w.status!=='closed') return true;
+  return confirm(`أنت على وشك استبدال جدول أسبوع ${w.label} (${w.status==='closed'?'مكتمل':'معتمد'} مسبقاً) بالتوزيع المعروض حالياً على الشاشة.\n\nتأكّد من الشريط الأزرق أعلى الصفحة أن هذا هو الأسبوع الصحيح قبل المتابعة.\n\nمتابعة الحفظ؟`);
+}
 $('#saveSchedBtn').onclick=async()=>{
-  const w=WEEKS[curWeek]; w.status='published';
+  const w=WEEKS[curWeek];
+  if(!confirmOverwriteIfPublished(w)) return;
+  w.status='published';
   await cloudSet('weeks',curWeek,w); toast('تم حفظ الجدول ✓'); renderSheet(); renderAlerts(); renderArchive();
+};
+/* ============ PDF ↔ واتساب ============ */
+async function elementToPdfBlob(el){
+  const selects=[...el.querySelectorAll('select')];
+  const swapped=selects.map(s=>{
+    const span=document.createElement('span');
+    const txt=(s.options[s.selectedIndex]?.textContent||'').trim();
+    span.textContent=txt;
+    span.style.cssText='font-weight:700;font-family:Arial,sans-serif;font-size:11.5px;color:inherit';
+    s.replaceWith(span);
+    return {span,select:s};
+  });
+  let blob;
+  try{
+    const canvas=await html2canvas(el,{scale:2,backgroundColor:'#ffffff',useCORS:true});
+    const img=canvas.toDataURL('image/jpeg',0.92);
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+    const pageW=pdf.internal.pageSize.getWidth(), pageH=pdf.internal.pageSize.getHeight();
+    const margin=8, maxW=pageW-margin*2, maxH=pageH-margin*2;
+    let w=maxW, h=w*canvas.height/canvas.width;
+    if(h>maxH){ h=maxH; w=h*canvas.width/canvas.height; }
+    pdf.addImage(img,'JPEG',(pageW-w)/2,(pageH-h)/2,w,h);
+    blob=pdf.output('blob');
+  } finally {
+    swapped.forEach(({span,select})=>span.replaceWith(select));
+  }
+  return blob;
+}
+async function shareOrDownloadPdf(el,filenameBase,waText){
+  const blob=await elementToPdfBlob(el);
+  const file=new File([blob],filenameBase+'.pdf',{type:'application/pdf'});
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{ await navigator.share({files:[file],title:filenameBase,text:waText}); toast('تم فتح قائمة المشاركة ✓'); return; }
+    catch(e){ if(e?.name==='AbortError') return; }
+  }
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=filenameBase+'.pdf'; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),4000);
+  window.open('https://wa.me/?text='+encodeURIComponent(waText+'\n\n📎 تم تنزيل ملف الجدول PDF على جهازك — أرفقه يدوياً هنا في واتساب.'),'_blank');
+  toast('المشاركة المباشرة غير مدعومة على هذا المتصفح — نُزِّل PDF بدلاً منها، أرفقه يدوياً');
+}
+$('#shareWaBtn').onclick=async()=>{
+  const w=WEEKS[curWeek];
+  if(!confirmOverwriteIfPublished(w)) return;
+  w.status='published';
+  await cloudSet('weeks',curWeek,w); renderSheet(); renderAlerts(); renderArchive();
+  toast('تم الحفظ — جارٍ تجهيز PDF...');
+  try{
+    await shareOrDownloadPdf($('#sheet'), `Weekly_Schedule_${w.label.replace(/ /g,'_')}`, `📅 جدول أسبوع ${w.label}\nCentral Blood Bank In Dammam`);
+  }catch(e){ console.error(e); toast('تعذّر تجهيز ملف الـPDF'); }
 };
 $('#newWeekBtn').onclick=async()=>{
   const f=$('#wFrom').value||new Date().toISOString().slice(0,10), t=addDays(f,6);
-  if(WEEKS[f]){toast('هذا الأسبوع موجود مسبقاً');return}
+  if(WEEKS[f]){toast('هذا الأسبوع موجود مسبقاً — افتحه من «الأسبوع المعروض» أعلاه');return}
+  if(!confirm(`سيتم إنشاء أسبوع جديد بتاريخ ${fmtLbl(f,t)} ونسخ توزيع آخر أسبوع محفوظ إليه.\n\nهل هذا التاريخ صحيح؟`)) return;
   const prevKey=Object.keys(WEEKS).sort().filter(k=>k<f).pop();
   const prevAssignments=prevKey?JSON.parse(JSON.stringify(WEEKS[prevKey].assignments||{})):{};
   WEEKS[f]={dateFrom:f,dateTo:t,label:fmtLbl(f,t),assignments:prevAssignments,results:{},
@@ -453,6 +532,7 @@ function renderAlerts(){
 function renderResults(){
   const w=WEEKS[curWeek]; if(!w)return;
   $('#resWeekPick').value=curWeek;
+  renderWkBand('#wkBandRes');
   $('#tDonors').value=w.totals.donors||0; $('#tRh').value=w.totals.rhNegative||0;
   $('#tAph').value=w.totals.apheresisDonors||0; $('#tDays').value=w.totals.workDays||5;
   const rows=TASKS.map((t,i)=>{
