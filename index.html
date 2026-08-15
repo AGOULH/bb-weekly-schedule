@@ -453,7 +453,7 @@ async function syncApxFromWeek(w){
     if(idx>=0){ rows.splice(idx,1); await cloudSet('apheresis',key,APX[key]); renderApx(); }
     return;
   }
-  rows[idx>=0?idx:rows.length]={s1:sName(staffIds[0])||'',s2:sName(staffIds[1])||'',range,period:w.label};
+  rows[idx>=0?idx:rows.length]={s1:sName(staffIds[0])||'',s2:sName(staffIds[1])||'',range,period:w.label,weekId:w.dateFrom};
   await cloudSet('apheresis',key,APX[key]); renderApx();
 }
 $('#saveSchedBtn').onclick=async()=>{
@@ -624,6 +624,17 @@ $$('[data-range]').forEach(b=>b.onclick=()=>{
 $('#printStatsBtn').onclick=()=>{const o=document.title;document.title=`Productivity_Report_${$('#sFrom').value}_to_${$('#sTo').value}`;window.print();setTimeout(()=>document.title=o,700)};
 
 function inRange(k,f,t){ return (!f||k>=f)&&(!t||k<=t); }
+function apxCoverage(f,t){
+  const relevant=new Set(Object.keys(WEEKS).filter(k=>inRange(k,f,t)));
+  const counts={};
+  Object.values(APX).forEach(doc=>{
+    (doc.rows||[]).forEach(r=>{
+      if(r.weekId && !relevant.has(r.weekId)) return;
+      [r.s1,r.s2].filter(Boolean).forEach(name=>{ counts[name]=(counts[name]||0)+1; });
+    });
+  });
+  return counts;
+}
 function aggregate(f,t){
   const ks=Object.keys(WEEKS).filter(k=>inRange(k,f,t)).sort();
   const per={}, dept={donors:0,rhNegative:0,apheresisDonors:0,days:0,weeks:ks.length};
@@ -681,6 +692,31 @@ function renderStats(){
   });
   html+=`</tbody></table><div class="hint">«إجمالي الحالات» = مجموع الأعداد المُدخلة في المهام العددية. «تقييم المهام الرقابية» = أعداد كل تقييم (✅ Excellent · ➖ Satisfactory · ⚠️ Unsatisfactory) لمهام QC / Registration / Cleaning، والنسبة مؤشر جودة مرجّح (Excellent=100، Satisfactory=60، Unsatisfactory=20).</div></div>`;
 
+  const apxCov=apxCoverage(f,t);
+  const apxList=list.map(p=>({
+    name:p.name,
+    schedule:p.tasks['t6']||0,
+    bleeder:p.tasks['t7']||0,
+    combined:(p.tasks['t6']||0)+(p.tasks['t7']||0),
+    coverage:apxCov[p.name]||0
+  })).filter(x=>x.combined>0||x.coverage>0).sort((a,b)=>b.combined-a.combined);
+  if(apxList.length){
+    const maxApx=Math.max(1,...apxList.map(x=>x.combined));
+    const avgApxWk=dept.weeks?Math.round(dept.apheresisDonors/dept.weeks):0;
+    html+=`<div class="card"><h3>🩸 إحصائيات الصفائح (Apheresis)</h3>
+    <div class="kpis" style="margin-bottom:14px">
+      <div class="kpi g"><div class="lb">متبرعو الصفائح</div><div class="vl">${dept.apheresisDonors}</div><div class="dt">${delta(dept.apheresisDonors,prev.aph)}</div></div>
+      <div class="kpi"><div class="lb">متوسط أسبوعي</div><div class="vl">${avgApxWk}</div><div class="dt flat">خلال ${dept.weeks} أسبوع</div></div>
+    </div>
+    <table class="rk"><thead><tr><th>#</th><th style="text-align:right">الموظف</th><th>Schedule Apheresis Donor</th><th>Bleeder Apheresis</th><th>الإجمالي</th><th>مرات تغطية الجدول الشهري</th><th>الأداء النسبي</th></tr></thead><tbody>`;
+    apxList.forEach((x,i)=>{
+      html+=`<tr><td>${medal(i)||i+1}</td><td class="nm">${x.name}</td><td>${x.schedule}</td><td>${x.bleeder}</td><td><b>${x.combined}</b></td><td>${x.coverage}</td>
+      <td><div class="bar"><i style="width:${Math.round(x.combined/maxApx*100)}%"></i></div></td></tr>`;
+    });
+    html+=`</tbody></table><div class="hint">الأعمدة الرقمية من نتائج مهمتَي «Schedule Apheresis Donor» و«Bleeder Apheresis» المُدخلة أسبوعياً. «مرات تغطية الجدول الشهري» = عدد ظهور الموظف (STAFF 1/2) في جدول الصفائح الشهري خلال المدى المحدد.</div>
+    <div class="chartbox" style="margin-top:12px"><canvas id="cApx"></canvas></div></div>`;
+  }
+
   html+=`<div class="card"><h3>📊 مقارنة الإنتاجية</h3><div class="chartbox"><canvas id="cRank"></canvas></div></div>
   <div class="card"><h3>📈 تطور أداء الفريق أسبوعياً</h3><div class="chartbox"><canvas id="cTrend"></canvas></div></div>
   <div class="card"><h3>🎯 مقارنة مباشرة بين موظفَين</h3>
@@ -703,6 +739,14 @@ function renderStats(){
       {label:'الصفائح',data:ks.map(k=>WEEKS[k].totals?.apheresisDonors||0),borderColor:B,tension:.35},
       {label:'Rh−',data:ks.map(k=>WEEKS[k].totals?.rhNegative||0),borderColor:A,tension:.35}]},
     options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true}}}});
+
+  if($('#cApx')){
+    charts.apx=new Chart($('#cApx'),{type:'bar',data:{labels:apxList.map(x=>x.name),
+      datasets:[
+        {label:'Schedule Apheresis Donor',data:apxList.map(x=>x.schedule),backgroundColor:A,borderRadius:5},
+        {label:'Bleeder Apheresis',data:apxList.map(x=>x.bleeder),backgroundColor:B,borderRadius:5}]},
+      options:{responsive:true,maintainAspectRatio:false,scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}}}});
+  }
 
   const opts=list.map(p=>`<option value="${p.name}">${p.name}</option>`).join('');
   $('#cmpA').innerHTML=opts; $('#cmpB').innerHTML=opts;
