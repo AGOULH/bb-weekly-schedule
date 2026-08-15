@@ -225,7 +225,11 @@ table.rk tr:hover td{background:var(--row-a)}
 <section class="page" id="pg-stats">
   <div class="pghead noprint">
     <div><h2>الإحصائيات ومقارنة الإنتاجية</h2><p>اختر مدى تاريخي لقياس أداء الفريق والموظفين</p></div>
-    <button class="btn amber" id="printStatsBtn">🖨️ طباعة التقرير</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn ghost" id="targetBtn">🎯 تعديل الهدف الشهري</button>
+      <button class="btn ghost" id="csvBtn">⬇️ تصدير CSV</button>
+      <button class="btn amber" id="printStatsBtn">🖨️ طباعة التقرير</button>
+    </div>
   </div>
   <div class="card noprint">
     <div class="row">
@@ -357,7 +361,7 @@ const SEED=['FAHED','AQEELHA','DOHA','AFNAN','ALASEED','IBRIH','MARDEEF','SULTAN
 const MON=['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 /* ---------- الحالة ---------- */
-let STAFF={}, WEEKS={}, APX={}, curWeek=null, curApx=null, charts={};
+let STAFF={}, WEEKS={}, APX={}, TARGET={monthly:0}, curWeek=null, curApx=null, charts={}, lastStatsList=[];
 
 const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
@@ -371,6 +375,7 @@ const sName=id=>STAFF[id]?.name||'';
 async function boot(){
   await initCloud();
   STAFF=await cloudAll('staff'); WEEKS=await cloudAll('weeks'); APX=await cloudAll('apheresis');
+  TARGET=(await cloudAll('settings')).target||{monthly:0};
   if(!Object.keys(STAFF).length){
     SEED.forEach((n,i)=>STAFF['s'+(i+1)]={name:n,active:true,order:i+1});
     for(const [k,v] of Object.entries(STAFF)) await cloudSet('staff',k,v);
@@ -622,6 +627,42 @@ $$('[data-range]').forEach(b=>b.onclick=()=>{
   renderStats();
 });
 $('#printStatsBtn').onclick=()=>{const o=document.title;document.title=`Productivity_Report_${$('#sFrom').value}_to_${$('#sTo').value}`;window.print();setTimeout(()=>document.title=o,700)};
+$('#targetBtn').onclick=async()=>{
+  const n=prompt('الهدف الشهري لعدد المتبرعين:',TARGET.monthly||''); if(n===null)return;
+  const v=+n; if(!v||v<0){toast('رقم غير صالح');return}
+  TARGET={monthly:v}; await cloudSet('settings','target',TARGET); toast('تم حفظ الهدف الشهري ✓'); renderStats();
+};
+$('#csvBtn').onclick=()=>{
+  if(!lastStatsList.length){toast('اضغط «تحليل» أولاً لتوليد البيانات');return}
+  const headers=['الموظف','إجمالي الحالات','مرات التكليف','المعدل لكل تكليف','z-score','تنوع المهام','مؤشر جودة المهام الرقابية %','الاتساق CV %','الاتجاه %'];
+  const rows=lastStatsList.map(p=>[p.name,p.total,p.countAssigned,p.rate.toFixed(2),p.z.toFixed(2),p.variety.size,
+    p.ratingTotal?Math.round(p.ratingScoreSum/p.ratingTotal):'', p.cv??'', p.momentum??''].join(','));
+  const csv='﻿'+[headers.join(','),...rows].join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=`Productivity_Stats_${$('#sFrom').value}_to_${$('#sTo').value}.csv`;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),4000);
+};
+function monthlyHeatmapHtml(){
+  const agg={};
+  Object.values(WEEKS).forEach(w=>{
+    if(!w.dateFrom) return;
+    const key=w.dateFrom.slice(0,7);
+    agg[key]=(agg[key]||0)+(w.totals?.donors||0);
+  });
+  const years=[...new Set(Object.keys(agg).map(k=>k.slice(0,4)))].sort();
+  if(!years.length) return '';
+  const max=Math.max(1,...Object.values(agg));
+  const cell=(y,m)=>{
+    const key=`${y}-${String(m+1).padStart(2,'0')}`, v=agg[key];
+    if(v===undefined) return `<td style="padding:8px;text-align:center;color:#c7d2e0">—</td>`;
+    const alpha=(0.15+(v/max)*0.75).toFixed(2);
+    return `<td style="padding:8px;text-align:center;font-weight:700;background:rgba(13,115,119,${alpha});color:${alpha>0.5?'#fff':'var(--ink)'}">${v}</td>`;
+  };
+  const head=`<tr><th>السنة</th>${MON.map(m=>`<th>${m.slice(0,3)}</th>`).join('')}</tr>`;
+  const rows=years.map(y=>`<tr><td style="font-weight:800;background:var(--numcol);color:var(--navy)">${y}</td>${[...Array(12).keys()].map(m=>cell(y,m)).join('')}</tr>`).join('');
+  return `<table class="rk">${`<thead>${head}</thead>`}<tbody>${rows}</tbody></table>`;
+}
 
 function inRange(k,f,t){ return (!f||k>=f)&&(!t||k<=t); }
 function apxCoverage(f,t){
@@ -639,7 +680,7 @@ function aggregate(f,t){
   const ks=Object.keys(WEEKS).filter(k=>inRange(k,f,t)).sort();
   const per={}, dept={donors:0,rhNegative:0,apheresisDonors:0,days:0,weeks:ks.length};
   const blankRatings=()=>({excellent:0,satisfactory:0,unsatisfactory:0});
-  const blankPerson=name=>({name,total:0,tasks:{},taskAssigned:{},assigned:0,countAssigned:0,ratingCounts:blankRatings(),ratingTotal:0,ratingScoreSum:0,variety:new Set(),weeks:{}});
+  const blankPerson=name=>({name,total:0,tasks:{},taskAssigned:{},assigned:0,countAssigned:0,ratingCounts:blankRatings(),ratingTotal:0,ratingScoreSum:0,ratingByWeek:{},variety:new Set(),weeks:{}});
   activeStaff().forEach(s=>per[s.id]=blankPerson(s.name));
   ks.forEach(k=>{
     const w=WEEKS[k];
@@ -652,7 +693,8 @@ function aggregate(f,t){
         p.taskAssigned[T.id]=(p.taskAssigned[T.id]||0)+1;
         const v=w.results?.[T.id]?.[sid];
         if(T.type==='count'){ const n=+v||0; p.total+=n; p.tasks[T.id]=(p.tasks[T.id]||0)+n; p.weeks[k]=(p.weeks[k]||0)+n; p.countAssigned++; }
-        else if(v){ p.ratingCounts[v]=(p.ratingCounts[v]||0)+1; p.ratingTotal++; p.ratingScoreSum+=RATINGS.find(r=>r.v===v)?.score||0; }
+        else if(v){ const sc=RATINGS.find(r=>r.v===v)?.score||0; p.ratingCounts[v]=(p.ratingCounts[v]||0)+1; p.ratingTotal++; p.ratingScoreSum+=sc;
+          p.ratingByWeek[k]=p.ratingByWeek[k]||{sum:0,count:0}; p.ratingByWeek[k].sum+=sc; p.ratingByWeek[k].count++; }
       });
     });
   });
@@ -674,26 +716,82 @@ function renderStats(){
   const maxRate=Math.max(0.01,...list.map(p=>p.rate));
   const medal=i=>['🥇','🥈','🥉'][i]||'';
 
+  // مؤشرات إضافية: الاتساق (CV)، الاتجاه (Momentum)، الحمل الزائد، z-score
+  const avgAssigned=list.length? list.reduce((s,p)=>s+p.assigned,0)/list.length : 0;
+  list.forEach(p=>{
+    const wkVals=ks.filter(k=>p.weeks[k]!==undefined).map(k=>p.weeks[k]);
+    if(wkVals.length>=2){
+      const mean=wkVals.reduce((a,b)=>a+b,0)/wkVals.length;
+      const variance=wkVals.reduce((a,b)=>a+(b-mean)**2,0)/wkVals.length;
+      p.cv=mean? Math.round(Math.sqrt(variance)/mean*100) : null;
+    } else p.cv=null;
+    if(wkVals.length>=3){
+      const half=Math.floor(wkVals.length/2);
+      const firstAvg=wkVals.slice(0,half).reduce((a,b)=>a+b,0)/half;
+      const secondAvg=wkVals.slice(half).reduce((a,b)=>a+b,0)/(wkVals.length-half);
+      p.momentum=firstAvg? Math.round((secondAvg-firstAvg)/firstAvg*100) : null;
+    } else p.momentum=null;
+    p.overload=avgAssigned>0 && p.assigned>avgAssigned*1.3;
+  });
+  const rates=list.map(p=>p.rate);
+  const rateMean=rates.length? rates.reduce((a,b)=>a+b,0)/rates.length : 0;
+  const rateStd=Math.sqrt(rates.reduce((a,b)=>a+(b-rateMean)**2,0)/(rates.length||1));
+  list.forEach(p=>{ p.z=rateStd? (p.rate-rateMean)/rateStd : 0; });
+  lastStatsList=list;
+
+  // تنبيهات أداء فردية: انخفاض مفاجئ + حمل زائد
+  const perfAlerts=[];
+  list.forEach(p=>{
+    const wkEntries=ks.filter(k=>p.weeks[k]!==undefined).map(k=>({k,v:p.weeks[k]}));
+    if(wkEntries.length>=3){
+      const last=wkEntries[wkEntries.length-1], others=wkEntries.slice(0,-1);
+      const avgOthers=others.reduce((a,b)=>a+b.v,0)/others.length;
+      if(avgOthers>=3 && last.v<=avgOthers*0.5){
+        perfAlerts.push(`📉 <b>${p.name}</b> إنتاجه في أسبوع ${WEEKS[last.k].label} (${last.v}) أقل من نصف معدّله المعتاد (${Math.round(avgOthers)}) — يستحق المتابعة.`);
+      }
+    }
+    if(p.overload) perfAlerts.push(`🔺 <b>${p.name}</b> مكلّف بمهام أكثر من متوسط الفريق بشكل ملحوظ (${p.assigned} تكليف مقابل متوسط ${Math.round(avgAssigned)}) — راقب الإنهاك.`);
+  });
+
+  const rhRatio=dept.donors? Math.round(dept.rhNegative/dept.donors*100) : 0;
+  const now=new Date(), curMonthPrefix=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const curMonthDonors=Object.values(WEEKS).filter(w=>w.dateFrom?.slice(0,7)===curMonthPrefix).reduce((s,w)=>s+(w.totals?.donors||0),0);
+  const targetPct=TARGET.monthly? Math.round(curMonthDonors/TARGET.monthly*100) : null;
+
   let html=`
   <div class="kpis">
     <div class="kpi"><div class="lb">إجمالي المتبرعين</div><div class="vl">${dept.donors}</div><div class="dt">${delta(dept.donors,prev.donors)}</div></div>
     <div class="kpi a"><div class="lb">متوسط المتبرعين اليومي</div><div class="vl">${avgDay}</div><div class="dt flat">خلال ${dept.days} يوم عمل</div></div>
     <div class="kpi n"><div class="lb">Rh Negative</div><div class="vl">${dept.rhNegative}</div><div class="dt">${delta(dept.rhNegative,prev.rh)}</div></div>
+    <div class="kpi n"><div class="lb">نسبة Rh Negative</div><div class="vl">${rhRatio}%</div><div class="dt flat">من إجمالي المتبرعين</div></div>
     <div class="kpi g"><div class="lb">متبرعو الصفائح</div><div class="vl">${dept.apheresisDonors}</div><div class="dt">${delta(dept.apheresisDonors,prev.aph)}</div></div>
     <div class="kpi"><div class="lb">عدد الأسابيع</div><div class="vl">${dept.weeks}</div><div class="dt flat">${ks[0]} ← ${ks[ks.length-1]}</div></div>
+    <div class="kpi a"><div class="lb">🎯 الهدف الشهري (${MON[now.getMonth()]})</div><div class="vl">${curMonthDonors} / ${TARGET.monthly||'—'}</div>
+      <div class="dt">${targetPct===null?'<span class="flat">لم يُحدَّد هدف — زر «تعديل الهدف الشهري»</span>':
+        `<div class="bar" style="margin:4px 0"><i style="width:${Math.min(100,targetPct)}%"></i></div><span class="${targetPct>=100?'up':targetPct>=70?'flat':'down'}">${targetPct}%</span>`}</div></div>
   </div>`;
 
-  html+=`<div class="card"><h3>🏆 ترتيب الموظفين حسب معدّل الإنتاجية لكل تكليف</h3>
-  <table class="rk"><thead><tr><th>#</th><th style="text-align:right">الموظف</th><th>إجمالي الحالات</th><th>مرات التكليف</th><th>المعدّل لكل تكليف</th><th>تنوع المهام</th><th>تقييم المهام الرقابية</th><th>الأداء النسبي</th></tr></thead><tbody>`;
+  html+=`<div class="card"><h3>🏆 ترتيب الموظفين حسب معدّل الإنتاجية لكل تكليف</h3><div style="overflow-x:auto">
+  <table class="rk"><thead><tr><th>#</th><th style="text-align:right">الموظف</th><th>إجمالي الحالات</th><th>مرات التكليف</th><th>المعدّل لكل تكليف</th><th>الاتساق / الاتجاه</th><th>تنوع المهام</th><th>تقييم المهام الرقابية</th><th>الأداء النسبي</th></tr></thead><tbody>`;
   list.forEach((p,i)=>{
     const rc=p.ratingCounts||{excellent:0,satisfactory:0,unsatisfactory:0};
     const rIndex=p.ratingTotal?Math.round(p.ratingScoreSum/p.ratingTotal):null;
-    html+=`<tr><td>${medal(i)||i+1}</td><td class="nm">${p.name}</td><td><b>${p.total}</b></td><td>${p.countAssigned}</td><td><b>${p.rate.toFixed(1)}</b></td>
+    const zLabel=(p.z>=0?'+':'')+p.z.toFixed(1)+'σ';
+    const cvLabel=p.cv===null?'—':`CV ${p.cv}%`;
+    const momLabel=p.momentum===null?'—':`<span class="${p.momentum>0?'up':p.momentum<0?'down':'flat'}">${p.momentum>0?'▲':p.momentum<0?'▼':'●'} ${Math.abs(p.momentum)}%</span>`;
+    html+=`<tr><td>${medal(i)||i+1}</td><td class="nm">${p.name}${p.overload?' <span class="pill dr" title="مكلّف بمهام أكثر من متوسط الفريق">🔺 حمل زائد</span>':''}</td>
+    <td><b>${p.total}</b></td><td>${p.countAssigned}</td>
+    <td><b>${p.rate.toFixed(1)}</b><div style="font-size:10px;color:var(--muted)">${zLabel}</div></td>
+    <td><div style="font-size:11px">${cvLabel}</div><div style="font-size:11px">${momLabel}</div></td>
     <td>${p.variety.size} / ${TASKS.length}</td>
     <td>${rIndex===null?'—':`<div style="font-size:11px;color:var(--muted)">✅${rc.excellent} · ➖${rc.satisfactory} · ⚠️${rc.unsatisfactory}</div><span class="${rIndex>=85?'up':rIndex>=60?'flat':'down'}"><b>${rIndex}%</b></span>`}</td>
     <td><div class="bar"><i style="width:${Math.round(p.rate/maxRate*100)}%"></i></div></td></tr>`;
   });
-  html+=`</tbody></table><div class="hint">«المعدّل لكل تكليف» = إجمالي الحالات ÷ عدد مرات التكليف بمهام عددية، وهو أساس الترتيب و«الأداء النسبي» — لمقارنة عادلة لا تتأثر بمن كُلّف مرات أكثر أو بمهام ذات أعداد كبيرة طبيعياً (مثل السحب). «إجمالي الحالات» = مجموع الأعداد المُدخلة في المهام العددية. «تقييم المهام الرقابية» = أعداد كل تقييم (✅ Excellent · ➖ Satisfactory · ⚠️ Unsatisfactory) لمهام QC / Registration / Cleaning، والنسبة مؤشر جودة مرجّح (Excellent=100، Satisfactory=60، Unsatisfactory=20).</div></div>`;
+  html+=`</tbody></table></div><div class="hint">«المعدّل لكل تكليف» = إجمالي الحالات ÷ عدد مرات التكليف بمهام عددية، وهو أساس الترتيب و«الأداء النسبي» — لمقارنة عادلة لا تتأثر بمن كُلّف مرات أكثر أو بمهام ذات أعداد كبيرة طبيعياً (مثل السحب). «σ» (z-score) = بُعد معدّل الموظف عن متوسط الفريق بوحدات الانحراف المعياري (موجب = فوق المتوسط). «الاتساق CV» = معامل الاختلاف لإنتاجه الأسبوعي — كلما قلّ كان أثبت. «الاتجاه» = مقارنة النصف الثاني من الفترة بالنصف الأول. «🔺 حمل زائد» = عدد تكليفاته أعلى من متوسط الفريق بنسبة ٣٠٪+. «إجمالي الحالات» = مجموع الأعداد المُدخلة في المهام العددية. «تقييم المهام الرقابية» = أعداد كل تقييم (✅ Excellent · ➖ Satisfactory · ⚠️ Unsatisfactory) لمهام QC / Registration / Cleaning، والنسبة مؤشر جودة مرجّح (Excellent=100، Satisfactory=60، Unsatisfactory=20).</div></div>`;
+
+  if(perfAlerts.length){
+    html+=`<div class="card"><h3>⚠️ تنبيهات أداء فردية</h3>${perfAlerts.map(x=>`<div class="alert">${x}</div>`).join('')}</div>`;
+  }
 
   const apxCov=apxCoverage(f,t);
   const apxList=list.map(p=>{
@@ -725,6 +823,18 @@ function renderStats(){
     <div class="chartbox" style="margin-top:12px"><canvas id="cApx"></canvas></div></div>`;
   }
 
+  const heat=monthlyHeatmapHtml();
+  if(heat){
+    html+=`<div class="card"><h3>🗓️ خريطة حرارية شهرية للمتبرعين (كل البيانات المحفوظة تاريخياً)</h3><div style="overflow-x:auto">${heat}</div><div class="hint">تجميع كل الأسابيع المحفوظة بحسب الشهر بغضّ النظر عن المدى المحدد أعلاه — لتحديد مواسم الذروة والتخطيط المستقبلي. التظليل الأغمق = عدد متبرعين أعلى.</div></div>`;
+  }
+
+  const qcCandidates=list.filter(p=>p.ratingTotal>0);
+  if(qcCandidates.length){
+    html+=`<div class="card"><h3>🧪 اتجاه جودة المهام الرقابية (QC / Registration / Cleaning)</h3>
+    <div class="row noprint" style="margin-bottom:12px"><div class="field"><label>الموظف</label><select class="inp" id="qcPick"></select></div></div>
+    <div class="chartbox"><canvas id="cQc"></canvas></div></div>`;
+  }
+
   html+=`<div class="card"><h3>📊 مقارنة الإنتاجية (معدّل لكل تكليف)</h3><div class="chartbox"><canvas id="cRank"></canvas></div></div>
   <div class="card"><h3>📈 تطور أداء الفريق أسبوعياً</h3><div class="chartbox"><canvas id="cTrend"></canvas></div></div>
   <div class="card"><h3>🎯 مقارنة مباشرة بين موظفَين</h3>
@@ -754,6 +864,20 @@ function renderStats(){
         {label:'Schedule Apheresis Donor',data:apxList.map(x=>x.schedule),backgroundColor:A,borderRadius:5},
         {label:'Bleeder Apheresis',data:apxList.map(x=>x.bleeder),backgroundColor:B,borderRadius:5}]},
       options:{responsive:true,maintainAspectRatio:false,scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}}}});
+  }
+
+  if($('#qcPick')){
+    $('#qcPick').innerHTML=qcCandidates.map(p=>`<option value="${p.name}">${p.name}</option>`).join('');
+    const drawQc=()=>{
+      const p=qcCandidates.find(x=>x.name===$('#qcPick').value)||qcCandidates[0];
+      const wks=ks.filter(k=>p.ratingByWeek[k]);
+      charts.qc?.destroy();
+      charts.qc=new Chart($('#cQc'),{type:'line',data:{labels:wks.map(k=>WEEKS[k].label),
+        datasets:[{label:'مؤشر الجودة %',data:wks.map(k=>Math.round(p.ratingByWeek[k].sum/p.ratingByWeek[k].count)),
+          borderColor:N,backgroundColor:'rgba(27,58,107,.12)',fill:true,tension:.35}]},
+        options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,max:100}}}});
+    };
+    $('#qcPick').onchange=drawQc; drawQc();
   }
 
   const opts=list.map(p=>`<option value="${p.name}">${p.name}</option>`).join('');
