@@ -38,10 +38,10 @@ font-family: Arial (للجدول) + Cairo أو Tajawal من Google Fonts (للو
 | 6 | Schedule Apheresis Donor | عدد |
 | 7 | Bleeder Apheresis | عدد |
 | 8 | W.B Donation | عدد |
-| 9 | QC of Empty Bag & Shaker | تام / غير تام (boolean) |
-| 10 | Registration & Files | تام / غير تام |
+| 9 | QC of Empty Bag & Shaker | تقييم (Excellent / Satisfactory / Unsatisfactory) |
+| 10 | Registration & Files | تقييم (Excellent / Satisfactory / Unsatisfactory) |
 | 11 | RH Contact | عدد |
-| 12 | Cleaning (Trolly/Beds/Shakers/Instruments/Stuff Refill) | تام / غير تام |
+| 12 | Cleaning (Trolly/Beds/Shakers/Instruments/Stuff Refill) | تقييم (Excellent / Satisfactory / Unsatisfactory) |
 
 كل مهمة تدعم حتى 5 موظفين (STAFF 1–5).
 
@@ -66,12 +66,12 @@ weeks/{weekId}:  weekId = "2026-08-09" (تاريخ بداية الأسبوع)
     results:     { taskId: { staffId: number|bool } }, // النتائج
     totals:      { donors, rhNegative, apheresisDonors, workDays },
     status: "draft" | "published" | "closed" }
-settings/tasks:  { list: [{id, name, type: "count"|"boolean", weight}] }
+settings/tasks:  { list: [{id, name, type: "count"|"rating", weight}] }  // rating: excellent|satisfactory|unsatisfactory
 ```
 
 ## القرارات المعتمدة (من حسن — لا تُغيّر)
 1. إدخال النتائج: **إجمالي أسبوعي واحد** لكل مهمة/موظف (لا إدخال يومي).
-2. الصلاحيات: **المشرف فقط يعدّل** (رمز دخول `ADMIN_CODE`)، والفريق عرض فقط عبر الرابط.
+2. ~~الصلاحيات: المشرف فقط يعدّل~~ **تم إلغاء نظام المشرف** — كل من يفتح الرابط يمكنه التعديل الكامل (لا رمز دخول، لا تفرقة عرض/تعديل).
 3. **بدون أوزان** — الترتيب بمجموع الحالات المنجزة مباشرة + نسبة إتمام المهام الرقابية بشكل منفصل.
 4. الأسبوع = **٧ أيام** من التاريخ المختار؛ حقل «أيام العمل» منفصل يُستخدم في حساب المتوسط اليومي.
 5. لا استيراد بيانات قديمة — البداية من الآن.
@@ -79,7 +79,9 @@ settings/tasks:  { list: [{id, name, type: "count"|"boolean", weight}] }
 7. مشروع Firebase **منفصل تماماً** عن blood-bank-inventory.
 8. مولّد رسالة الجمعة **مطلوب** (نسخ + رابط واتساب).
 9. تنبيهات التوازن **مطلوبة**.
-10. أرقام إنجاز القسم تظهر للجميع؛ **الترتيب والمقارنات الفردية للمشرف فقط**.
+10. ~~أرقام إنجاز القسم تظهر للجميع؛ الترتيب والمقارنات الفردية للمشرف فقط~~ **بعد إلغاء نظام المشرف: الترتيب والمقارنات الفردية تظهر للجميع أيضاً.**
+11. تعديل اسم الموظف في قائمة الموظفين متاح للجميع (زر "تعديل الاسم") — لا حذف نهائي، فقط تعديل الاسم المعروض؛ التاريخ (الجداول/النتائج) يبقى مرتبطاً بمعرّف الموظف الثابت فيتحدث تلقائياً.
+12. المهام الرقابية الثلاث (QC of Empty Bag & Shaker، Registration & Files، Cleaning) لم تعد تام/غير تام (boolean) — أصبحت تقييم من ثلاث درجات: **Excellent / Satisfactory / Unsatisfactory**. الإحصائيات تعرض لكل موظف أعداد كل تقييم (أرقام) + مؤشر جودة مرجّح (Excellent=100، Satisfactory=60، Unsatisfactory=20).
 
 ## محرك الإحصائيات (كخبير إنتاجية — هذا قلب المشروع)
 **مؤشرات لكل موظف (ضمن أي مدى تاريخي من–إلى):**
@@ -99,8 +101,8 @@ settings/tasks:  { list: [{id, name, type: "count"|"boolean", weight}] }
 **مولّد رسالة الجمعة 💪:** زر يولّد تلقائياً رسالة التهنئة الأسبوعية بالعربي (بنفس أسلوب رسالة حسن: المتبرعين، Rh Negative، الصفائح، المتوسط اليومي) جاهزة للنسخ إلى واتساب المجموعة.
 
 ## الصلاحيات
-- Firebase Anonymous Auth أو رمز دخول بسيط: **مشرف** (حسن) يعدّل كل شيء، **عرض فقط** لبقية الفريق عبر الرابط
-- قواعد Firestore تمنع الكتابة بدون صلاحية المشرف
+- **لا يوجد نظام مشرف/رمز دخول** — كل من يفتح الرابط يمكنه التعديل الكامل (جدول، نتائج، موظفين).
+- المصادقة مع Firestore تتم عبر Firebase Anonymous Auth تلقائياً (بدون تسجيل دخول ظاهر للمستخدم) فقط لتفعيل الكتابة السحابية.
 
 ## قواعد التطوير
 - ملف واحد `index.html` (HTML + CSS + JS)، بدون build tools

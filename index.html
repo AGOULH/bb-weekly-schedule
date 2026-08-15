@@ -28,7 +28,6 @@ input,select{font-family:inherit}
 .navbtn.active{background:rgba(240,165,0,.16);color:#fff;border-right-color:var(--amber);font-weight:700}
 .navbtn .ic{font-size:17px}
 #sidebar .foot{padding:12px 16px;border-top:1px solid rgba(255,255,255,.15);font-size:11px;color:#9fb3d1}
-#roleChip{display:inline-block;background:rgba(255,255,255,.12);border-radius:20px;padding:3px 10px;font-size:11px;margin-bottom:8px}
 
 /* ===== Main ===== */
 #main{flex:1;padding:22px 26px;max-width:100%;overflow-x:hidden}
@@ -78,8 +77,7 @@ table.res td{border:1px solid var(--line);padding:6px;text-align:center}
 table.res tr:nth-child(odd) td{background:var(--row-a)}
 table.res td.task{text-align:right;font-weight:700;font-family:Arial;font-size:11.5px}
 table.res input[type=number]{width:66px;border:1px solid var(--line);border-radius:6px;padding:5px;text-align:center;font-weight:700}
-.chk{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;cursor:pointer}
-.chk input{width:16px;height:16px;accent-color:var(--teal)}
+table.res select.rate{width:118px;padding:5px;text-align:center;font-weight:700}
 .tagname{display:block;font-size:10px;color:var(--teal);font-weight:700;margin-bottom:3px;font-family:Arial}
 
 /* KPI */
@@ -111,7 +109,6 @@ table.rk tr:hover td{background:var(--row-a)}
 #toast{position:fixed;bottom:20px;left:20px;background:var(--navy);color:#fff;padding:11px 18px;border-radius:9px;font-size:13px;font-weight:700;opacity:0;transform:translateY(12px);transition:.3s;pointer-events:none;z-index:99}
 #toast.on{opacity:1;transform:none}
 #msgOut{width:100%;min-height:190px;border:1px solid var(--line);border-radius:9px;padding:12px;font-family:'Cairo';font-size:13px;line-height:2;background:#fbfdff}
-.lockmsg{background:#fff8e8;border:1px dashed var(--amber);border-radius:10px;padding:14px;font-size:12.5px;font-weight:700;text-align:center;color:#8a6100}
 .hint{font-size:11.5px;color:var(--muted);margin-top:6px}
 @media(max-width:820px){
   body{flex-direction:column}
@@ -153,9 +150,7 @@ table.rk tr:hover td{background:var(--row-a)}
     <button class="navbtn" data-pg="archive"><span class="ic">🗂️</span> الأرشيف</button>
   </nav>
   <div class="foot">
-    <span id="roleChip">👁️ عرض فقط</span><br>
-    <button class="btn sm ghost" id="loginBtn" style="width:100%">دخول المشرف</button>
-    <div style="margin-top:8px" id="cloudState">☁️ ...</div>
+    <div id="cloudState">☁️ ...</div>
   </div>
 </aside>
 
@@ -178,7 +173,7 @@ table.rk tr:hover td{background:var(--row-a)}
       <div class="field"><label>الأسبوع المعروض</label><select class="inp" id="weekPick" style="min-width:230px"></select></div>
       <div class="field"><label>الحالة</label><div id="wStatus"></div></div>
     </div>
-    <div class="hint">الأسبوع = ٧ أيام تبدأ من التاريخ المختار. اسم ملف الـPDF يُضبط تلقائياً بتاريخ الأسبوع.</div>
+    <div class="hint">الأسبوع = ٧ أيام تبدأ من التاريخ المختار. اسم ملف الـPDF يُضبط تلقائياً بتاريخ الأسبوع. عند إنشاء أسبوع جديد يُنسخ توزيع آخر أسبوع تلقائياً — يكفي تعديل ما تغيّر بدل التعبئة من جديد.</div>
   </div>
   <div id="sheet">
     <div class="sh-title">Central Blood Bank In Dammam</div>
@@ -290,7 +285,6 @@ const FIREBASE_CONFIG = {
   messagingSenderId: "665957641200",
   appId: "1:665957641200:web:a7203d0c0e404b5f1a8b35"
 };
-const ADMIN_CODE = "BB2026";   // غيّره بعد أول تشغيل
 
 /* ---------- الطبقة السحابية (تعمل محلياً إذا لم تُضبط الإعدادات) ---------- */
 let db=null, CLOUD=false;
@@ -334,17 +328,22 @@ const TASKS=[
  {id:'t6', name:'Schedule Apheresis Donor', type:'count'},
  {id:'t7', name:'Bleeder Apheresis', type:'count'},
  {id:'t8', name:'W.B Donation', type:'count'},
- {id:'t9', name:'QC of Empty Bag & Shaker', type:'bool'},
- {id:'t10',name:'Registration & Files', type:'bool'},
+ {id:'t9', name:'QC of Empty Bag & Shaker', type:'rating'},
+ {id:'t10',name:'Registration & Files', type:'rating'},
  {id:'t11',name:'RH Contact', type:'count'},
- {id:'t12',name:'Cleaning (Trolly/Beds/Shakers/Instruments/Stuff Refill)', type:'bool'}
+ {id:'t12',name:'Cleaning (Trolly/Beds/Shakers/Instruments/Stuff Refill)', type:'rating'}
+];
+const RATINGS=[
+ {v:'excellent',     label:'Excellent',     score:100},
+ {v:'satisfactory',  label:'Satisfactory',  score:60},
+ {v:'unsatisfactory',label:'Unsatisfactory',score:20}
 ];
 const HEAVY=['t7','t8','t3'];                 // مهام ثقيلة لمراقبة عدالة التوزيع
 const SEED=['FAHED','AQEELHA','DOHA','AFNAN','ALASEED','IBRIH','MARDEEF','SULTAN','ABDJALIL','REDA','MATWHA','AWTIF','HAMED'];
 const MON=['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 /* ---------- الحالة ---------- */
-let STAFF={}, WEEKS={}, APX={}, curWeek=null, curApx=null, isAdmin=false, charts={};
+let STAFF={}, WEEKS={}, APX={}, curWeek=null, curApx=null, charts={};
 
 const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
@@ -383,20 +382,6 @@ $$('.navbtn').forEach(b=>b.onclick=()=>{
   $$('.page').forEach(p=>p.classList.remove('on')); $('#pg-'+b.dataset.pg).classList.add('on');
 });
 
-/* ---------- الصلاحيات ---------- */
-$('#loginBtn').onclick=()=>{
-  if(isAdmin){ isAdmin=false; }
-  else{ const c=prompt('رمز دخول المشرف:'); if(c!==ADMIN_CODE){ if(c!==null)toast('رمز غير صحيح'); return; } isAdmin=true; }
-  applyRole(); toast(isAdmin?'مرحباً بك — وضع المشرف':'تم الخروج');
-};
-function applyRole(){
-  $('#roleChip').textContent=isAdmin?'🔑 مشرف':'👁️ عرض فقط';
-  $('#loginBtn').textContent=isAdmin?'خروج':'دخول المشرف';
-  $$('input,select,textarea').forEach(el=>{ if(el.id==='weekPick'||el.id==='resWeekPick'||el.id==='apxPick'||el.id==='sFrom'||el.id==='sTo')return; el.disabled=!isAdmin; });
-  $$('#saveSchedBtn,#saveResBtn,#newWeekBtn,#addStaffBtn,#apxSave,#apxAddRow').forEach(b=>b.disabled=!isAdmin);
-  renderStats();
-}
-
 /* ============ الجدول الأسبوعي ============ */
 function fillWeekPicks(){
   const ks=Object.keys(WEEKS).sort().reverse();
@@ -416,7 +401,7 @@ function renderSheet(){
   const opts=id=>`<option value="">—</option>`+activeStaff().map(s=>`<option value="${s.id}" ${s.id===id?'selected':''}>${s.name}</option>`).join('');
   $('#shBody').innerHTML=TASKS.map((t,i)=>{
     const a=w.assignments[t.id]||[];
-    const cells=[0,1,2,3,4].map(j=>`<td><select data-t="${t.id}" data-j="${j}" ${isAdmin?'':'disabled'}>${opts(a[j])}</select></td>`).join('');
+    const cells=[0,1,2,3,4].map(j=>`<td><select data-t="${t.id}" data-j="${j}">${opts(a[j])}</select></td>`).join('');
     return `<tr><td class="num">${i+1}</td><td class="task">${t.name}</td>${cells}</tr>`;
   }).join('');
   $$('#shBody select').forEach(s=>s.onchange=()=>{
@@ -432,9 +417,12 @@ $('#saveSchedBtn').onclick=async()=>{
 $('#newWeekBtn').onclick=async()=>{
   const f=$('#wFrom').value||new Date().toISOString().slice(0,10), t=addDays(f,6);
   if(WEEKS[f]){toast('هذا الأسبوع موجود مسبقاً');return}
-  WEEKS[f]={dateFrom:f,dateTo:t,label:fmtLbl(f,t),assignments:{},results:{},
+  const prevKey=Object.keys(WEEKS).sort().filter(k=>k<f).pop();
+  const prevAssignments=prevKey?JSON.parse(JSON.stringify(WEEKS[prevKey].assignments||{})):{};
+  WEEKS[f]={dateFrom:f,dateTo:t,label:fmtLbl(f,t),assignments:prevAssignments,results:{},
     totals:{donors:0,rhNegative:0,apheresisDonors:0,workDays:5},status:'draft'};
-  await cloudSet('weeks',f,WEEKS[f]); curWeek=f; fillWeekPicks(); renderSheet(); renderResults(); renderArchive(); toast('تم إنشاء أسبوع جديد');
+  await cloudSet('weeks',f,WEEKS[f]); curWeek=f; fillWeekPicks(); renderSheet(); renderResults(); renderArchive();
+  toast(prevKey?'تم إنشاء أسبوع جديد بنفس توزيع الأسبوع السابق — عدّل ما يلزم':'تم إنشاء أسبوع جديد');
 };
 
 /* ============ تنبيهات التوازن ============ */
@@ -474,18 +462,17 @@ function renderResults(){
     const cells=a.map(sid=>{
       const v=r[sid];
       return `<td><span class="tagname">${sName(sid)}</span>`+(t.type==='count'
-        ? `<input type="number" min="0" value="${v??''}" data-t="${t.id}" data-s="${sid}" ${isAdmin?'':'disabled'}>`
-        : `<label class="chk"><input type="checkbox" data-t="${t.id}" data-s="${sid}" ${v?'checked':''} ${isAdmin?'':'disabled'}> ${v?'تام':'غير تام'}</label>`)+`</td>`;
+        ? `<input type="number" min="0" value="${v??''}" data-t="${t.id}" data-s="${sid}">`
+        : `<select class="inp rate" data-t="${t.id}" data-s="${sid}"><option value="">—</option>${RATINGS.map(r2=>`<option value="${r2.v}" ${v===r2.v?'selected':''}>${r2.label}</option>`).join('')}</select>`)+`</td>`;
     }).join('');
     const pad='<td></td>'.repeat(Math.max(0,5-a.length));
-    return `<tr><td class="num">${i+1}</td><td class="task">${t.name} <small style="color:var(--teal)">${t.type==='count'?'عدد':'تام/لا'}</small></td>${cells}${pad}</tr>`;
+    return `<tr><td class="num">${i+1}</td><td class="task">${t.name} <small style="color:var(--teal)">${t.type==='count'?'عدد':'تقييم'}</small></td>${cells}${pad}</tr>`;
   }).join('');
   $('#resWrap').innerHTML=`<table class="res"><thead><tr><th>#</th><th>المهمة</th><th colspan="5">الموظفون المكلّفون</th></tr></thead><tbody>${rows}</tbody></table>`;
-  $$('#resWrap input').forEach(el=>el.onchange=()=>{
+  $$('#resWrap input,#resWrap select').forEach(el=>el.onchange=()=>{
     const t=el.dataset.t,s=el.dataset.s;
     WEEKS[curWeek].results[t]=WEEKS[curWeek].results[t]||{};
-    WEEKS[curWeek].results[t][s]= el.type==='checkbox'? el.checked : (el.value===''?null:+el.value);
-    if(el.type==='checkbox') el.parentElement.lastChild.textContent=' '+(el.checked?'تام':'غير تام');
+    WEEKS[curWeek].results[t][s]= el.tagName==='SELECT'? (el.value||null) : (el.value===''?null:+el.value);
   });
 }
 $('#saveResBtn').onclick=async()=>{
@@ -538,19 +525,19 @@ function inRange(k,f,t){ return (!f||k>=f)&&(!t||k<=t); }
 function aggregate(f,t){
   const ks=Object.keys(WEEKS).filter(k=>inRange(k,f,t)).sort();
   const per={}, dept={donors:0,rhNegative:0,apheresisDonors:0,days:0,weeks:ks.length};
-  activeStaff().forEach(s=>per[s.id]={name:s.name,total:0,tasks:{},assigned:0,doneBool:0,totBool:0,variety:new Set(),weeks:{}});
-  Object.values(STAFF).forEach((v,i)=>{});
+  const blankRatings=()=>({excellent:0,satisfactory:0,unsatisfactory:0});
+  activeStaff().forEach(s=>per[s.id]={name:s.name,total:0,tasks:{},assigned:0,ratingCounts:blankRatings(),ratingTotal:0,ratingScoreSum:0,variety:new Set(),weeks:{}});
   ks.forEach(k=>{
     const w=WEEKS[k];
     dept.donors+=w.totals?.donors||0; dept.rhNegative+=w.totals?.rhNegative||0;
     dept.apheresisDonors+=w.totals?.apheresisDonors||0; dept.days+=w.totals?.workDays||5;
     TASKS.forEach(T=>{
       (w.assignments[T.id]||[]).forEach(sid=>{
-        if(!per[sid]) per[sid]={name:sName(sid)||'—',total:0,tasks:{},assigned:0,doneBool:0,totBool:0,variety:new Set(),weeks:{}};
+        if(!per[sid]) per[sid]={name:sName(sid)||'—',total:0,tasks:{},assigned:0,ratingCounts:blankRatings(),ratingTotal:0,ratingScoreSum:0,variety:new Set(),weeks:{}};
         const p=per[sid]; p.assigned++; p.variety.add(T.id);
         const v=w.results?.[T.id]?.[sid];
         if(T.type==='count'){ const n=+v||0; p.total+=n; p.tasks[T.id]=(p.tasks[T.id]||0)+n; p.weeks[k]=(p.weeks[k]||0)+n; }
-        else { p.totBool++; if(v) p.doneBool++; }
+        else if(v){ p.ratingCounts[v]=(p.ratingCounts[v]||0)+1; p.ratingTotal++; p.ratingScoreSum+=RATINGS.find(r=>r.v===v)?.score||0; }
       });
     });
   });
@@ -579,22 +566,18 @@ function renderStats(){
     <div class="kpi"><div class="lb">عدد الأسابيع</div><div class="vl">${dept.weeks}</div><div class="dt flat">${ks[0]} ← ${ks[ks.length-1]}</div></div>
   </div>`;
 
-  if(!isAdmin){
-    html+=`<div class="card"><div class="lockmsg">🔒 المقارنة الفردية وترتيب الموظفين متاحان للمشرف فقط.<br>أرقام إنجاز القسم أعلاه متاحة للجميع 💪</div></div>`;
-    $('#statsOut').innerHTML=html; return;
-  }
-
   html+=`<div class="card"><h3>🏆 ترتيب الموظفين حسب الحالات المنجزة</h3>
-  <table class="rk"><thead><tr><th>#</th><th style="text-align:right">الموظف</th><th>إجمالي الحالات</th><th>متوسط أسبوعي</th><th>تنوع المهام</th><th>إتمام المهام الرقابية</th><th>الأداء النسبي</th></tr></thead><tbody>`;
+  <table class="rk"><thead><tr><th>#</th><th style="text-align:right">الموظف</th><th>إجمالي الحالات</th><th>متوسط أسبوعي</th><th>تنوع المهام</th><th>تقييم المهام الرقابية</th><th>الأداء النسبي</th></tr></thead><tbody>`;
   list.forEach((p,i)=>{
     const wk=Object.keys(p.weeks).length||1;
-    const comp=p.totBool?Math.round(p.doneBool/p.totBool*100):null;
+    const rc=p.ratingCounts||{excellent:0,satisfactory:0,unsatisfactory:0};
+    const rIndex=p.ratingTotal?Math.round(p.ratingScoreSum/p.ratingTotal):null;
     html+=`<tr><td>${medal(i)||i+1}</td><td class="nm">${p.name}</td><td><b>${p.total}</b></td><td>${Math.round(p.total/wk)}</td>
     <td>${p.variety.size} / ${TASKS.length}</td>
-    <td>${comp===null?'—':`<span class="${comp>=90?'up':comp>=70?'flat':'down'}"><b>${comp}%</b></span>`}</td>
+    <td>${rIndex===null?'—':`<div style="font-size:11px;color:var(--muted)">✅${rc.excellent} · ➖${rc.satisfactory} · ⚠️${rc.unsatisfactory}</div><span class="${rIndex>=85?'up':rIndex>=60?'flat':'down'}"><b>${rIndex}%</b></span>`}</td>
     <td><div class="bar"><i style="width:${Math.round(p.total/max*100)}%"></i></div></td></tr>`;
   });
-  html+=`</tbody></table><div class="hint">«إجمالي الحالات» = مجموع الأعداد المُدخلة في المهام العددية. «الإتمام» = نسبة إنجاز مهام QC / Registration / Cleaning.</div></div>`;
+  html+=`</tbody></table><div class="hint">«إجمالي الحالات» = مجموع الأعداد المُدخلة في المهام العددية. «تقييم المهام الرقابية» = أعداد كل تقييم (✅ Excellent · ➖ Satisfactory · ⚠️ Unsatisfactory) لمهام QC / Registration / Cleaning، والنسبة مؤشر جودة مرجّح (Excellent=100، Satisfactory=60، Unsatisfactory=20).</div></div>`;
 
   html+=`<div class="card"><h3>📊 مقارنة الإنتاجية</h3><div class="chartbox"><canvas id="cRank"></canvas></div></div>
   <div class="card"><h3>📈 تطور أداء الفريق أسبوعياً</h3><div class="chartbox"><canvas id="cTrend"></canvas></div></div>
@@ -641,10 +624,21 @@ function renderStaff(){
   $('#staffBody').innerHTML=Object.entries(STAFF).sort((a,b)=>a[1].order-b[1].order).map(([id,s],i)=>
    `<tr><td>${i+1}</td><td class="nm">${s.name}</td>
     <td><span class="pill ${s.active?'pb':'dr'}">${s.active?'نشط':'معطّل'}</span></td>
-    <td><button class="btn sm ghost" data-tg="${id}" ${isAdmin?'':'disabled'}>${s.active?'تعطيل':'تفعيل'}</button></td></tr>`).join('');
+    <td style="display:flex;gap:6px;justify-content:center">
+      <button class="btn sm ghost" data-ed="${id}">✎ تعديل الاسم</button>
+      <button class="btn sm ghost" data-tg="${id}">${s.active?'تعطيل':'تفعيل'}</button>
+    </td></tr>`).join('');
   $$('[data-tg]').forEach(b=>b.onclick=async()=>{
     const id=b.dataset.tg; STAFF[id].active=!STAFF[id].active;
     await cloudSet('staff',id,STAFF[id]); renderStaff(); renderSheet(); toast('تم التحديث');
+  });
+  $$('[data-ed]').forEach(b=>b.onclick=async()=>{
+    const id=b.dataset.ed, cur=STAFF[id].name;
+    const n=prompt('الاسم الجديد للموظف:',cur); if(n===null)return;
+    const nn=n.trim().toUpperCase(); if(!nn||nn===cur)return;
+    if(Object.entries(STAFF).some(([k,v])=>k!==id&&v.name===nn)){toast('الاسم موجود مسبقاً');return}
+    STAFF[id].name=nn; await cloudSet('staff',id,STAFF[id]);
+    renderStaff(); renderSheet(); renderResults(); renderArchive(); toast('تم تعديل الاسم ✓');
   });
 }
 $('#addStaffBtn').onclick=async()=>{
@@ -678,10 +672,10 @@ function renderApx(){
   const a=APX[curApx]; $('#apxMonth').value=a.month; $('#apxSub').textContent=a.month;
   const opts=v=>`<option value="">—</option>`+activeStaff().map(s=>`<option ${s.name===v?'selected':''}>${s.name}</option>`).join('');
   $('#apxBody').innerHTML=(a.rows||[]).map((r,i)=>`<tr><td class="num">${i+1}</td>
-    <td><select data-r="${i}" data-f="s1" ${isAdmin?'':'disabled'}>${opts(r.s1)}</select></td>
-    <td><select data-r="${i}" data-f="s2" ${isAdmin?'':'disabled'}>${opts(r.s2)}</select></td>
-    <td><input class="inp" style="border:0;background:transparent;font-family:Arial;font-weight:700;color:var(--teal);text-align:center;width:100%" data-r="${i}" data-f="range" value="${r.range||''}" placeholder="11 TO 14 MAY" ${isAdmin?'':'disabled'}></td>
-    <td><input class="inp" style="border:0;background:transparent;font-family:Arial;font-weight:700;text-align:center;width:100%" data-r="${i}" data-f="period" value="${r.period||''}" placeholder="Week 1" ${isAdmin?'':'disabled'}></td></tr>`).join('')
+    <td><select data-r="${i}" data-f="s1">${opts(r.s1)}</select></td>
+    <td><select data-r="${i}" data-f="s2">${opts(r.s2)}</select></td>
+    <td><input class="inp" style="border:0;background:transparent;font-family:Arial;font-weight:700;color:var(--teal);text-align:center;width:100%" data-r="${i}" data-f="range" value="${r.range||''}" placeholder="11 TO 14 MAY"></td>
+    <td><input class="inp" style="border:0;background:transparent;font-family:Arial;font-weight:700;text-align:center;width:100%" data-r="${i}" data-f="period" value="${r.period||''}" placeholder="Week 1"></td></tr>`).join('')
     || '<tr><td colspan="5" style="padding:18px;color:#9aa8bb">أضف صفاً للبدء</td></tr>';
   $$('#apxBody [data-r]').forEach(el=>el.onchange=()=>{ APX[curApx].rows[+el.dataset.r][el.dataset.f]=el.value; });
   $('#apxMonth').oninput=e=>{APX[curApx].month=e.target.value;$('#apxSub').textContent=e.target.value};
@@ -695,7 +689,7 @@ $('#apxSave').onclick=async()=>{
 };
 $('#apxPrint').onclick=()=>{const o=document.title;document.title=`Apheresis_${(APX[curApx].month||'').replace(/ /g,'_')}`;window.print();setTimeout(()=>document.title=o,700)};
 
-boot().then(applyRole);
+boot();
 </script>
 </body>
 </html>
