@@ -359,6 +359,10 @@ async function cloudSet(col,id,data){
   if(CLOUD){ await db.fs.setDoc(db.fs.doc(db.d,col,id),data); }
   const all=LS.get('bb_'+col,{}); all[id]=data; LS.set('bb_'+col,all);
 }
+async function cloudGet(col,id){
+  if(CLOUD){ const snap=await db.fs.getDoc(db.fs.doc(db.d,col,id)); return snap.exists()?snap.data():null; }
+  return LS.get('bb_'+col,{})[id]||null;
+}
 async function cloudAll(col){
   if(CLOUD){
     const s=await db.fs.getDocs(db.fs.collection(db.d,col)); const o={};
@@ -559,6 +563,14 @@ $('#shareWaBtn').onclick=async()=>{
 $('#newWeekBtn').onclick=async()=>{
   const f=$('#wFrom').value||new Date().toISOString().slice(0,10), t=addDays(f,6);
   if(WEEKS[f]){toast('هذا الأسبوع موجود مسبقاً — افتحه من «الأسبوع المعروض» أعلاه');return}
+  // تحقّق حيّ من السحابة (لا يكتفي بالنسخة المحلية المخزَّنة) لمنع إنشاء نسخة مكرّرة تمحو أسبوعاً محفوظاً
+  // فعلياً إذا كانت هذه الجلسة مفتوحة منذ قبل إنشاء ذلك الأسبوع في جلسة أخرى.
+  const existing=await cloudGet('weeks',f);
+  if(existing){
+    WEEKS[f]=existing; curWeek=f; fillWeekPicks(); renderSheet(); renderResults(); renderArchive();
+    toast('هذا الأسبوع موجود مسبقاً على السحابة — تم فتحه بدل إنشاء نسخة جديدة (لتجنّب حذف بياناته)');
+    return;
+  }
   if(!confirm(`سيتم إنشاء أسبوع جديد بتاريخ ${fmtLbl(f,t)} ونسخ توزيع آخر أسبوع محفوظ إليه.\n\nهل هذا التاريخ صحيح؟`)) return;
   const prevKey=Object.keys(WEEKS).sort().filter(k=>k<f).pop();
   const prevAssignments=prevKey?JSON.parse(JSON.stringify(WEEKS[prevKey].assignments||{})):{};
