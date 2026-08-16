@@ -278,16 +278,17 @@ table.rk tr:hover td{background:var(--row-a)}
   <div class="pghead noprint">
     <div><h2 tabindex="-1">جدول الصفائح الشهري</h2><p>Apheresis Schedule — توزيع أسبوعي لفريق السحب</p></div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn ghost" id="apxNewMonth">＋ جدول شهري جديد</button>
       <button class="btn ghost" id="apxAddRow">＋ صف</button>
       <button class="btn amber" id="apxPrint">🖨️ تصدير PDF</button>
       <button class="btn" id="apxSave">💾 حفظ</button>
     </div>
   </div>
   <div class="card noprint"><div class="row">
-    <div class="field"><label for="apxMonth">عنوان الفترة</label><input class="inp" id="apxMonth" placeholder="Month May &amp; June" style="min-width:230px"></div>
-    <div class="field"><label for="apxPick">الجداول المحفوظة</label><select class="inp" id="apxPick" style="min-width:200px"></select></div>
+    <div class="field"><label for="apxPick">اختر جدولاً محفوظاً</label><select class="inp" id="apxPick" style="min-width:220px"></select></div>
+    <div class="field"><label for="apxMonth">عنوان الجدول المعروض</label><input class="inp" id="apxMonth" placeholder="Month May &amp; June" style="min-width:230px"></div>
   </div>
-  <div class="hint">صفوف Bleeder Apheresis تُضاف/تُحدَّث هنا تلقائياً من الجدول الأسبوعي فور اعتماده (💾 حفظ أو 📲 حفظ ومشاركة واتساب) — لا حاجة لإدخالها يدوياً، ويمكنك تعديلها هنا كالمعتاد.</div></div>
+  <div class="hint">اختر جدولاً من القائمة لعرضه وتعديله، أو ابدأ جدولاً منفصلاً جديداً بزر «＋ جدول شهري جديد». تعديل «عنوان الجدول المعروض» ثم «💾 حفظ» يُعيد تسمية هذا الجدول نفسه (لا يُنشئ جدولاً جديداً). صفوف Bleeder Apheresis تُضاف/تُحدَّث هنا تلقائياً من الجدول الأسبوعي فور اعتماده (💾 حفظ أو 📲 حفظ ومشاركة واتساب) — لا حاجة لإدخالها يدوياً، ويمكنك تعديلها هنا كالمعتاد.</div></div>
   <div id="apxSheet" style="background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden">
     <div class="sh-title">🩸 Apheresis Schedule · جدول سحب الصفائح</div>
     <div class="sh-title" style="background:var(--teal);font-size:13px">Central Blood Bank In Dammam</div>
@@ -999,9 +1000,15 @@ function renderArchive(){
 /* ============ الصفائح ============ */
 function renderApx(){
   const keys=Object.keys(APX).sort().reverse();
-  if(!keys.length){ APX['default']={month:'Month —',rows:[]}; }
-  curApx=curApx||Object.keys(APX).sort().reverse()[0];
-  $('#apxPick').innerHTML=Object.keys(APX).sort().reverse().map(k=>`<option value="${k}" ${k===curApx?'selected':''}>${APX[k].month}</option>`).join('');
+  if(!keys.length){
+    curApx=null;
+    $('#apxPick').innerHTML='<option value="">— لا توجد جداول محفوظة —</option>';
+    $('#apxMonth').value=''; $('#apxSub').textContent='Month —';
+    $('#apxBody').innerHTML='<tr><td colspan="5" style="padding:24px;color:var(--faint)">لا توجد جداول محفوظة بعد — اضغط «＋ جدول شهري جديد» أعلاه للبدء</td></tr>';
+    return;
+  }
+  if(!curApx||!APX[curApx]) curApx=keys[0];
+  $('#apxPick').innerHTML=keys.map(k=>`<option value="${k}" ${k===curApx?'selected':''}>${APX[k].month}</option>`).join('');
   const a=APX[curApx]; $('#apxMonth').value=a.month; $('#apxSub').textContent=a.month;
   const opts=v=>`<option value="">—</option>`+activeStaff().map(s=>`<option ${s.name===v?'selected':''}>${s.name}</option>`).join('');
   $('#apxBody').innerHTML=(a.rows||[]).map((r,i)=>`<tr><td class="num">${i+1}</td>
@@ -1014,13 +1021,28 @@ function renderApx(){
   $('#apxMonth').oninput=e=>{APX[curApx].month=e.target.value;$('#apxSub').textContent=e.target.value};
 }
 $('#apxPick').onchange=e=>{curApx=e.target.value;renderApx()};
-$('#apxAddRow').onclick=()=>{APX[curApx].rows=APX[curApx].rows||[];APX[curApx].rows.push({s1:'',s2:'',range:'',period:'Week '+(APX[curApx].rows.length+1)});renderApx()};
+$('#apxNewMonth').onclick=async()=>{
+  const now=new Date(), suggested=`Month ${MON[now.getMonth()]} ${now.getFullYear()}`;
+  const title=prompt('عنوان الجدول الشهري الجديد:',suggested); if(title===null)return;
+  const clean=title.trim(); if(!clean){toast('العنوان مطلوب');return}
+  const key=clean.replace(/[^A-Za-z0-9]+/g,'_').replace(/^_+|_+$/g,'')+'_'+(Date.now()%100000);
+  APX[key]={month:clean,rows:[]}; curApx=key;
+  await cloudSet('apheresis',key,APX[key]); renderApx(); toast('تم إنشاء جدول شهري جديد ✓');
+};
+$('#apxAddRow').onclick=()=>{
+  if(!curApx||!APX[curApx]){toast('أنشئ جدولاً شهرياً جديداً أولاً');return}
+  APX[curApx].rows=APX[curApx].rows||[];APX[curApx].rows.push({s1:'',s2:'',range:'',period:'Week '+(APX[curApx].rows.length+1)});renderApx();
+};
 $('#apxSave').onclick=async()=>{
+  if(!curApx||!APX[curApx]){toast('أنشئ جدولاً شهرياً جديداً أولاً');return}
   const key=(APX[curApx].month||'apx').replace(/[^A-Za-z0-9]+/g,'_');
   const data=APX[curApx]; if(key!==curApx){ delete APX[curApx]; APX[key]=data; curApx=key; }
   await cloudSet('apheresis',curApx,data); renderApx(); toast('تم حفظ جدول الصفائح ✓');
 };
-$('#apxPrint').onclick=()=>{const o=document.title;document.title=`Apheresis_${(APX[curApx].month||'').replace(/ /g,'_')}`;window.print();setTimeout(()=>document.title=o,700)};
+$('#apxPrint').onclick=()=>{
+  if(!curApx||!APX[curApx]){toast('لا يوجد جدول لعرضه');return}
+  const o=document.title;document.title=`Apheresis_${(APX[curApx].month||'').replace(/ /g,'_')}`;window.print();setTimeout(()=>document.title=o,700);
+};
 
 boot();
 </script>
