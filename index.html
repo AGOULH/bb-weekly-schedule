@@ -10,14 +10,34 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <style>
 :root{
+  /* الهوية البصرية — إلزامية، مستخرجة من ملف الإكسل الأصلي (لا تُغيّر) */
   --navy:#1B3A6B; --amber:#F0A500; --gold:#C8860A; --teal:#0D7377;
   --row-a:#E8F6F3; --row-b:#FFFFFF; --numcol:#D6EAF8; --ink:#1A1A2E;
-  --bg:#F4F7FA; --line:#D9E2EC; --ok:#159E63; --bad:#D9534F; --muted:#6B7C93;
+
+  /* محايدات وحالات داعمة — نفس درجة اللون مع ضبط الإضاءة لتحقيق تباين WCAG AA */
+  --bg:#F4F7FA;
+  --line:#D9E2EC;         /* فواصل زخرفية: حدود جداول/بطاقات */
+  --line-strong:#7092B8;  /* حدود عناصر تفاعلية (حقول الإدخال) — تباين ≥٣:١ */
+  --muted:#566476;        /* نص ثانوي/تسميات — تباين ~٦:١ على أبيض */
+  --faint:#7F91A9;        /* نص حالات فارغة/نائبة فقط */
+  --ok:#128755;           /* نجاح/إيجابي — تباين ~٤.٥:١ */
+  --bad:#BD2D29;          /* خطر/سلبي — تباين ~٥.٩:١ */
+
+  /* ظل-كحدّ للبطاقات بدل حد مسطح (يتكيّف مع أي خلفية) */
+  --shadow-card:0 0 0 1px oklch(0 0 0/.06),0 1px 2px -1px oklch(0 0 0/.06),0 2px 4px 0 oklch(0 0 0/.04);
+  --shadow-card-hover:0 0 0 1px oklch(0 0 0/.08),0 1px 2px -1px oklch(0 0 0/.08),0 4px 10px 0 oklch(0 0 0/.08);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Cairo',Arial,sans-serif;background:var(--bg);color:var(--ink);display:flex;min-height:100vh}
+body{font-family:'Cairo',Arial,sans-serif;background:var(--bg);color:var(--ink);display:flex;min-height:100vh;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;-webkit-tap-highlight-color:rgba(27,58,107,.15)}
 button{font-family:inherit;cursor:pointer}
 input,select{font-family:inherit}
+:focus-visible{outline:2px solid var(--navy);outline-offset:2px;border-radius:2px}
+#sidebar :focus-visible{outline-color:var(--amber)}
+.skip-link{position:absolute;inset-inline-start:-999px;background:var(--navy);color:#fff;padding:10px 16px;border-radius:0 0 8px 0;font-weight:700;font-size:13px;z-index:999}
+.skip-link:focus{inset-inline-start:0;top:0}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+}
 
 /* ===== Sidebar ===== */
 #sidebar{width:230px;background:var(--navy);color:#fff;flex-shrink:0;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
@@ -25,8 +45,8 @@ input,select{font-family:inherit}
 #sidebar .brand h1{font-size:15px;font-weight:900;line-height:1.5}
 #sidebar .brand span{font-size:11px;color:var(--amber);font-weight:600}
 #sidebar nav{flex:1;padding:10px 0;overflow-y:auto}
-.navbtn{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;color:#dbe6f5;padding:12px 16px;font-size:14px;text-align:right;border-right:3px solid transparent;transition:.18s}
-.navbtn:hover{background:rgba(255,255,255,.08);color:#fff}
+.navbtn{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;color:#dbe6f5;padding:12px 16px;font-size:14px;text-align:right;border-right:3px solid transparent;transition-property:background-color,color;transition-duration:150ms;transition-timing-function:ease-out;touch-action:manipulation}
+@media(hover:hover){.navbtn:hover{background:rgba(255,255,255,.08);color:#fff}}
 .navbtn.active{background:rgba(240,165,0,.16);color:#fff;border-right-color:var(--amber);font-weight:700}
 .navbtn .ic{font-size:17px}
 #sidebar .foot{padding:12px 16px;border-top:1px solid rgba(255,255,255,.15);font-size:11px;color:#9fb3d1}
@@ -38,21 +58,27 @@ input,select{font-family:inherit}
 .pghead h2{font-size:20px;color:var(--navy);font-weight:900}
 .pghead p{font-size:12px;color:var(--muted);margin-top:2px}
 
-.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 1px 3px rgba(27,58,107,.06)}
+.card{background:#fff;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:var(--shadow-card)}
 .card h3{font-size:14px;color:var(--navy);margin-bottom:12px;font-weight:800}
 
-.btn{background:var(--navy);color:#fff;border:0;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;transition:.18s}
-.btn:hover{background:#142d55;transform:translateY(-1px)}
-.btn.amber{background:var(--amber);color:var(--ink)}.btn.amber:hover{background:#d99400}
-.btn.teal{background:var(--teal)}.btn.teal:hover{background:#0a5a5d}
-.btn.ghost{background:#fff;color:var(--navy);border:1px solid var(--line)}.btn.ghost:hover{background:#eef3f9}
+.btn{background:var(--navy);color:#fff;border:0;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;transition-property:background-color,transform,scale;transition-duration:150ms;transition-timing-function:ease-out;touch-action:manipulation}
+@media(hover:hover){.btn:hover{background:#142d55;transform:translateY(-1px)}}
+.btn:active:not(:disabled){scale:.96}
+.btn.amber{background:var(--amber);color:var(--ink)}
+.btn.teal{background:var(--teal)}
+.btn.ghost{background:#fff;color:var(--navy);border:1px solid var(--line)}
+@media(hover:hover){
+  .btn.amber:hover{background:#d99400}
+  .btn.teal:hover{background:#0a5a5d}
+  .btn.ghost:hover{background:#eef3f9}
+}
 .btn.sm{padding:6px 11px;font-size:12px}
-.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none;scale:1}
 
 .field{display:flex;flex-direction:column;gap:5px}
 .field label{font-size:12px;font-weight:700;color:var(--muted)}
-.inp{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;background:#fff;color:var(--ink)}
-.inp:focus{outline:2px solid rgba(13,115,119,.35);border-color:var(--teal)}
+.inp{border:1px solid var(--line-strong);border-radius:8px;padding:8px 10px;font-size:13px;background:#fff;color:var(--ink);transition:border-color 150ms ease-out}
+.inp:focus-visible{border-color:var(--teal)}
 .row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
 
 /* ===== Schedule sheet (الهوية) ===== */
@@ -74,10 +100,11 @@ table.sh td.num{background:var(--numcol);color:var(--navy);width:34px}
 table.sh td.task{text-align:right;min-width:210px}
 table.sh tr:nth-child(odd) td:not(.num){background:var(--row-a)}
 table.sh tr:nth-child(even) td:not(.num){background:var(--row-b)}
-table.sh tbody tr{transition:.15s}
-table.sh tbody tr:hover td:not(.num){background:#d7efe9}
-table.sh select{border:1px solid transparent;background:transparent;font-size:11.5px;font-weight:700;font-family:Arial;width:100%;padding:3px;border-radius:5px;color:var(--ink)}
-table.sh select:hover{border-color:var(--teal);background:#fff}
+table.sh tbody tr{transition:background-color 150ms ease-out}
+@media(hover:hover){table.sh tbody tr:hover td:not(.num){background:#d7efe9}}
+table.sh select{border:1px solid transparent;background:transparent;font-size:11.5px;font-weight:700;font-family:Arial;width:100%;padding:3px;border-radius:5px;color:var(--ink);transition-property:border-color,background-color;transition-duration:150ms;transition-timing-function:ease-out}
+@media(hover:hover){table.sh select:hover{border-color:var(--teal);background:#fff}}
+table.sh select:focus-visible{border-color:var(--teal);background:#fff}
 .sh-foot{font-family:Arial;font-weight:700;font-size:12px;padding:9px 12px;color:var(--ink);background:#fff;border-top:1px solid var(--line)}
 
 /* Results entry */
@@ -86,16 +113,16 @@ table.res th{background:var(--navy);color:#fff;padding:8px;font-size:11.5px;bord
 table.res td{border:1px solid var(--line);padding:6px;text-align:center}
 table.res tr:nth-child(odd) td{background:var(--row-a)}
 table.res td.task{text-align:right;font-weight:700;font-family:Arial;font-size:11.5px}
-table.res input[type=number]{width:66px;border:1px solid var(--line);border-radius:6px;padding:5px;text-align:center;font-weight:700}
+table.res input[type=number]{width:66px;border:1px solid var(--line-strong);border-radius:6px;padding:5px;text-align:center;font-weight:700;font-variant-numeric:tabular-nums}
 table.res select.rate{width:118px;padding:5px;text-align:center;font-weight:700}
 .tagname{display:block;font-size:10px;color:var(--teal);font-weight:700;margin-bottom:3px;font-family:Arial}
 
 /* KPI */
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;margin-bottom:16px}
-.kpi{background:#fff;border:1px solid var(--line);border-top:3px solid var(--teal);border-radius:11px;padding:14px;transition:.2s}
-.kpi:hover{transform:translateY(-3px);box-shadow:0 6px 16px rgba(27,58,107,.12)}
+.kpi{background:#fff;border-top:3px solid var(--teal);border-radius:11px;padding:14px;box-shadow:var(--shadow-card);transition-property:transform,box-shadow;transition-duration:200ms;transition-timing-function:ease-out}
+@media(hover:hover){.kpi:hover{transform:translateY(-3px);box-shadow:var(--shadow-card-hover)}}
 .kpi .lb{font-size:11.5px;color:var(--muted);font-weight:700}
-.kpi .vl{font-size:27px;font-weight:900;color:var(--navy);margin:4px 0;font-family:Arial}
+.kpi .vl{font-size:27px;font-weight:900;color:var(--navy);margin:4px 0;font-family:Arial;font-variant-numeric:tabular-nums}
 .kpi .dt{font-size:11.5px;font-weight:700}
 .up{color:var(--ok)}.down{color:var(--bad)}.flat{color:var(--muted)}
 .kpi.a{border-top-color:var(--amber)}.kpi.n{border-top-color:var(--navy)}.kpi.g{border-top-color:var(--gold)}
@@ -108,18 +135,18 @@ table.rk td.nm{text-align:right;font-weight:800;font-family:Arial}
 table.rk tr:hover td{background:var(--row-a)}
 .medal{font-size:16px}
 .bar{height:7px;background:#e6edf5;border-radius:5px;overflow:hidden;min-width:70px}
-.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--teal),var(--amber));border-radius:5px;transition:width .8s}
+.bar i{display:block;height:100%;background:linear-gradient(90deg in oklch,var(--teal),var(--amber));border-radius:5px;transition:width .8s ease-out}
 
-.alert{border-radius:9px;padding:10px 12px;font-size:12.5px;margin-bottom:8px;border-right:4px solid;background:#fff8e8;border-color:var(--amber);font-weight:600}
+.alert{border-radius:9px;padding:10px 12px;font-size:12.5px;margin-bottom:8px;border-right:4px solid;background:#fff8e8;border-color:var(--amber);font-weight:600;line-height:1.5;text-wrap:pretty}
 .alert.info{background:#e9f5f6;border-color:var(--teal)}
 .empty{text-align:center;padding:34px;color:var(--muted);font-size:13px}
 .pill{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700}
 .pill.dr{background:#fdf0d5;color:#8a6100}.pill.pb{background:#dff3e6;color:#15693f}
 .chartbox{position:relative;height:300px}
-#toast{position:fixed;bottom:20px;left:20px;background:var(--navy);color:#fff;padding:11px 18px;border-radius:9px;font-size:13px;font-weight:700;opacity:0;transform:translateY(12px);transition:.3s;pointer-events:none;z-index:99}
+#toast{position:fixed;bottom:20px;left:20px;background:var(--navy);color:#fff;padding:11px 18px;border-radius:9px;font-size:13px;font-weight:700;opacity:0;transform:translateY(12px);transition-property:opacity,transform;transition-duration:300ms;transition-timing-function:ease-out;pointer-events:none;z-index:99}
 #toast.on{opacity:1;transform:none}
-#msgOut{width:100%;min-height:190px;border:1px solid var(--line);border-radius:9px;padding:12px;font-family:'Cairo';font-size:13px;line-height:2;background:#fbfdff}
-.hint{font-size:11.5px;color:var(--muted);margin-top:6px}
+#msgOut{width:100%;min-height:190px;border:1px solid var(--line-strong);border-radius:9px;padding:12px;font-family:'Cairo';font-size:13px;line-height:2;background:#fbfdff}
+.hint{font-size:11.5px;color:var(--muted);margin-top:6px;line-height:1.5;text-wrap:pretty}
 @media(max-width:820px){
   body{flex-direction:column}
   #sidebar{width:100%;height:auto;position:relative}
@@ -128,12 +155,13 @@ table.rk tr:hover td{background:var(--row-a)}
   .navbtn.active{border-right:0;border-bottom-color:var(--amber)}
   #main{padding:14px}
   table.sh{font-size:10.5px}
+  .inp,table.res input[type=number]{font-size:16px}
 }
 /* ===== PRINT ===== */
 @media print{
   @page{size:A4 landscape;margin:10mm}
   body{background:#fff;display:block}
-  #sidebar,.noprint,#toast{display:none!important}
+  #sidebar,.noprint,#toast,.skip-link{display:none!important}
   #main{padding:0}
   .page{display:none!important}
   .page.on{display:block!important}
@@ -146,18 +174,19 @@ table.rk tr:hover td{background:var(--row-a)}
 </head>
 <body>
 
+<a class="skip-link" href="#main">تخطي إلى المحتوى</a>
 <aside id="sidebar" class="noprint">
   <div class="brand">
     <h1>Central Blood Bank<br>In Dammam</h1>
     <span>نظام الجداول والإنتاجية</span>
   </div>
   <nav>
-    <button class="navbtn active" data-pg="schedule"><span class="ic">📅</span> الجدول الأسبوعي</button>
-    <button class="navbtn" data-pg="results"><span class="ic">📝</span> إدخال النتائج</button>
-    <button class="navbtn" data-pg="stats"><span class="ic">📈</span> الإحصائيات والمقارنة</button>
-    <button class="navbtn" data-pg="apheresis"><span class="ic">🩸</span> جدول الصفائح</button>
-    <button class="navbtn" data-pg="staff"><span class="ic">👥</span> قائمة الموظفين</button>
-    <button class="navbtn" data-pg="archive"><span class="ic">🗂️</span> الأرشيف</button>
+    <button class="navbtn active" data-pg="schedule"><span class="ic" aria-hidden="true">📅</span> الجدول الأسبوعي</button>
+    <button class="navbtn" data-pg="results"><span class="ic" aria-hidden="true">📝</span> إدخال النتائج</button>
+    <button class="navbtn" data-pg="stats"><span class="ic" aria-hidden="true">📈</span> الإحصائيات والمقارنة</button>
+    <button class="navbtn" data-pg="apheresis"><span class="ic" aria-hidden="true">🩸</span> جدول الصفائح</button>
+    <button class="navbtn" data-pg="staff"><span class="ic" aria-hidden="true">👥</span> قائمة الموظفين</button>
+    <button class="navbtn" data-pg="archive"><span class="ic" aria-hidden="true">🗂️</span> الأرشيف</button>
   </nav>
   <div class="foot">
     <div id="cloudState">☁️ ...</div>
@@ -169,8 +198,8 @@ table.rk tr:hover td{background:var(--row-a)}
 <!-- ============ SCHEDULE ============ -->
 <section class="page on" id="pg-schedule">
   <div class="pghead noprint">
-    <div><h2>الجدول الأسبوعي</h2><p>توزيع المهام على الفريق — يُطبع بنفس هوية القسم</p></div>
-    <div style="display:flex;gap:8px">
+    <div><h2 tabindex="-1">الجدول الأسبوعي</h2><p>توزيع المهام على الفريق — يُطبع بنفس هوية القسم</p></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn ghost" id="newWeekBtn">＋ أسبوع جديد</button>
       <button class="btn amber" id="printBtn">🖨️ تصدير PDF</button>
       <button class="btn teal" id="shareWaBtn">📲 حفظ ومشاركة واتساب</button>
@@ -180,9 +209,9 @@ table.rk tr:hover td{background:var(--row-a)}
   <div class="wkband noprint" id="wkBandSched"></div>
   <div class="card noprint">
     <div class="row">
-      <div class="field"><label>من تاريخ</label><input type="date" class="inp" id="wFrom"></div>
-      <div class="field"><label>إلى تاريخ (٧ أيام)</label><input type="date" class="inp" id="wTo" readonly></div>
-      <div class="field"><label>الأسبوع المعروض</label><select class="inp" id="weekPick" style="min-width:230px"></select></div>
+      <div class="field"><label for="wFrom">من تاريخ</label><input type="date" class="inp" id="wFrom"></div>
+      <div class="field"><label for="wTo">إلى تاريخ (٧ أيام)</label><input type="date" class="inp" id="wTo" readonly></div>
+      <div class="field"><label for="weekPick">الأسبوع المعروض</label><select class="inp" id="weekPick" style="min-width:230px"></select></div>
       <div class="field"><label>الحالة</label><div id="wStatus"></div></div>
     </div>
     <div class="hint">الأسبوع = ٧ أيام تبدأ من التاريخ المختار. اسم ملف الـPDF يُضبط تلقائياً بتاريخ الأسبوع. عند إنشاء أسبوع جديد يُنسخ توزيع آخر أسبوع تلقائياً — يكفي تعديل ما تغيّر بدل التعبئة من جديد. تأكد دائماً من الشريط الأزرق أعلاه قبل التعديل أو التصدير — هو الأسبوع الذي سيُحفظ فعلياً.</div>
@@ -202,8 +231,8 @@ table.rk tr:hover td{background:var(--row-a)}
 <!-- ============ RESULTS ============ -->
 <section class="page" id="pg-results">
   <div class="pghead">
-    <div><h2>إدخال نتائج الأسبوع</h2><p>بعد نهاية الأسبوع: أدخل العدد المنجز لكل موظف، وحالة الإتمام للمهام الرقابية</p></div>
-    <div style="display:flex;gap:8px">
+    <div><h2 tabindex="-1">إدخال نتائج الأسبوع</h2><p>بعد نهاية الأسبوع: أدخل العدد المنجز لكل موظف، وحالة الإتمام للمهام الرقابية</p></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn teal" id="genMsgBtn">💬 رسالة الجمعة</button>
       <button class="btn" id="saveResBtn">💾 حفظ النتائج</button>
     </div>
@@ -211,11 +240,11 @@ table.rk tr:hover td{background:var(--row-a)}
   <div class="wkband noprint" id="wkBandRes"></div>
   <div class="card">
     <div class="row">
-      <div class="field"><label>الأسبوع</label><select class="inp" id="resWeekPick" style="min-width:240px"></select></div>
-      <div class="field"><label>إجمالي المتبرعين</label><input type="number" min="0" class="inp" id="tDonors" style="width:120px"></div>
-      <div class="field"><label>Rh Negative</label><input type="number" min="0" class="inp" id="tRh" style="width:120px"></div>
-      <div class="field"><label>متبرعو الصفائح</label><input type="number" min="0" class="inp" id="tAph" style="width:120px"></div>
-      <div class="field"><label>أيام العمل</label><input type="number" min="1" max="7" class="inp" id="tDays" value="5" style="width:100px"></div>
+      <div class="field"><label for="resWeekPick">الأسبوع</label><select class="inp" id="resWeekPick" style="min-width:240px"></select></div>
+      <div class="field"><label for="tDonors">إجمالي المتبرعين</label><input type="number" min="0" class="inp" id="tDonors" style="width:120px"></div>
+      <div class="field"><label for="tRh">Rh Negative</label><input type="number" min="0" class="inp" id="tRh" style="width:120px"></div>
+      <div class="field"><label for="tAph">متبرعو الصفائح</label><input type="number" min="0" class="inp" id="tAph" style="width:120px"></div>
+      <div class="field"><label for="tDays">أيام العمل</label><input type="number" min="1" max="7" class="inp" id="tDays" value="5" style="width:100px"></div>
     </div>
   </div>
   <div class="card"><div id="resWrap"></div></div>
@@ -224,8 +253,8 @@ table.rk tr:hover td{background:var(--row-a)}
 <!-- ============ STATS ============ -->
 <section class="page" id="pg-stats">
   <div class="pghead noprint">
-    <div><h2>الإحصائيات ومقارنة الإنتاجية</h2><p>اختر مدى تاريخي لقياس أداء الفريق والموظفين</p></div>
-    <div style="display:flex;gap:8px">
+    <div><h2 tabindex="-1">الإحصائيات ومقارنة الإنتاجية</h2><p>اختر مدى تاريخي لقياس أداء الفريق والموظفين</p></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn ghost" id="targetBtn">🎯 تعديل الهدف الشهري</button>
       <button class="btn ghost" id="csvBtn">⬇️ تصدير CSV</button>
       <button class="btn amber" id="printStatsBtn">🖨️ طباعة التقرير</button>
@@ -233,8 +262,8 @@ table.rk tr:hover td{background:var(--row-a)}
   </div>
   <div class="card noprint">
     <div class="row">
-      <div class="field"><label>من</label><input type="date" class="inp" id="sFrom"></div>
-      <div class="field"><label>إلى</label><input type="date" class="inp" id="sTo"></div>
+      <div class="field"><label for="sFrom">من</label><input type="date" class="inp" id="sFrom"></div>
+      <div class="field"><label for="sTo">إلى</label><input type="date" class="inp" id="sTo"></div>
       <button class="btn teal" id="runStats">تحليل</button>
       <button class="btn ghost sm" data-range="4">آخر ٤ أسابيع</button>
       <button class="btn ghost sm" data-range="12">آخر ١٢ أسبوع</button>
@@ -247,16 +276,16 @@ table.rk tr:hover td{background:var(--row-a)}
 <!-- ============ APHERESIS ============ -->
 <section class="page" id="pg-apheresis">
   <div class="pghead noprint">
-    <div><h2>جدول الصفائح الشهري</h2><p>Apheresis Schedule — توزيع أسبوعي لفريق السحب</p></div>
-    <div style="display:flex;gap:8px">
+    <div><h2 tabindex="-1">جدول الصفائح الشهري</h2><p>Apheresis Schedule — توزيع أسبوعي لفريق السحب</p></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn ghost" id="apxAddRow">＋ صف</button>
       <button class="btn amber" id="apxPrint">🖨️ تصدير PDF</button>
       <button class="btn" id="apxSave">💾 حفظ</button>
     </div>
   </div>
   <div class="card noprint"><div class="row">
-    <div class="field"><label>عنوان الفترة</label><input class="inp" id="apxMonth" placeholder="Month May &amp; June" style="min-width:230px"></div>
-    <div class="field"><label>الجداول المحفوظة</label><select class="inp" id="apxPick" style="min-width:200px"></select></div>
+    <div class="field"><label for="apxMonth">عنوان الفترة</label><input class="inp" id="apxMonth" placeholder="Month May &amp; June" style="min-width:230px"></div>
+    <div class="field"><label for="apxPick">الجداول المحفوظة</label><select class="inp" id="apxPick" style="min-width:200px"></select></div>
   </div>
   <div class="hint">صفوف Bleeder Apheresis تُضاف/تُحدَّث هنا تلقائياً من الجدول الأسبوعي فور اعتماده (💾 حفظ أو 📲 حفظ ومشاركة واتساب) — لا حاجة لإدخالها يدوياً، ويمكنك تعديلها هنا كالمعتاد.</div></div>
   <div id="apxSheet" style="background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden">
@@ -273,10 +302,10 @@ table.rk tr:hover td{background:var(--row-a)}
 
 <!-- ============ STAFF ============ -->
 <section class="page" id="pg-staff">
-  <div class="pghead"><div><h2>قائمة الموظفين</h2><p>الموظف المعطّل يبقى في الأرشيف والإحصائيات ولا يظهر في الجداول الجديدة</p></div></div>
+  <div class="pghead"><div><h2 tabindex="-1">قائمة الموظفين</h2><p>الموظف المعطّل يبقى في الأرشيف والإحصائيات ولا يظهر في الجداول الجديدة</p></div></div>
   <div class="card"><div class="row">
-    <div class="field"><label>اسم الموظف (إنجليزي كما في الجدول)</label><input class="inp" id="newStaff" placeholder="e.g. KHALED" style="min-width:230px"></div>
-    <div class="field"><label>الفئة الوظيفية</label><select class="inp" id="newStaffRole" style="min-width:130px"><option value="technical">فني</option><option value="reception">استقبال</option></select></div>
+    <div class="field"><label for="newStaff">اسم الموظف (إنجليزي كما في الجدول)</label><input class="inp" id="newStaff" placeholder="e.g. KHALED" style="min-width:230px"></div>
+    <div class="field"><label for="newStaffRole">الفئة الوظيفية</label><select class="inp" id="newStaffRole" style="min-width:130px"><option value="technical">فني</option><option value="reception">استقبال</option></select></div>
     <button class="btn" id="addStaffBtn">＋ إضافة</button>
   </div></div>
   <div class="card"><table class="rk"><thead><tr><th>#</th><th style="text-align:right">الاسم</th><th>الفئة</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody id="staffBody"></tbody></table></div>
@@ -284,12 +313,12 @@ table.rk tr:hover td{background:var(--row-a)}
 
 <!-- ============ ARCHIVE ============ -->
 <section class="page" id="pg-archive">
-  <div class="pghead"><div><h2>الأرشيف</h2><p>كل الأسابيع المحفوظة — افتح أي أسبوع لعرضه أو طباعته</p></div></div>
+  <div class="pghead"><div><h2 tabindex="-1">الأرشيف</h2><p>كل الأسابيع المحفوظة — افتح أي أسبوع لعرضه أو طباعته</p></div></div>
   <div class="card"><table class="rk"><thead><tr><th>الأسبوع</th><th>المتبرعون</th><th>Rh−</th><th>الصفائح</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody id="arcBody"></tbody></table></div>
 </section>
 
 </main>
-<div id="toast"></div>
+<div id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <script type="module">
 /* ============================================================
@@ -405,6 +434,7 @@ function renderAll(){ fillWeekPicks(); renderSheet(); renderResults(); renderSta
 $$('.navbtn').forEach(b=>b.onclick=()=>{
   $$('.navbtn').forEach(x=>x.classList.remove('active')); b.classList.add('active');
   $$('.page').forEach(p=>p.classList.remove('on')); $('#pg-'+b.dataset.pg).classList.add('on');
+  $('#pg-'+b.dataset.pg+' h2')?.focus();
 });
 
 /* ============ الجدول الأسبوعي ============ */
@@ -570,7 +600,7 @@ function renderResults(){
   $('#tAph').value=w.totals.apheresisDonors||0; $('#tDays').value=w.totals.workDays||5;
   const rows=TASKS.map((t,i)=>{
     const a=w.assignments[t.id]||[];
-    if(!a.length) return `<tr><td class="num">${i+1}</td><td class="task">${t.name}</td><td colspan="5" style="color:#9aa8bb;font-size:11px">غير مكلّف</td></tr>`;
+    if(!a.length) return `<tr><td class="num">${i+1}</td><td class="task">${t.name}</td><td colspan="5" style="color:var(--faint);font-size:11px">غير مكلّف</td></tr>`;
     const r=w.results[t.id]||{};
     const cells=a.map(sid=>{
       const v=r[sid];
@@ -846,15 +876,15 @@ function renderStats(){
   const qcCandidates=listAll.filter(p=>p.ratingTotal>0);
   if(qcCandidates.length){
     html+=`<div class="card"><h3>🧪 اتجاه جودة المهام الرقابية (QC / Registration / Cleaning)</h3>
-    <div class="row noprint" style="margin-bottom:12px"><div class="field"><label>الموظف</label><select class="inp" id="qcPick"></select></div></div>
+    <div class="row noprint" style="margin-bottom:12px"><div class="field"><label for="qcPick">الموظف</label><select class="inp" id="qcPick"></select></div></div>
     <div class="chartbox"><canvas id="cQc"></canvas></div></div>`;
   }
 
   html+=`<div class="card"><h3>📈 تطور أداء الفريق أسبوعياً</h3><div class="chartbox"><canvas id="cTrend"></canvas></div></div>
   <div class="card"><h3>🎯 مقارنة مباشرة بين موظفَين</h3>
     <div class="row noprint" style="margin-bottom:12px">
-      <div class="field"><label>الموظف أ</label><select class="inp" id="cmpA"></select></div>
-      <div class="field"><label>الموظف ب</label><select class="inp" id="cmpB"></select></div>
+      <div class="field"><label for="cmpA">الموظف أ</label><select class="inp" id="cmpA"></select></div>
+      <div class="field"><label for="cmpB">الموظف ب</label><select class="inp" id="cmpB"></select></div>
     </div><div class="chartbox"><canvas id="cRadar"></canvas></div></div>`;
 
   $('#statsOut').innerHTML=html;
@@ -979,7 +1009,7 @@ function renderApx(){
     <td><select data-r="${i}" data-f="s2">${opts(r.s2)}</select></td>
     <td><input class="inp" style="border:0;background:transparent;font-family:Arial;font-weight:700;color:var(--teal);text-align:center;width:100%" data-r="${i}" data-f="range" value="${r.range||''}" placeholder="11 TO 14 MAY"></td>
     <td><input class="inp" style="border:0;background:transparent;font-family:Arial;font-weight:700;text-align:center;width:100%" data-r="${i}" data-f="period" value="${r.period||''}" placeholder="Week 1"></td></tr>`).join('')
-    || '<tr><td colspan="5" style="padding:18px;color:#9aa8bb">أضف صفاً للبدء</td></tr>';
+    || '<tr><td colspan="5" style="padding:18px;color:var(--faint)">أضف صفاً للبدء</td></tr>';
   $$('#apxBody [data-r]').forEach(el=>el.onchange=()=>{ APX[curApx].rows[+el.dataset.r][el.dataset.f]=el.value; });
   $('#apxMonth').oninput=e=>{APX[curApx].month=e.target.value;$('#apxSub').textContent=e.target.value};
 }
