@@ -48,7 +48,7 @@ font-family: Arial (للجدول) + Cairo أو Tajawal من Google Fonts (للو
 ## الصفحات (Sidebar navigation مثل مشروع inventory)
 1. **📅 الجدول الأسبوعي** — إنشاء/تعديل جدول الأسبوع: اختيار الموظف لكل مهمة من dropdown مرتبط بقائمة الموظفين، اختيار تاريخ بداية/نهاية الأسبوع (الافتراضي أحد–خميس)
 2. **📊 إدخال النتائج** — بعد نهاية الأسبوع: إدخال العدد بجانب كل مهمة/موظف، أو تام/غير تام للمهام الثلاث، + الإجماليات الأسبوعية (المتبرعين، Rh Negative، متبرعي الصفائح)
-3. **👥 قائمة الموظفين** — إضافة/تعطيل موظف (لا حذف نهائي للحفاظ على التاريخ)، القائمة الحالية: FAHED, AQEELHA, DOHA, AFNAN, ALASEED, IBRIH, MARDEEF, SULTAN, ABDJALIL, REDA, MATWHA, AWTIF, HAMED. لكل موظف **فئة وظيفية**: `technical` (فني) أو `reception` (استقبال) — **AWTIF وREDA وABDJALIL موظفو استقبال**، والبقية فنيون. تُعدَّل من زر «نقل لـ...» بجانب كل موظف، وتُختار عند إضافة موظف جديد. سجلات قديمة بلا الحقل تُرحَّل تلقائياً عند التحميل (افتراضي فني، إلا الثلاثة أعلاه).
+3. **👥 قائمة الموظفين** — إضافة/تعطيل موظف (لا حذف نهائي للحفاظ على التاريخ)، القائمة الحالية: FAHED, AQEELHA, DOHA, AFNAN, ALASEED, IBRIH, MARDEEF, SULTAN, ABDJALIL, REDA, MATWHA, AWTIF, HAMED. لكل موظف **فئة وظيفية**: `technical` (فني) أو `reception` (استقبال) — **AWTIF وREDA وABDJALIL موظفو استقبال**، والبقية فنيون. تُعدَّل من زر «نقل لـ...» بجانب كل موظف، وتُختار عند إضافة موظف جديد. سجلات قديمة بلا الحقل تُرحَّل تلقائياً عند التحميل (افتراضي فني، إلا الثلاثة أعلاه). لكل موظف أيضاً **رقم وظيفي** (`staffId`) اختياري، يُدخَل عند الإضافة أو يُعدَّل لاحقاً بزر «✎ الرقم الوظيفي»؛ عُبّئ من ملف إكسل مصدره حسن لثمانية موظفين (FAHED, SULTAN, DOHA, MARDEEF, IBRIH, AFNAN, AQEELHA, ALASEED عبر ثابت `STAFF_JOB_IDS`)، والبقية (ABDJALIL, REDA, MATWHA, AWTIF, HAMED) تُستكمل لاحقاً يدوياً أو من نفس الملف عند توفر أرقامهم.
 4. **📈 الإحصائيات والمقارنة** — فلترة من تاريخ إلى تاريخ + لوحة مؤشرات
 5. **🗂️ الأرشيف** — كل الأسابيع السابقة، فتح أي أسبوع وطباعته PDF
 
@@ -63,7 +63,7 @@ font-family: Arial (للجدول) + Cairo أو Tajawal من Google Fonts (للو
 
 ## نموذج البيانات (Firestore)
 ```
-staff/{id}:      { name, active, role: "technical"|"reception", joinDate, order }
+staff/{id}:      { name, active, role: "technical"|"reception", staffId, joinDate, order }
 weeks/{weekId}:  weekId = "2026-08-09" (تاريخ بداية الأسبوع)
   { dateFrom, dateTo, label,
     assignments: { taskId: [staffId, ...] },       // الجدول

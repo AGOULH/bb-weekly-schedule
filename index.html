@@ -312,10 +312,11 @@ table.rk tr:hover td{background:var(--row-a)}
   <div class="pghead"><div><h2 tabindex="-1">قائمة الموظفين</h2><p>الموظف المعطّل يبقى في الأرشيف والإحصائيات ولا يظهر في الجداول الجديدة</p></div></div>
   <div class="card"><div class="row">
     <div class="field"><label for="newStaff">اسم الموظف (إنجليزي كما في الجدول)</label><input class="inp" id="newStaff" placeholder="e.g. KHALED" style="min-width:230px"></div>
+    <div class="field"><label for="newStaffId">الرقم الوظيفي</label><input class="inp" id="newStaffId" placeholder="اختياري" style="min-width:130px"></div>
     <div class="field"><label for="newStaffRole">الفئة الوظيفية</label><select class="inp" id="newStaffRole" style="min-width:130px"><option value="technical">فني</option><option value="reception">استقبال</option></select></div>
     <button class="btn" id="addStaffBtn">＋ إضافة</button>
   </div></div>
-  <div class="card"><table class="rk"><thead><tr><th>#</th><th style="text-align:right">الاسم</th><th>الفئة</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody id="staffBody"></tbody></table></div>
+  <div class="card"><table class="rk"><thead><tr><th>#</th><th style="text-align:right">الاسم</th><th>الرقم الوظيفي</th><th>الفئة</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody id="staffBody"></tbody></table></div>
 </section>
 
 <!-- ============ ARCHIVE ============ -->
@@ -401,6 +402,7 @@ const HEAVY=['t7','t8','t3'];                 // مهام ثقيلة لمراق�
 const SEED=['FAHED','AQEELHA','DOHA','AFNAN','ALASEED','IBRIH','MARDEEF','SULTAN','ABDJALIL','REDA','MATWHA','AWTIF','HAMED'];
 const RECEPTION_NAMES=['AWTIF','REDA','ABDJALIL']; // موظفو استقبال — ليسوا ضمن الفريق الفني، للترتيب المنفصل في الإحصائيات
 const RECEPTION_TASKS=['t1','t2','t10']; // مهام يظهر فيها موظفو الاستقبال فقط في قائمة الاختيار؛ باقي المهام تعرض الفنيين فقط
+const STAFF_JOB_IDS={FAHED:'2649451',SULTAN:'3506824',DOHA:'3821573',MARDEEF:'3821733',IBRIH:'3838919',AFNAN:'3845448',AQEELHA:'3519889',ALASEED:'3843859'}; // من ملف الإكسل — يُستكمل لاحقاً لبقية الموظفين
 const MON=['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 /* ---------- الحالة ---------- */
@@ -426,6 +428,10 @@ async function boot(){
   // ترحيل: تعيين الفئة الوظيفية لمن لا يملكها بعد (سجلات قديمة قبل إضافة الحقل)
   for(const [k,v] of Object.entries(STAFF)){
     if(!v.role){ v.role=RECEPTION_NAMES.includes(v.name)?'reception':'technical'; await cloudSet('staff',k,v); }
+  }
+  // ترحيل: تعبئة الرقم الوظيفي من قائمة الإكسل لمن لا يملكه بعد
+  for(const [k,v] of Object.entries(STAFF)){
+    if(!v.staffId && STAFF_JOB_IDS[v.name]){ v.staffId=STAFF_JOB_IDS[v.name]; await cloudSet('staff',k,v); }
   }
   if(!Object.keys(WEEKS).length){
     const w={dateFrom:'2026-08-09',dateTo:'2026-08-15',label:'9 August To 15 August',
@@ -980,10 +986,12 @@ function renderStats(){
 function renderStaff(){
   $('#staffBody').innerHTML=Object.entries(STAFF).sort((a,b)=>a[1].order-b[1].order).map(([id,s],i)=>
    `<tr><td>${i+1}</td><td class="nm">${s.name}</td>
+    <td class="nm">${s.staffId||'—'}</td>
     <td><span class="pill ${s.role==='reception'?'dr':'pb'}">${s.role==='reception'?'استقبال':'فني'}</span></td>
     <td><span class="pill ${s.active?'pb':'dr'}">${s.active?'نشط':'معطّل'}</span></td>
-    <td style="display:flex;gap:6px;justify-content:center">
+    <td style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
       <button class="btn sm ghost" data-ed="${id}">✎ تعديل الاسم</button>
+      <button class="btn sm ghost" data-eid="${id}">✎ الرقم الوظيفي</button>
       <button class="btn sm ghost" data-rl="${id}">${s.role==='reception'?'نقل لفني':'نقل لاستقبال'}</button>
       <button class="btn sm ghost" data-tg="${id}">${s.active?'تعطيل':'تفعيل'}</button>
     </td></tr>`).join('');
@@ -1003,13 +1011,19 @@ function renderStaff(){
     STAFF[id].name=nn; await cloudSet('staff',id,STAFF[id]);
     renderStaff(); renderSheet(); renderResults(); renderArchive(); toast('تم تعديل الاسم ✓');
   });
+  $$('[data-eid]').forEach(b=>b.onclick=async()=>{
+    const id=b.dataset.eid, cur=STAFF[id].staffId||'';
+    const n=prompt('الرقم الوظيفي:',cur); if(n===null)return;
+    STAFF[id].staffId=n.trim(); await cloudSet('staff',id,STAFF[id]);
+    renderStaff(); toast('تم تحديث الرقم الوظيفي ✓');
+  });
 }
 $('#addStaffBtn').onclick=async()=>{
   const n=$('#newStaff').value.trim().toUpperCase(); if(!n)return;
   if(Object.values(STAFF).some(s=>s.name===n)){toast('الاسم موجود');return}
   const id='s'+(Date.now()%100000);
-  STAFF[id]={name:n,active:true,role:$('#newStaffRole').value,order:Object.keys(STAFF).length+1,joinDate:new Date().toISOString().slice(0,10)};
-  await cloudSet('staff',id,STAFF[id]); $('#newStaff').value=''; renderStaff(); renderSheet(); toast('تمت إضافة '+n);
+  STAFF[id]={name:n,active:true,role:$('#newStaffRole').value,staffId:$('#newStaffId').value.trim(),order:Object.keys(STAFF).length+1,joinDate:new Date().toISOString().slice(0,10)};
+  await cloudSet('staff',id,STAFF[id]); $('#newStaff').value=''; $('#newStaffId').value=''; renderStaff(); renderSheet(); toast('تمت إضافة '+n);
 };
 
 /* ============ الأرشيف ============ */
