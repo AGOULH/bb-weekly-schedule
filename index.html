@@ -528,7 +528,8 @@ function apxRangeLabel(w){
   return fm===tm ? `${f.getDate()} TO ${t.getDate()} ${tm}` : `${f.getDate()} ${fm} TO ${t.getDate()} ${tm}`;
 }
 async function syncApxFromWeek(w){
-  const staffIds=(w.assignments['t7']||[]).filter(Boolean);
+  const resultStaff=Object.entries(w.results.t7||{}).filter(([,v])=>v>0).map(([id])=>id);
+  const staffIds=resultStaff.length ? resultStaff : (w.assignments['t7']||[]).filter(Boolean);
   const key=apxMonthKey(w.dateFrom), range=apxRangeLabel(w);
   if(!APX[key]) APX[key]={month:`${MON[new Date(w.dateFrom).getMonth()]} ${new Date(w.dateFrom).getFullYear()}`, rows:[]};
   const rows=APX[key].rows=APX[key].rows||[];
@@ -718,10 +719,10 @@ $('#impDonationsBtn').onclick=async()=>{
     w.results.t8=w.results.t8||{}; w.results.t7=w.results.t7||{};
     Object.entries(b.perStaff).forEach(([id,c])=>{ w.results.t8[id]=c.wb; w.results.t7[id]=c.plt; });
     w.totals.donors=b.totalWB+b.totalPLT; w.totals.apheresisDonors=b.totalPLT;
-    await cloudSet('weeks',wk,w);
+    await cloudSet('weeks',wk,w); await syncApxFromWeek(w);
     lines.push(`${w.label}: ${b.totalWB} Whole blood، ${b.totalPLT} Plateletpheresis`);
   }
-  renderResults(); renderArchive();
+  renderResults(); renderArchive(); renderApx();
   $('#impLog').innerHTML=(lines.length?`تم تحديث ${lines.length} أسبوع (نقاط 2001F/2001D فقط):<br>`+lines.join('<br>'):'لا توجد سجلات ضمن نطاق أي أسبوع محفوظ.')
     +(unmapped?`<br>سجلات خارج أي أسبوع محفوظ: ${unmapped}`:'')
     +(unmatched.size?`<br>أرقام وظيفية غير معروفة: ${[...unmatched].join('، ')} — أضِفها من صفحة «قائمة الموظفين».`:'');
