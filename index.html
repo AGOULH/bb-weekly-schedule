@@ -400,6 +400,7 @@ const RATINGS=[
 const HEAVY=['t7','t8','t3'];                 // مهام ثقيلة لمراقبة عدالة التوزيع
 const SEED=['FAHED','AQEELHA','DOHA','AFNAN','ALASEED','IBRIH','MARDEEF','SULTAN','ABDJALIL','REDA','MATWHA','AWTIF','HAMED'];
 const RECEPTION_NAMES=['AWTIF','REDA','ABDJALIL']; // موظفو استقبال — ليسوا ضمن الفريق الفني، للترتيب المنفصل في الإحصائيات
+const RECEPTION_TASKS=['t1','t2','t10']; // مهام يظهر فيها موظفو الاستقبال فقط في قائمة الاختيار؛ باقي المهام تعرض الفنيين فقط
 const MON=['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 /* ---------- الحالة ---------- */
@@ -472,17 +473,27 @@ function renderSheet(){
   $('#shSub').innerHTML=`Weekly Schedule&nbsp;&nbsp; Date ${w.label}`;
   $('#wStatus').innerHTML=`<span class="pill ${w.status==='draft'?'dr':'pb'}">${w.status==='draft'?'مسودة':'معتمد'}</span>`;
   renderWkBand('#wkBandSched');
-  const opts=id=>`<option value="">—</option>`+activeStaff().map(s=>`<option value="${s.id}" ${s.id===id?'selected':''}>${s.name}</option>`).join('');
-  $('#shBody').innerHTML=TASKS.map((t,i)=>{
-    const a=w.assignments[t.id]||[];
-    const cells=[0,1,2,3,4].map(j=>`<td><select data-t="${t.id}" data-j="${j}">${opts(a[j])}</select></td>`).join('');
-    return `<tr><td class="num">${i+1}</td><td class="task">${t.name}</td>${cells}</tr>`;
-  }).join('');
-  $$('#shBody select').forEach(s=>s.onchange=()=>{
-    const t=s.dataset.t, j=+s.dataset.j, arr=WEEKS[curWeek].assignments[t]||[];
-    arr[j]=s.value; WEEKS[curWeek].assignments[t]=arr.filter(Boolean);
-  });
+  $('#shBody').innerHTML=TASKS.map((t,i)=>`<tr data-tid="${t.id}"><td class="num">${i+1}</td><td class="task">${t.name}</td>${rowCells(t)}</tr>`).join('');
+  $$('#shBody tr').forEach(tr=>bindRow(tr,TASKS.find(t=>t.id===tr.dataset.tid)));
   $('#printBtn').onclick=()=>{ const old=document.title; document.title=`Weekly_Schedule_${w.label.replace(/ /g,'_')}`; window.print(); setTimeout(()=>document.title=old,700); };
+}
+function taskOpts(tid,a,j){
+  const wantRole=RECEPTION_TASKS.includes(tid)?'reception':'technical';
+  const id=a[j], used=new Set(a.filter((v,k)=>k!==j&&v));
+  const list=activeStaff().filter(s=>s.role===wantRole&&(!used.has(s.id)||s.id===id));
+  return `<option value="">—</option>`+list.map(s=>`<option value="${s.id}" ${s.id===id?'selected':''}>${s.name}</option>`).join('');
+}
+function rowCells(t){
+  const a=WEEKS[curWeek].assignments[t.id]||[];
+  return [0,1,2,3,4].map(j=>`<td><select data-j="${j}">${taskOpts(t.id,a,j)}</select></td>`).join('');
+}
+function bindRow(tr,t){
+  tr.querySelectorAll('select').forEach(s=>s.onchange=()=>{
+    const j=+s.dataset.j, arr=WEEKS[curWeek].assignments[t.id]||[];
+    arr[j]=s.value; WEEKS[curWeek].assignments[t.id]=arr.filter(Boolean);
+    tr.innerHTML=`<td class="num">${TASKS.findIndex(x=>x.id===t.id)+1}</td><td class="task">${t.name}</td>${rowCells(t)}`;
+    bindRow(tr,t);
+  });
 }
 function confirmOverwriteIfPublished(w){
   if(w.status!=='published' && w.status!=='closed') return true;
