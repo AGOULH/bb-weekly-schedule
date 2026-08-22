@@ -717,10 +717,16 @@ $('#impDonationsBtn').onclick=async()=>{
   for(const [wk,b] of Object.entries(byWeek)){
     const w=WEEKS[wk];
     w.results.t8=w.results.t8||{}; w.results.t7=w.results.t7||{};
-    Object.entries(b.perStaff).forEach(([id,c])=>{ w.results.t8[id]=c.wb; w.results.t7[id]=c.plt; });
+    w.assignments.t8=w.assignments.t8||[]; w.assignments.t7=w.assignments.t7||[];
+    let added=0;
+    Object.entries(b.perStaff).forEach(([id,c])=>{
+      w.results.t8[id]=c.wb; w.results.t7[id]=c.plt;
+      if(c.wb>0 && !w.assignments.t8.includes(id)){ w.assignments.t8.push(id); added++; }
+      if(c.plt>0 && !w.assignments.t7.includes(id)){ w.assignments.t7.push(id); added++; }
+    });
     w.totals.donors=b.totalWB+b.totalPLT; w.totals.apheresisDonors=b.totalPLT;
     await cloudSet('weeks',wk,w); await syncApxFromWeek(w);
-    lines.push(`${w.label}: ${b.totalWB} Whole blood، ${b.totalPLT} Plateletpheresis`);
+    lines.push(`${w.label}: ${b.totalWB} Whole blood، ${b.totalPLT} Plateletpheresis`+(added?` (أُضيف ${added} تكليف تلقائياً لمن نفّذ ولم يكن مكلَّفاً)`:''));
   }
   renderResults(); renderArchive(); renderApx();
   $('#impLog').innerHTML=(lines.length?`تم تحديث ${lines.length} أسبوع (نقاط 2001F/2001D فقط):<br>`+lines.join('<br>'):'لا توجد سجلات ضمن نطاق أي أسبوع محفوظ.')
