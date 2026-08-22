@@ -119,6 +119,9 @@ table.res tr:nth-child(odd) td{background:var(--row-a)}
 table.res td.task{text-align:right;font-weight:700;font-family:Arial;font-size:11.5px}
 table.res input[type=number]{width:66px;border:1px solid var(--line-strong);border-radius:6px;padding:5px;text-align:center;font-weight:700;font-variant-numeric:tabular-nums}
 table.res select.rate{width:118px;padding:5px;text-align:center;font-weight:700}
+table.res td.assignees{padding:8px}
+.reswrap{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
+.rescell{display:flex;flex-direction:column;align-items:center;min-width:70px}
 .tagname{display:block;font-size:10px;color:var(--teal);font-weight:700;margin-bottom:3px;font-family:Arial}
 
 /* KPI */
@@ -652,18 +655,17 @@ function renderResults(){
   $('#tAph').value=w.totals.apheresisDonors||0; $('#tDays').value=w.totals.workDays||5;
   const rows=TASKS.map((t,i)=>{
     const a=w.assignments[t.id]||[];
-    if(!a.length) return `<tr><td class="num">${i+1}</td><td class="task">${t.name}</td><td colspan="5" style="color:var(--faint);font-size:11px">غير مكلّف</td></tr>`;
+    if(!a.length) return `<tr><td class="num">${i+1}</td><td class="task">${t.name}</td><td style="color:var(--faint);font-size:11px">غير مكلّف</td></tr>`;
     const r=w.results[t.id]||{};
     const cells=a.map(sid=>{
       const v=r[sid];
-      return `<td><span class="tagname">${sName(sid)}</span>`+(t.type==='count'
+      return `<div class="rescell"><span class="tagname">${sName(sid)}</span>`+(t.type==='count'
         ? `<input type="number" min="0" value="${v??''}" data-t="${t.id}" data-s="${sid}">`
-        : `<select class="inp rate" data-t="${t.id}" data-s="${sid}"><option value="">—</option>${RATINGS.map(r2=>`<option value="${r2.v}" ${v===r2.v?'selected':''}>${r2.label}</option>`).join('')}</select>`)+`</td>`;
+        : `<select class="inp rate" data-t="${t.id}" data-s="${sid}"><option value="">—</option>${RATINGS.map(r2=>`<option value="${r2.v}" ${v===r2.v?'selected':''}>${r2.label}</option>`).join('')}</select>`)+`</div>`;
     }).join('');
-    const pad='<td></td>'.repeat(Math.max(0,5-a.length));
-    return `<tr><td class="num">${i+1}</td><td class="task">${t.name} <small style="color:var(--teal)">${t.type==='count'?'عدد':'تقييم'}</small></td>${cells}${pad}</tr>`;
+    return `<tr><td class="num">${i+1}</td><td class="task">${t.name} <small style="color:var(--teal)">${t.type==='count'?'عدد':'تقييم'}</small></td><td class="assignees"><div class="reswrap">${cells}</div></td></tr>`;
   }).join('');
-  $('#resWrap').innerHTML=`<table class="res"><thead><tr><th>#</th><th>المهمة</th><th colspan="5">الموظفون المكلّفون</th></tr></thead><tbody>${rows}</tbody></table>`;
+  $('#resWrap').innerHTML=`<table class="res"><thead><tr><th>#</th><th>المهمة</th><th>الموظفون المكلّفون</th></tr></thead><tbody>${rows}</tbody></table>`;
   $$('#resWrap input,#resWrap select').forEach(el=>el.onchange=()=>{
     const t=el.dataset.t,s=el.dataset.s;
     WEEKS[curWeek].results[t]=WEEKS[curWeek].results[t]||{};
