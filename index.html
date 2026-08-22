@@ -255,11 +255,7 @@ table.rk tr:hover td{background:var(--row-a)}
   </div>
   <div class="card noprint">
     <h3>📥 استيراد النتائج من إكسل</h3>
-    <p class="hint">استيراد ملفات إكسل المصدَّرة من النظام — يُحسب العدد لكل موظف تلقائياً ضمن نطاق التاريخ أدناه ويُملأ في جدول النتائج بالأسفل؛ راجع الأرقام قبل الضغط على «💾 حفظ النتائج».</p>
-    <div class="row">
-      <div class="field"><label for="impFrom">من تاريخ</label><input type="date" class="inp" id="impFrom"></div>
-      <div class="field"><label for="impTo">إلى تاريخ</label><input type="date" class="inp" id="impTo"></div>
-    </div>
+    <p class="hint">مفتوح التاريخ — تُقرأ تواريخ كل سجل من الملف نفسه، ويُطابَق تلقائياً مع أي أسبوع محفوظ يقع تاريخه ضمن مداه، ثم تُحدَّث نتائج ذلك الأسبوع وتُحفظ مباشرة (بلا حاجة لاختيار الأسبوع أولاً). ارفع أحدث ملف مصدَّر من النظام في كل مرة.</p>
     <div class="row">
       <div class="field"><label for="impDonationsFile">List of donations</label><input type="file" class="inp" id="impDonationsFile" accept=".xls,.html,.htm"></div>
       <button class="btn ghost" id="impDonationsBtn">استيراد الصفائح والمتبرعين</button>
@@ -653,7 +649,6 @@ function renderResults(){
   renderWkBand('#wkBandRes');
   $('#tDonors').value=w.totals.donors||0; $('#tRh').value=w.totals.rhNegative||0;
   $('#tAph').value=w.totals.apheresisDonors||0; $('#tDays').value=w.totals.workDays||5;
-  $('#impFrom').value=w.dateFrom; $('#impTo').value=w.dateTo;
   const rows=TASKS.map((t,i)=>{
     const a=w.assignments[t.id]||[];
     if(!a.length) return `<tr><td class="num">${i+1}</td><td class="task">${t.name}</td><td colspan="5" style="color:var(--faint);font-size:11px">غير مكلّف</td></tr>`;
@@ -695,52 +690,66 @@ function parseHtmlTable(text){
   return {header,rows};
 }
 const colIdx=(header,marker)=>header.findIndex(h=>h.toLowerCase().replace(/\s+/g,' ').trim().startsWith(marker));
+const weekKeyForDate=iso=>Object.keys(WEEKS).find(k=>iso>=WEEKS[k].dateFrom&&iso<=WEEKS[k].dateTo);
 $('#impDonationsBtn').onclick=async()=>{
   const f=$('#impDonationsFile').files[0]; if(!f){toast('اختر ملف List of donations أولاً');return}
-  const from=$('#impFrom').value, to=$('#impTo').value;
-  if(!from||!to){toast('حدّد نطاق التاريخ أولاً');return}
   const {header,rows}=parseHtmlTable(await f.text());
   const iDate=colIdx(header,'donation date'), iCP=colIdx(header,'collection point'), iType=colIdx(header,'donation type'), iStaff=colIdx(header,'staffid');
   if([iDate,iCP,iType,iStaff].some(i=>i<0)){ toast('تنسيق ملف List of donations غير معروف'); return; }
   const staffIdx={}; Object.entries(STAFF).forEach(([k,v])=>{ if(v.staffId) staffIdx[v.staffId]=k; });
-  let totalWB=0,totalPLT=0; const perStaff={}, unmatched=new Set();
+  const byWeek={}, unmatched=new Set(); let unmapped=0;
   rows.forEach(r=>{
     const dt=r[iDate], cp=r[iCP], type=r[iType], sid=r[iStaff];
     if(!IMPORT_SITES.includes(cp)) return;
-    const iso=parseSlashDate(dt); if(!iso||iso<from||iso>to) return;
     if(type!=='Whole blood'&&type!=='Plateletpheresis') return;
-    if(type==='Whole blood') totalWB++; else totalPLT++;
+    const iso=parseSlashDate(dt); if(!iso) return;
+    const wk=weekKeyForDate(iso); if(!wk){ unmapped++; return; }
+    byWeek[wk]=byWeek[wk]||{totalWB:0,totalPLT:0,perStaff:{}};
+    const b=byWeek[wk];
+    if(type==='Whole blood') b.totalWB++; else b.totalPLT++;
     const localId=staffIdx[sid];
     if(!localId){ if(sid) unmatched.add(sid); return; }
-    perStaff[localId]=perStaff[localId]||{wb:0,plt:0};
-    perStaff[localId][type==='Whole blood'?'wb':'plt']++;
+    b.perStaff[localId]=b.perStaff[localId]||{wb:0,plt:0};
+    b.perStaff[localId][type==='Whole blood'?'wb':'plt']++;
   });
-  const w=WEEKS[curWeek];
-  w.results.t8=w.results.t8||{}; w.results.t7=w.results.t7||{};
-  Object.entries(perStaff).forEach(([id,c])=>{ w.results.t8[id]=c.wb; w.results.t7[id]=c.plt; });
-  w.totals.donors=totalWB+totalPLT; w.totals.apheresisDonors=totalPLT;
-  renderResults();
-  $('#impLog').innerHTML=`تم الاستيراد ضمن ${from} → ${to}: <b>${totalWB}</b> Whole blood، <b>${totalPLT}</b> Plateletpheresis (نقاط التبرع 2001F/2001D فقط).`+(unmatched.size?` أرقام وظيفية غير معروفة: ${[...unmatched].join('، ')} — أضِفها من صفحة «قائمة الموظفين».`:'');
-  toast('تم استيراد نتائج المتبرعين والصفائح ✓ — راجع ثم اضغط «حفظ النتائج»');
+  const lines=[];
+  for(const [wk,b] of Object.entries(byWeek)){
+    const w=WEEKS[wk];
+    w.results.t8=w.results.t8||{}; w.results.t7=w.results.t7||{};
+    Object.entries(b.perStaff).forEach(([id,c])=>{ w.results.t8[id]=c.wb; w.results.t7[id]=c.plt; });
+    w.totals.donors=b.totalWB+b.totalPLT; w.totals.apheresisDonors=b.totalPLT;
+    await cloudSet('weeks',wk,w);
+    lines.push(`${w.label}: ${b.totalWB} Whole blood، ${b.totalPLT} Plateletpheresis`);
+  }
+  renderResults(); renderArchive();
+  $('#impLog').innerHTML=(lines.length?`تم تحديث ${lines.length} أسبوع (نقاط 2001F/2001D فقط):<br>`+lines.join('<br>'):'لا توجد سجلات ضمن نطاق أي أسبوع محفوظ.')
+    +(unmapped?`<br>سجلات خارج أي أسبوع محفوظ: ${unmapped}`:'')
+    +(unmatched.size?`<br>أرقام وظيفية غير معروفة: ${[...unmatched].join('، ')} — أضِفها من صفحة «قائمة الموظفين».`:'');
+  toast(lines.length?`تم تحديث نتائج ${lines.length} أسبوع ✓`:'لا توجد بيانات مطابقة');
 };
 $('#impWateenBtn').onclick=async()=>{
   const f=$('#impWateenFile').files[0]; if(!f){toast('اختر ملف Wateen report أولاً');return}
-  const from=$('#impFrom').value, to=$('#impTo').value;
-  if(!from||!to){toast('حدّد نطاق التاريخ أولاً');return}
   const {header,rows}=parseHtmlTable(await f.text());
   const iDate=colIdx(header,'donation date'), iCP=colIdx(header,'collection point'), iBG=colIdx(header,'blood group');
   if([iDate,iCP,iBG].some(i=>i<0)){ toast('تنسيق ملف Wateen report غير معروف'); return; }
-  let rhNeg=0,total=0;
+  const byWeek={}; let unmapped=0;
   rows.forEach(r=>{
     const dt=r[iDate], cp=r[iCP], bg=r[iBG];
     if(!IMPORT_SITES.includes(cp)) return;
-    const iso=parseMonDate(dt); if(!iso||iso<from||iso>to) return;
-    total++; if(/neg/i.test(bg)) rhNeg++;
+    const iso=parseMonDate(dt); if(!iso) return;
+    const wk=weekKeyForDate(iso); if(!wk){ unmapped++; return; }
+    byWeek[wk]=byWeek[wk]||{rhNeg:0,total:0};
+    byWeek[wk].total++; if(/neg/i.test(bg)) byWeek[wk].rhNeg++;
   });
-  WEEKS[curWeek].totals.rhNegative=rhNeg;
-  renderResults();
-  $('#impLog').innerHTML=`Wateen: <b>${rhNeg}</b> Rh Negative من أصل ${total} سجل ضمن ${from} → ${to} (نقاط التبرع 2001F/2001D فقط).`;
-  toast('تم استيراد Rh Negative ✓ — راجع ثم اضغط «حفظ النتائج»');
+  const lines=[];
+  for(const [wk,b] of Object.entries(byWeek)){
+    const w=WEEKS[wk]; w.totals.rhNegative=b.rhNeg; await cloudSet('weeks',wk,w);
+    lines.push(`${w.label}: ${b.rhNeg} Rh Negative من أصل ${b.total}`);
+  }
+  renderResults(); renderArchive();
+  $('#impLog').innerHTML=(lines.length?`تم تحديث ${lines.length} أسبوع (نقاط 2001F/2001D فقط):<br>`+lines.join('<br>'):'لا توجد سجلات ضمن نطاق أي أسبوع محفوظ.')
+    +(unmapped?`<br>سجلات خارج أي أسبوع محفوظ: ${unmapped}`:'');
+  toast(lines.length?`تم تحديث Rh Negative لـ${lines.length} أسبوع ✓`:'لا توجد بيانات مطابقة');
 };
 
 /* ============ رسالة الجمعة ============ */
