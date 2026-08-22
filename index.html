@@ -504,8 +504,13 @@ function renderSheet(){
 function taskOpts(tid,a,j){
   const wantRole=RECEPTION_TASKS.includes(tid)?'reception':'technical';
   const id=a[j], used=new Set(a.filter((v,k)=>k!==j&&v));
-  const list=activeStaff().filter(s=>s.role===wantRole&&(!used.has(s.id)||s.id===id));
-  return `<option value="">—</option>`+list.map(s=>`<option value="${s.id}" ${s.id===id?'selected':''}>${s.name}</option>`).join('');
+  const avail=s=>!used.has(s.id)||s.id===id;
+  const optHtml=list=>list.map(s=>`<option value="${s.id}" ${s.id===id?'selected':''}>${s.name}</option>`).join('');
+  const primary=activeStaff().filter(s=>s.role===wantRole&&avail(s));
+  const rest=activeStaff().filter(s=>s.role!==wantRole&&avail(s));
+  const lbl=r=>r==='reception'?'الاستقبال':'الفنيون';
+  return `<option value="">—</option><optgroup label="${lbl(wantRole)}">${optHtml(primary)}</optgroup>`
+    +(rest.length?`<optgroup label="${lbl(wantRole==='reception'?'technical':'reception')} (تغطية)">${optHtml(rest)}</optgroup>`:'');
 }
 function rowCells(t){
   const a=WEEKS[curWeek].assignments[t.id]||[];
