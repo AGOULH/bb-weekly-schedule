@@ -253,6 +253,23 @@ table.rk tr:hover td{background:var(--row-a)}
       <div class="field"><label for="tDays">أيام العمل</label><input type="number" min="1" max="7" class="inp" id="tDays" value="5" style="width:100px"></div>
     </div>
   </div>
+  <div class="card noprint">
+    <h3>📥 استيراد النتائج من إكسل</h3>
+    <p class="hint">استيراد ملفات إكسل المصدَّرة من النظام — يُحسب العدد لكل موظف تلقائياً ضمن نطاق التاريخ أدناه ويُملأ في جدول النتائج بالأسفل؛ راجع الأرقام قبل الضغط على «💾 حفظ النتائج».</p>
+    <div class="row">
+      <div class="field"><label for="impFrom">من تاريخ</label><input type="date" class="inp" id="impFrom"></div>
+      <div class="field"><label for="impTo">إلى تاريخ</label><input type="date" class="inp" id="impTo"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label for="impDonationsFile">List of donations</label><input type="file" class="inp" id="impDonationsFile" accept=".xls,.html,.htm"></div>
+      <button class="btn ghost" id="impDonationsBtn">استيراد الصفائح والمتبرعين</button>
+    </div>
+    <div class="row">
+      <div class="field"><label for="impWateenFile">Wateen report</label><input type="file" class="inp" id="impWateenFile" accept=".xls,.html,.htm"></div>
+      <button class="btn ghost" id="impWateenBtn">استيراد Rh Negative</button>
+    </div>
+    <div id="impLog" class="hint"></div>
+  </div>
   <div class="card"><div id="resWrap"></div></div>
 </section>
 
@@ -404,6 +421,8 @@ const RECEPTION_NAMES=['AWTIF','REDA','ABDJALIL']; // موظفو استقبال 
 const RECEPTION_TASKS=['t1','t2','t10']; // مهام يظهر فيها موظفو الاستقبال فقط في قائمة الاختيار؛ باقي المهام تعرض الفنيين فقط
 const STAFF_JOB_IDS={FAHED:'2649451',SULTAN:'3506824',DOHA:'3821573',MARDEEF:'3821733',IBRIH:'3838919',AFNAN:'3845448',AQEELHA:'3519889',ALASEED:'3843859'}; // من ملف الإكسل — يُستكمل لاحقاً لبقية الموظفين
 const MON=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MON3=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+const IMPORT_SITES=['2001F','2001D']; // نقاط التبرع بمقر بنك الدم — الأساس لاستيراد النتائج من إكسل
 
 /* ---------- الحالة ---------- */
 let STAFF={}, WEEKS={}, APX={}, TARGET={monthly:0}, curWeek=null, curApx=null, charts={}, lastStatsList=[];
@@ -634,6 +653,7 @@ function renderResults(){
   renderWkBand('#wkBandRes');
   $('#tDonors').value=w.totals.donors||0; $('#tRh').value=w.totals.rhNegative||0;
   $('#tAph').value=w.totals.apheresisDonors||0; $('#tDays').value=w.totals.workDays||5;
+  $('#impFrom').value=w.dateFrom; $('#impTo').value=w.dateTo;
   const rows=TASKS.map((t,i)=>{
     const a=w.assignments[t.id]||[];
     if(!a.length) return `<tr><td class="num">${i+1}</td><td class="task">${t.name}</td><td colspan="5" style="color:var(--faint);font-size:11px">غير مكلّف</td></tr>`;
@@ -658,6 +678,69 @@ $('#saveResBtn').onclick=async()=>{
   const w=WEEKS[curWeek];
   w.totals={donors:+$('#tDonors').value||0,rhNegative:+$('#tRh').value||0,apheresisDonors:+$('#tAph').value||0,workDays:+$('#tDays').value||5};
   w.status='closed'; await cloudSet('weeks',curWeek,w); toast('تم حفظ نتائج الأسبوع ✓'); renderArchive();
+};
+
+/* ============ استيراد النتائج من إكسل (List of donations / Wateen report) ============ */
+function parseSlashDate(d){ const m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec((d||'').trim()); if(!m)return null; return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`; }
+function parseMonDate(d){ const m=/^(\d{1,2})-([A-Za-z]{3})-(\d{2})$/.exec((d||'').trim()); if(!m)return null; const mi=MON3.indexOf(m[2].toUpperCase())+1; if(!mi)return null; return `${2000+(+m[3])}-${String(mi).padStart(2,'0')}-${m[1].padStart(2,'0')}`; }
+function parseHtmlTable(text){
+  const doc=new DOMParser().parseFromString(text,'text/html');
+  const tables=[...doc.querySelectorAll('table')];
+  let best=null,bestN=0;
+  tables.forEach(tb=>{ const n=tb.querySelectorAll('tr').length; if(n>bestN){bestN=n;best=tb;} });
+  if(!best) return {header:[],rows:[]};
+  const trs=[...best.querySelectorAll('tr')];
+  const header=[...trs[0].querySelectorAll('td,th')].map(c=>c.textContent.trim());
+  const rows=trs.slice(1).map(tr=>[...tr.querySelectorAll('td,th')].map(c=>c.textContent.trim()));
+  return {header,rows};
+}
+const colIdx=(header,marker)=>header.findIndex(h=>h.toLowerCase().replace(/\s+/g,' ').trim().startsWith(marker));
+$('#impDonationsBtn').onclick=async()=>{
+  const f=$('#impDonationsFile').files[0]; if(!f){toast('اختر ملف List of donations أولاً');return}
+  const from=$('#impFrom').value, to=$('#impTo').value;
+  if(!from||!to){toast('حدّد نطاق التاريخ أولاً');return}
+  const {header,rows}=parseHtmlTable(await f.text());
+  const iDate=colIdx(header,'donation date'), iCP=colIdx(header,'collection point'), iType=colIdx(header,'donation type'), iStaff=colIdx(header,'staffid');
+  if([iDate,iCP,iType,iStaff].some(i=>i<0)){ toast('تنسيق ملف List of donations غير معروف'); return; }
+  const staffIdx={}; Object.entries(STAFF).forEach(([k,v])=>{ if(v.staffId) staffIdx[v.staffId]=k; });
+  let totalWB=0,totalPLT=0; const perStaff={}, unmatched=new Set();
+  rows.forEach(r=>{
+    const dt=r[iDate], cp=r[iCP], type=r[iType], sid=r[iStaff];
+    if(!IMPORT_SITES.includes(cp)) return;
+    const iso=parseSlashDate(dt); if(!iso||iso<from||iso>to) return;
+    if(type!=='Whole blood'&&type!=='Plateletpheresis') return;
+    if(type==='Whole blood') totalWB++; else totalPLT++;
+    const localId=staffIdx[sid];
+    if(!localId){ if(sid) unmatched.add(sid); return; }
+    perStaff[localId]=perStaff[localId]||{wb:0,plt:0};
+    perStaff[localId][type==='Whole blood'?'wb':'plt']++;
+  });
+  const w=WEEKS[curWeek];
+  w.results.t8=w.results.t8||{}; w.results.t7=w.results.t7||{};
+  Object.entries(perStaff).forEach(([id,c])=>{ w.results.t8[id]=c.wb; w.results.t7[id]=c.plt; });
+  w.totals.donors=totalWB+totalPLT; w.totals.apheresisDonors=totalPLT;
+  renderResults();
+  $('#impLog').innerHTML=`تم الاستيراد ضمن ${from} → ${to}: <b>${totalWB}</b> Whole blood، <b>${totalPLT}</b> Plateletpheresis (نقاط التبرع 2001F/2001D فقط).`+(unmatched.size?` أرقام وظيفية غير معروفة: ${[...unmatched].join('، ')} — أضِفها من صفحة «قائمة الموظفين».`:'');
+  toast('تم استيراد نتائج المتبرعين والصفائح ✓ — راجع ثم اضغط «حفظ النتائج»');
+};
+$('#impWateenBtn').onclick=async()=>{
+  const f=$('#impWateenFile').files[0]; if(!f){toast('اختر ملف Wateen report أولاً');return}
+  const from=$('#impFrom').value, to=$('#impTo').value;
+  if(!from||!to){toast('حدّد نطاق التاريخ أولاً');return}
+  const {header,rows}=parseHtmlTable(await f.text());
+  const iDate=colIdx(header,'donation date'), iCP=colIdx(header,'collection point'), iBG=colIdx(header,'blood group');
+  if([iDate,iCP,iBG].some(i=>i<0)){ toast('تنسيق ملف Wateen report غير معروف'); return; }
+  let rhNeg=0,total=0;
+  rows.forEach(r=>{
+    const dt=r[iDate], cp=r[iCP], bg=r[iBG];
+    if(!IMPORT_SITES.includes(cp)) return;
+    const iso=parseMonDate(dt); if(!iso||iso<from||iso>to) return;
+    total++; if(/neg/i.test(bg)) rhNeg++;
+  });
+  WEEKS[curWeek].totals.rhNegative=rhNeg;
+  renderResults();
+  $('#impLog').innerHTML=`Wateen: <b>${rhNeg}</b> Rh Negative من أصل ${total} سجل ضمن ${from} → ${to} (نقاط التبرع 2001F/2001D فقط).`;
+  toast('تم استيراد Rh Negative ✓ — راجع ثم اضغط «حفظ النتائج»');
 };
 
 /* ============ رسالة الجمعة ============ */
