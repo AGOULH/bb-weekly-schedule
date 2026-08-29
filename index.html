@@ -1387,29 +1387,30 @@ function aggregateReport(donRows,disRows){
   const allDates=[...donRows.map(r=>r.date),...disRows.map(r=>r.date)].sort();
   if(!allDates.length) return null;
   const dateFrom=allDates[0], dateTo=allDates[allDates.length-1];
-  const bySite={}, byType={}, perStaff={}, discardReasons={}, bloodGroups={}, monthly={}, unitToStaff={};
-  const blankStaff=()=>({collected:0,discarded:0,bySite:{},byReason:{}});
+  const bySite={}, byType={}, perStaff={}, discardReasons={}, bloodGroups={}, monthly={}, unitToRecord={};
+  const blankStaff=()=>({collected:0,discarded:0,bySite:{},byReason:{},discardBySite:{}});
   donRows.forEach(r=>{
     const site=IMPORT_SITES.includes(r.cp)?r.cp:'OTHER';
     bySite[site]=(bySite[site]||0)+1; byType[r.type]=(byType[r.type]||0)+1;
     const mk=r.date.slice(0,7); monthly[mk]=monthly[mk]||{collected:0,discarded:0}; monthly[mk].collected++;
     if(r.staffId){ perStaff[r.staffId]=perStaff[r.staffId]||blankStaff(); perStaff[r.staffId].collected++;
       perStaff[r.staffId].bySite[site]=(perStaff[r.staffId].bySite[site]||0)+1; }
-    if(r.unit) unitToStaff[r.unit]=r.staffId;
+    if(r.unit) unitToRecord[r.unit]={staffId:r.staffId,site};
   });
   // ملاحظة مهمة: عمود "Staff id" في ملف Discarded products هو من سجّل/نفّذ إجراء الاستبعاد (فحص/جودة)،
   // وليس بالضرورة من سحب الوحدة أصلاً — لذا لا يُستخدم إطلاقاً. الربط الصحيح بالموظف الذي سحب الوحدة
   // يتم عبر "Unit Number" (يطابق "Donation Number" في ملف List of donations)، فتُنسب كل وحدة مستبعدة
-  // لمن سحبها فعلياً — هذا هو الأساس الذي بُني عليه "معدّل الاستبعاد لكل موظف".
+  // لمن سحبها فعلياً (وإلى نقطة السحب الأصلية لتلك الوحدة) — هذا هو الأساس الذي بُني عليه "معدّل الاستبعاد لكل موظف".
   let unmatchedDiscard=0;
   disRows.forEach(r=>{
     discardReasons[r.code]=discardReasons[r.code]||{desc:r.desc,count:0}; discardReasons[r.code].count++;
     if(r.abo) bloodGroups[r.abo]=(bloodGroups[r.abo]||0)+1;
     const mk=r.date.slice(0,7); monthly[mk]=monthly[mk]||{collected:0,discarded:0}; monthly[mk].discarded++;
-    const collectorId=unitToStaff[r.unit];
-    if(!collectorId){ unmatchedDiscard++; return; }
-    perStaff[collectorId]=perStaff[collectorId]||blankStaff(); perStaff[collectorId].discarded++;
-    perStaff[collectorId].byReason[r.code]=(perStaff[collectorId].byReason[r.code]||0)+1;
+    const rec=unitToRecord[r.unit];
+    if(!rec||!rec.staffId){ unmatchedDiscard++; return; }
+    const p=perStaff[rec.staffId]=perStaff[rec.staffId]||blankStaff();
+    p.discarded++; p.byReason[r.code]=(p.byReason[r.code]||0)+1;
+    p.discardBySite[rec.site]=(p.discardBySite[rec.site]||0)+1;
   });
   return {dateFrom,dateTo,label:fmtLbl(dateFrom,dateTo),
     totalCollected:donRows.length, totalDiscarded:disRows.length, unmatchedDiscard,
@@ -1435,8 +1436,9 @@ const fmtDMY=iso=>{const [y,m,d]=iso.split('-');return `${d}/${m}/${y}`};
 function reportDerive(agg){
   buildJobIdIndex();
   const staffList=Object.entries(agg.perStaff).map(([id,v])=>({id,name:reportStaffName(id),
-    collected:v.collected||0, discarded:v.discarded||0, bySite:v.bySite||{}, byReason:v.byReason||{}}));
+    collected:v.collected||0, discarded:v.discarded||0, bySite:v.bySite||{}, byReason:v.byReason||{}, discardBySite:v.discardBySite||{}}));
   const byCollected=staffList.filter(p=>p.collected>0).sort((a,b)=>b.collected-a.collected);
+  const byDiscarded=staffList.filter(p=>p.discarded>0).sort((a,b)=>b.discarded-a.discarded);
   const topReasons=TRACKED_DISCARD_CODES.map(c=>[c,agg.discardReasons[c]]).filter(([,v])=>v).sort((a,b)=>b[1].count-a[1].count);
   const topCodes=topReasons.map(([c])=>c);
   const trackedDiscarded=topReasons.reduce((s,[,v])=>s+v.count,0);
@@ -1449,7 +1451,7 @@ function reportDerive(agg){
     .sort((a,b)=>b.rate-a.rate);
   const omitted=byCollected.filter(p=>p.collected<RATE_TABLE_MIN_DRAWN);
   const unmapped=[...new Set(Object.keys(agg.perStaff).filter(id=>!REPORT_STAFF[id]&&!jobIdToLocalStaff[id]))];
-  return {staffList,byCollected,topReasons,topCodes,trackedDiscarded,discardInTop,
+  return {staffList,byCollected,byDiscarded,topReasons,topCodes,trackedDiscarded,discardInTop,
     officeCount,fieldCount,overallRate,offsitePct,rateRows,omitted,unmapped};
 }
 function reportFindings(agg,d){
@@ -1489,7 +1491,7 @@ function reportFindings(agg,d){
 }
 function renderReportPage(agg){
   const d=reportDerive(agg);
-  const {byCollected,topReasons,trackedDiscarded,discardInTop,overallRate,offsitePct,rateRows,omitted,unmapped}=d;
+  const {byCollected,byDiscarded,topReasons,trackedDiscarded,discardInTop,overallRate,offsitePct,rateRows,omitted,unmapped}=d;
   const monthsSpan=Math.max(1,Object.keys(agg.monthly).length);
   const staffCount=byCollected.length;
   const siteRows=[['2001F',agg.bySite['2001F']||0],['2001D',agg.bySite['2001D']||0],['Other',agg.bySite.OTHER||0]];
@@ -1498,6 +1500,12 @@ function renderReportPage(agg){
     ${list.map(p=>`<tr><td>${p.name} <small style="display:inline;color:var(--rmuted);font-weight:600">${p.id}</small></td>
       <td class="rnum rtot">${fmtNum(p.collected)}</td><td class="rnum">${p.bySite['2001F']?fmtNum(p.bySite['2001F']):'–'}</td>
       <td class="rnum">${p.bySite['2001D']?fmtNum(p.bySite['2001D']):'–'}</td><td class="rnum">${p.bySite.OTHER?fmtNum(p.bySite.OTHER):'–'}</td></tr>`).join('')}
+    </tbody></table>`;
+  const half2=Math.ceil(byDiscarded.length/2), colA2=byDiscarded.slice(0,half2), colB2=byDiscarded.slice(half2);
+  const discardSiteColHtml=list=>`<table class="rpt-table"><thead><tr><th>Staff</th><th style="text-align:right">2001F</th><th style="text-align:right">2001D</th><th style="text-align:right">Other</th><th style="text-align:right">Discarded</th></tr></thead><tbody>
+    ${list.map(p=>`<tr><td>${p.name} <small style="display:inline;color:var(--rmuted);font-weight:600">${p.id}</small></td>
+      <td class="rnum">${p.discardBySite['2001F']?fmtNum(p.discardBySite['2001F']):'–'}</td><td class="rnum">${p.discardBySite['2001D']?fmtNum(p.discardBySite['2001D']):'–'}</td>
+      <td class="rnum">${p.discardBySite.OTHER?fmtNum(p.discardBySite.OTHER):'–'}</td><td class="rnum rtot">${fmtNum(p.discarded)}</td></tr>`).join('')}
     </tbody></table>`;
   const maxReason=topReasons[0]?.[1]?.count||1;
   const reasonRowsHtml=topReasons.map(([code,v])=>{
@@ -1584,8 +1592,15 @@ function renderReportPage(agg){
       <p class="rpt-foot-row"><span>Staff with ${RATE_TABLE_MIN_DRAWN}+ draws.${omitted.length?` ${omitted.length} IDs below ${RATE_TABLE_MIN_DRAWN} draws omitted (${fmtNum(omitted.reduce((s,p)=>s+p.collected,0))} draws, ${fmtNum(omitted.reduce((s,p)=>s+discardInTop(p),0))} discards combined).`:''}</span><span>Baseline rate ${overallRate.toFixed(2)}%${unmatchedNote}</span></p>
     </section>
 
+    ${byDiscarded.length?`<section class="rpt-page">
+      <div class="rpt-eyebrow"><span class="rpt-rule"></span>05 —— DISCARDS BY SITE</div>
+      <div class="rpt-headrow"><h2 class="rpt-h2">Where discards happened</h2><p class="rpt-ar-h">توزيع الأكياس المستبعدة لكل موظف حسب نقطة السحب الأصلية للوحدة</p></div>
+      <div class="rpt-twocol">${discardSiteColHtml(colA2)}${discardSiteColHtml(colB2)}</div>
+      <p class="rpt-foot-row"><span>${byDiscarded.length} staff with matched discards · ${fmtNum(agg.totalDiscarded-(agg.unmatchedDiscard||0))} units linked to a collection point</span><span>نقطة السحب هنا هي نقطة سحب الوحدة نفسها (2001F/2001D/Other) وقت التبرع، وليست موقع تنفيذ الاستبعاد</span></p>
+    </section>`:''}
+
     <section class="rpt-page rpt-dark">
-      <div class="rpt-eyebrow"><span class="rpt-rule"></span>05 —— FINDINGS</div>
+      <div class="rpt-eyebrow"><span class="rpt-rule"></span>06 —— FINDINGS</div>
       <div class="rpt-headrow" style="border-bottom-color:var(--rd-line)"><h2 class="rpt-h2">What the numbers ask for</h2><p class="rpt-ar-h">ثلاث نتائج قابلة للتنفيذ</p></div>
       <div class="rpt-findings">
         ${findings.map((f,i)=>`<div class="rpt-finding"><div class="rpt-finding-eyebrow">0${i+1} · ${f.tag}</div>
@@ -1618,7 +1633,7 @@ function renderReportPage(agg){
 }
 async function exportReportPptx(agg,d){
   d=d||reportDerive(agg);
-  const {byCollected,topReasons,trackedDiscarded,overallRate,offsitePct,rateRows}=d;
+  const {byCollected,byDiscarded,topReasons,trackedDiscarded,overallRate,offsitePct,rateRows}=d;
   const DARK='122036',INK='15181C',MUT='6E7580',BLUE='48688F',LINE='DBD8D2';
   const P=new PptxGenJS(); P.defineLayout({name:'A4L',width:11.69,height:8.27}); P.layout='A4L';
 
@@ -1686,9 +1701,18 @@ async function exportReportPptx(agg,d){
     rateRows.slice(0,18).forEach(p=>rows.push([p.name,fmtNum(p.collected),fmtNum(p.disc),p.rate.toFixed(2)+'%']));
     s.addTable(rows,{x:0.5,y:1.2,w:10.7,fontSize:10.5,border:{type:'solid',color:LINE,pt:0.5}});
   }
+  if(byDiscarded.length){
+    s=P.addSlide(); s.background={color:'F2F1EE'};
+    s.addText('05 —— DISCARDS BY SITE',{x:0.5,y:0.35,fontSize:11,color:MUT,charSpacing:2});
+    s.addText('Where discards happened',{x:0.5,y:0.65,fontSize:24,bold:true,color:INK});
+    const rows=[[{text:'Staff',options:{bold:true,fill:{color:INK},color:'FFFFFF'}},{text:'2001F',options:{bold:true,fill:{color:INK},color:'FFFFFF'}},
+      {text:'2001D',options:{bold:true,fill:{color:INK},color:'FFFFFF'}},{text:'Other',options:{bold:true,fill:{color:INK},color:'FFFFFF'}},{text:'Discarded',options:{bold:true,fill:{color:INK},color:'FFFFFF'}}]];
+    byDiscarded.slice(0,18).forEach(p=>rows.push([p.name,p.discardBySite['2001F']?fmtNum(p.discardBySite['2001F']):'–',p.discardBySite['2001D']?fmtNum(p.discardBySite['2001D']):'–',p.discardBySite.OTHER?fmtNum(p.discardBySite.OTHER):'–',fmtNum(p.discarded)]));
+    s.addTable(rows,{x:0.5,y:1.2,w:10.7,fontSize:10.5,border:{type:'solid',color:LINE,pt:0.5}});
+  }
   const findings=reportFindings(agg,d);
   s=P.addSlide(); s.background={color:DARK};
-  s.addText('05 —— FINDINGS',{x:0.5,y:0.35,fontSize:11,color:'9FB0C4',charSpacing:2});
+  s.addText('06 —— FINDINGS',{x:0.5,y:0.35,fontSize:11,color:'9FB0C4',charSpacing:2});
   s.addText('What the numbers ask for',{x:0.5,y:0.65,fontSize:26,bold:true,color:'FFFFFF'});
   findings.forEach((f,i)=>{
     const x=0.5+i*3.85;
