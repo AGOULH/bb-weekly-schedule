@@ -8,6 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 <style>
 :root{
   /* الهوية البصرية — إلزامية، مستخرجة من ملف الإكسل الأصلي (لا تُغيّر) */
@@ -193,6 +194,7 @@ table.rk tr:hover td{background:var(--row-a)}
     <button class="navbtn active" data-pg="schedule"><span class="ic" aria-hidden="true">📅</span> الجدول الأسبوعي</button>
     <button class="navbtn" data-pg="results"><span class="ic" aria-hidden="true">📝</span> إدخال النتائج</button>
     <button class="navbtn" data-pg="stats"><span class="ic" aria-hidden="true">📈</span> الإحصائيات والمقارنة</button>
+    <button class="navbtn" data-pg="reports"><span class="ic" aria-hidden="true">📊</span> تقارير التبرعات</button>
     <button class="navbtn" data-pg="apheresis"><span class="ic" aria-hidden="true">🩸</span> جدول الصفائح</button>
     <button class="navbtn" data-pg="staff"><span class="ic" aria-hidden="true">👥</span> قائمة الموظفين</button>
     <button class="navbtn" data-pg="archive"><span class="ic" aria-hidden="true">🗂️</span> الأرشيف</button>
@@ -293,6 +295,28 @@ table.rk tr:hover td{background:var(--row-a)}
     </div>
   </div>
   <div id="statsOut"></div>
+</section>
+
+<!-- ============ REPORTS (تحليل التبرعات/المستبعدات) ============ -->
+<section class="page" id="pg-reports">
+  <div class="pghead noprint">
+    <div><h2 tabindex="-1">تقارير التبرعات</h2><p>ارفع ملفَي List of donations وDiscarded products (تصدير مباشر من النظام، CSV) لتحليل الفترة وإصدار تقرير Donations Analysis</p></div>
+  </div>
+  <div class="card noprint">
+    <h3>📥 رفع الملفات وتحليلها</h3>
+    <div class="row">
+      <div class="field"><label for="repDonFile">List of donations (CSV)</label><input type="file" class="inp" id="repDonFile" accept=".csv"></div>
+      <div class="field"><label for="repDisFile">Discarded products (CSV)</label><input type="file" class="inp" id="repDisFile" accept=".csv"></div>
+      <button class="btn teal" id="repAnalyzeBtn">🔍 تحليل</button>
+    </div>
+    <div class="hint">يمكن رفع أحد الملفين فقط إذا لم يتوفر الآخر مؤقتاً. تُستخرج الفترة (من–إلى) تلقائياً من تواريخ السجلات نفسها — لا حاجة لاختيارها يدوياً. الملفات تُقرأ بالكامل من المتصفح دون رفعها لأي خادم.</div>
+    <div id="repLog" class="hint"></div>
+  </div>
+  <div id="reportOut"></div>
+  <div class="card">
+    <h3>🗂️ التقارير المحفوظة</h3>
+    <table class="rk"><thead><tr><th>الفترة</th><th>المتبرعون</th><th>المستبعد</th><th>نسبة الاستبعاد</th><th>تاريخ التوليد</th><th>إجراء</th></tr></thead><tbody id="reportArcBody"></tbody></table>
+  </div>
 </section>
 
 <!-- ============ APHERESIS ============ -->
@@ -422,9 +446,11 @@ const STAFF_JOB_IDS={FAHED:'2649451',SULTAN:'3506824',DOHA:'3821573',MARDEEF:'38
 const MON=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const MON3=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
 const IMPORT_SITES=['2001F','2001D']; // نقاط التبرع بمقر بنك الدم — الأساس لاستيراد النتائج من إكسل
+const REPORT_SITE_LABEL={'2001F':'٢٠٠١F (المقر)','2001D':'٢٠٠١D (المقر)',OTHER:'ميدانية / خارجية'};
 
 /* ---------- الحالة ---------- */
 let STAFF={}, WEEKS={}, APX={}, TARGET={monthly:0}, curWeek=null, curApx=null, charts={}, lastStatsList=[];
+let REPORT_STAFF={}, REPORTS={}, curReportAgg=null, reportCharts={};
 
 const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
@@ -438,6 +464,7 @@ const sName=id=>STAFF[id]?.name||'';
 async function boot(){
   await initCloud();
   STAFF=await cloudAll('staff'); WEEKS=await cloudAll('weeks'); APX=await cloudAll('apheresis');
+  REPORT_STAFF=await cloudAll('reportStaff'); REPORTS=await cloudAll('reports');
   TARGET=(await cloudAll('settings')).target||{monthly:0};
   if(!Object.keys(STAFF).length){
     SEED.forEach((n,i)=>STAFF['s'+(i+1)]={name:n,active:true,role:RECEPTION_NAMES.includes(n)?'reception':'technical',order:i+1});
@@ -464,7 +491,7 @@ async function boot(){
 }
 const idOf=n=>Object.entries(STAFF).find(([,v])=>v.name===n)?.[0];
 
-function renderAll(){ fillWeekPicks(); renderSheet(); renderResults(); renderStaff(); renderArchive(); renderApx(); renderAlerts(); }
+function renderAll(){ fillWeekPicks(); renderSheet(); renderResults(); renderStaff(); renderArchive(); renderApx(); renderAlerts(); renderReportArchive(); }
 
 /* ---------- التنقل ---------- */
 $$('.navbtn').forEach(b=>b.onclick=()=>{
@@ -1192,6 +1219,245 @@ $('#apxPrint').onclick=()=>{
   if(!curApx||!APX[curApx]){toast('لا يوجد جدول لعرضه');return}
   const o=document.title;document.title=`Apheresis_${(APX[curApx].month||'').replace(/ /g,'_')}`;window.print();setTimeout(()=>document.title=o,700);
 };
+
+/* ============ تقارير التبرعات (Donations Analysis) ============ */
+function csvLines(text){ return text.replace(/^﻿/,'').split(/\r?\n/); }
+function splitCsvLine(line){
+  const out=[]; let cur='', inQ=false;
+  for(let i=0;i<line.length;i++){
+    const c=line[i];
+    if(inQ){ if(c==='"'){ if(line[i+1]==='"'){cur+='"';i++;} else inQ=false; } else cur+=c; }
+    else { if(c==='"') inQ=true; else if(c===','){ out.push(cur); cur=''; } else cur+=c; }
+  }
+  out.push(cur); return out;
+}
+function findHeaderRow(lines,firstCellMatch){
+  for(let i=0;i<lines.length;i++){ if(lines[i].split(',')[0].trim().toLowerCase()===firstCellMatch.toLowerCase()) return i; }
+  return -1;
+}
+const hIdx=(header,name)=>header.findIndex(h=>h.trim().toLowerCase()===name.toLowerCase());
+function parseDonationsCsv(text){
+  const lines=csvLines(text), hi=findHeaderRow(lines,'HIIG Number');
+  if(hi<0) return null;
+  const header=splitCsvLine(lines[hi]).map(h=>h.trim());
+  const iDate=hIdx(header,'Donation Date'), iCP=hIdx(header,'Collection Point'), iType=hIdx(header,'Donation Type'), iStaff=hIdx(header,'STAFFID');
+  if([iDate,iCP,iType,iStaff].some(i=>i<0)) return null;
+  const rows=[];
+  for(let i=hi+1;i<lines.length;i++){
+    if(!lines[i].trim()) continue;
+    const c=splitCsvLine(lines[i]), dt=parseSlashDate(c[iDate]); if(!dt) continue;
+    rows.push({date:dt, cp:(c[iCP]||'').trim(), type:(c[iType]||'').trim(), staffId:(c[iStaff]||'').trim()});
+  }
+  return rows;
+}
+function parseDiscardedCsv(text){
+  const lines=csvLines(text), hi=findHeaderRow(lines,'Site Code');
+  if(hi<0) return null;
+  const header=splitCsvLine(lines[hi]).map(h=>h.trim());
+  const iDate=hIdx(header,'Discard Date'), iABO=hIdx(header,'ABORh'), iCode=hIdx(header,'Discard Code'), iDesc=hIdx(header,'Discard Description'), iStaff=hIdx(header,'Staff id');
+  if([iDate,iCode,iStaff].some(i=>i<0)) return null;
+  const rows=[];
+  for(let i=hi+1;i<lines.length;i++){
+    if(!lines[i].trim()) continue;
+    const c=splitCsvLine(lines[i]), dt=parseMonDate(c[iDate]); if(!dt) continue;
+    rows.push({date:dt, abo:(c[iABO]||'').trim(), code:(c[iCode]||'').trim(), desc:(c[iDesc]||'').trim(), staffId:(c[iStaff]||'').trim()});
+  }
+  return rows;
+}
+let jobIdToLocalStaff={};
+function buildJobIdIndex(){ jobIdToLocalStaff={}; Object.values(STAFF).forEach(s=>{ if(s.staffId) jobIdToLocalStaff[s.staffId]=s.name; }); }
+function reportStaffName(id){ return REPORT_STAFF[id]?.name || jobIdToLocalStaff[id] || `#${id}`; }
+function aggregateReport(donRows,disRows){
+  const allDates=[...donRows.map(r=>r.date),...disRows.map(r=>r.date)].sort();
+  if(!allDates.length) return null;
+  const dateFrom=allDates[0], dateTo=allDates[allDates.length-1];
+  const bySite={}, byType={}, perStaff={}, discardReasons={}, bloodGroups={}, monthly={};
+  donRows.forEach(r=>{
+    const site=IMPORT_SITES.includes(r.cp)?r.cp:'OTHER';
+    bySite[site]=(bySite[site]||0)+1; byType[r.type]=(byType[r.type]||0)+1;
+    const mk=r.date.slice(0,7); monthly[mk]=monthly[mk]||{collected:0,discarded:0}; monthly[mk].collected++;
+    if(r.staffId){ perStaff[r.staffId]=perStaff[r.staffId]||{collected:0,discarded:0}; perStaff[r.staffId].collected++; }
+  });
+  disRows.forEach(r=>{
+    discardReasons[r.code]=discardReasons[r.code]||{desc:r.desc,count:0}; discardReasons[r.code].count++;
+    if(r.abo) bloodGroups[r.abo]=(bloodGroups[r.abo]||0)+1;
+    const mk=r.date.slice(0,7); monthly[mk]=monthly[mk]||{collected:0,discarded:0}; monthly[mk].discarded++;
+    if(r.staffId){ perStaff[r.staffId]=perStaff[r.staffId]||{collected:0,discarded:0}; perStaff[r.staffId].discarded++; }
+  });
+  return {dateFrom,dateTo,label:fmtLbl(dateFrom,dateTo),
+    totalCollected:donRows.length, totalDiscarded:disRows.length,
+    bySite,byType,perStaff,discardReasons,bloodGroups,monthly,generatedAt:new Date().toISOString()};
+}
+$('#repAnalyzeBtn').onclick=async()=>{
+  const fDon=$('#repDonFile').files[0], fDis=$('#repDisFile').files[0];
+  if(!fDon&&!fDis){ toast('اختر ملفاً واحداً على الأقل'); return; }
+  let donRows=[], disRows=[], errs=[];
+  if(fDon){ const r=parseDonationsCsv(await fDon.text()); if(r) donRows=r; else errs.push('تنسيق ملف List of donations غير معروف'); }
+  if(fDis){ const r=parseDiscardedCsv(await fDis.text()); if(r) disRows=r; else errs.push('تنسيق ملف Discarded products غير معروف'); }
+  if(errs.length){ $('#repLog').innerHTML=errs.join('<br>'); toast('تعذّر قراءة أحد الملفين'); }
+  const agg=aggregateReport(donRows,disRows);
+  if(!agg){ toast('لا توجد سجلات صالحة في الملفات المرفوعة'); return; }
+  curReportAgg=agg; renderReportPage(agg);
+  $('#repLog').innerHTML=(errs.length?errs.join('<br>')+'<br>':'')+`تم تحليل ${agg.totalCollected} تبرع و${agg.totalDiscarded} وحدة مستبعدة — الفترة ${agg.label}`;
+  toast('تم التحليل ✓ راجع التقرير أدناه');
+  $('#reportOut').scrollIntoView({behavior:'smooth'});
+};
+function renderReportPage(agg){
+  buildJobIdIndex();
+  const A='#0D7377',B='#F0A500',N='#1B3A6B',G='#C8860A';
+  const officeCount=(agg.bySite['2001F']||0)+(agg.bySite['2001D']||0), fieldCount=agg.bySite.OTHER||0;
+  const officePct=agg.totalCollected?Math.round(officeCount/agg.totalCollected*100):0;
+  const discardRatePct=agg.totalCollected?(agg.totalDiscarded/agg.totalCollected*100).toFixed(1):'—';
+  const siteEntries=Object.entries(agg.bySite).sort((a,b)=>b[1]-a[1]);
+  const typeEntries=Object.entries(agg.byType).sort((a,b)=>b[1]-a[1]);
+  const staffList=Object.entries(agg.perStaff).map(([id,v])=>({id,name:reportStaffName(id),...v,
+    rate:v.collected?v.discarded/v.collected*100:null}));
+  const byCollected=[...staffList].filter(p=>p.collected>0).sort((a,b)=>b.collected-a.collected);
+  const byRate=[...staffList].filter(p=>p.collected>0).sort((a,b)=>(b.rate||0)-(a.rate||0));
+  const reasonEntries=Object.entries(agg.discardReasons).sort((a,b)=>b[1].count-a[1].count);
+  const reasonTop=reasonEntries.slice(0,10), reasonRestCount=reasonEntries.slice(10).reduce((s,[,v])=>s+v.count,0);
+  const bloodEntries=Object.entries(agg.bloodGroups).sort((a,b)=>b[1]-a[1]);
+  const monthKeys=Object.keys(agg.monthly).sort();
+  const unmapped=[...new Set(Object.keys(agg.perStaff).filter(id=>!REPORT_STAFF[id]&&!jobIdToLocalStaff[id]))];
+  const medal=i=>['🥇','🥈','🥉'][i]||'';
+
+  let html=`<div id="reportSheet">
+  <div class="wkband noprint"><div><div class="lb">📊 التقرير المعروض الآن</div><div class="dt">${agg.label}</div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn amber sm" id="repPdfBtn">🖨️ PDF</button><button class="btn teal sm" id="repPptxBtn">📊 PowerPoint</button><button class="btn sm" id="repSaveBtn">💾 حفظ التقرير</button></div>
+  </div>
+  <div class="sh-title">Central Blood Bank In Dammam</div>
+  <div class="sh-sub">Donations Analysis&nbsp;&nbsp; Date ${agg.label}</div>
+  <div class="kpis" style="padding:14px 0 0">
+    <div class="kpi"><div class="lb">إجمالي المتبرعين</div><div class="vl">${agg.totalCollected}</div></div>
+    <div class="kpi a"><div class="lb">إجمالي الوحدات المستبعدة</div><div class="vl">${agg.totalDiscarded}</div></div>
+    <div class="kpi n"><div class="lb">نسبة الاستبعاد</div><div class="vl">${discardRatePct}%</div></div>
+    <div class="kpi g"><div class="lb">نقاط المقر (2001F/2001D)</div><div class="vl">${officeCount}</div><div class="dt flat">${officePct}% من الإجمالي</div></div>
+    <div class="kpi"><div class="lb">نقاط ميدانية/خارجية</div><div class="vl">${fieldCount}</div></div>
+  </div>
+  <div class="sh-foot" style="text-align:center;background:#fff;border-top:1px solid var(--line)">DONE BY : HASAN ALAGOUL</div>
+  </div>
+
+  <div class="card"><h3>📍 توزيع نقاط السحب</h3><div style="overflow-x:auto">
+  <table class="rk"><thead><tr><th>نقطة السحب</th><th>عدد الوحدات</th><th>النسبة</th></tr></thead><tbody>
+  ${siteEntries.map(([k,v])=>`<tr><td class="nm">${REPORT_SITE_LABEL[k]||k}</td><td>${v}</td><td>${agg.totalCollected?Math.round(v/agg.totalCollected*100):0}%</td></tr>`).join('')}
+  </tbody></table></div><div class="chartbox" style="margin-top:12px"><canvas id="cRepSite"></canvas></div></div>
+
+  <div class="card"><h3>🩸 أنواع التبرع</h3><div class="chartbox"><canvas id="cRepType"></canvas></div></div>
+
+  ${byCollected.length?`<div class="card"><h3>🏆 ترتيب الموظفين حسب الإنتاجية (الوحدات المسحوبة)</h3><div style="overflow-x:auto">
+  <table class="rk"><thead><tr><th>#</th><th style="text-align:right">الموظف</th><th>الوحدات المسحوبة</th><th>المستبعد</th><th>نسبة الاستبعاد</th></tr></thead><tbody>
+  ${byCollected.map((p,i)=>`<tr><td>${medal(i)||i+1}</td><td class="nm">${p.name}</td><td><b>${p.collected}</b></td><td>${p.discarded}</td><td>${p.rate===null?'—':p.rate.toFixed(1)+'%'}</td></tr>`).join('')}
+  </tbody></table></div><div class="chartbox" style="margin-top:12px"><canvas id="cRepRankCollect"></canvas></div></div>` : ''}
+
+  ${byRate.length?`<div class="card"><h3>⚠️ ترتيب الموظفين حسب معدّل الاستبعاد</h3><div style="overflow-x:auto">
+  <table class="rk"><thead><tr><th>#</th><th style="text-align:right">الموظف</th><th>نسبة الاستبعاد</th><th>المستبعد</th><th>الوحدات المسحوبة</th></tr></thead><tbody>
+  ${byRate.map((p,i)=>`<tr><td>${i+1}</td><td class="nm">${p.name}</td><td><b>${p.rate===null?'—':p.rate.toFixed(1)+'%'}</b></td><td>${p.discarded}</td><td>${p.collected}</td></tr>`).join('')}
+  </tbody></table></div><div class="chartbox" style="margin-top:12px"><canvas id="cRepRankDiscard"></canvas></div>
+  <div class="hint">نسبة الاستبعاد = المستبعد ÷ الوحدات المسحوبة لنفس الموظف — تحتسب فقط لمن لديه وحدات مسحوبة مسجّلة باسمه.</div></div>` : ''}
+
+  ${reasonEntries.length?`<div class="card"><h3>🧪 أسباب الاستبعاد</h3><div style="overflow-x:auto">
+  <table class="rk"><thead><tr><th>الكود</th><th style="text-align:right">السبب</th><th>العدد</th></tr></thead><tbody>
+  ${reasonTop.map(([code,v])=>`<tr><td>${code}</td><td class="nm" style="direction:ltr;text-align:right">${v.desc}</td><td>${v.count}</td></tr>`).join('')}
+  ${reasonRestCount?`<tr><td>—</td><td class="nm">أسباب أخرى</td><td>${reasonRestCount}</td></tr>`:''}
+  </tbody></table></div><div class="chartbox" style="margin-top:12px"><canvas id="cRepReason"></canvas></div></div>` : ''}
+
+  ${bloodEntries.length?`<div class="card"><h3>🩸 فصائل الدم للوحدات المستبعدة</h3><div class="chartbox"><canvas id="cRepBlood"></canvas></div></div>` : ''}
+
+  ${monthKeys.length>1?`<div class="card"><h3>📈 الاتجاه الشهري</h3><div class="chartbox"><canvas id="cRepTrend"></canvas></div></div>` : ''}
+
+  ${unmapped.length?`<div class="card noprint"><h3>👤 موظفون بلا اسم مسجَّل لهذا القسم (${unmapped.length})</h3>
+  <div class="hint">الرقم الوظيفي ظهر في الملفات المرفوعة ولا يوجد له اسم في قائمة تقارير التبرعات — أضِفه هنا (منفصلة عن قائمة الفريق الفني للجدول الأسبوعي).</div>
+  ${unmapped.map(id=>`<div class="row" style="margin-top:8px"><div class="field"><label>${id}</label><input class="inp" data-nameid="${id}" placeholder="اسم الموظف"></div><button class="btn sm ghost" data-namesave="${id}">حفظ</button></div>`).join('')}
+  </div>` : ''}
+  `;
+  $('#reportOut').innerHTML=html;
+
+  Object.values(reportCharts).forEach(c=>c?.destroy()); reportCharts={};
+  reportCharts.site=new Chart($('#cRepSite'),{type:'doughnut',data:{labels:siteEntries.map(([k])=>REPORT_SITE_LABEL[k]||k),
+    datasets:[{data:siteEntries.map(([,v])=>v),backgroundColor:[N,A,B,G]}]},options:{responsive:true,maintainAspectRatio:false}});
+  reportCharts.type=new Chart($('#cRepType'),{type:'bar',data:{labels:typeEntries.map(([k])=>k),
+    datasets:[{data:typeEntries.map(([,v])=>v),backgroundColor:[N,A,B],borderRadius:6}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+  if($('#cRepRankCollect')) reportCharts.rankCollect=new Chart($('#cRepRankCollect'),{type:'bar',data:{labels:byCollected.map(p=>p.name),
+    datasets:[{data:byCollected.map(p=>p.collected),backgroundColor:byCollected.map((_,i)=>i<3?B:A),borderRadius:6}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+  if($('#cRepRankDiscard')) reportCharts.rankDiscard=new Chart($('#cRepRankDiscard'),{type:'bar',data:{labels:byRate.map(p=>p.name),
+    datasets:[{data:byRate.map(p=>p.rate?+p.rate.toFixed(1):0),backgroundColor:'#BD2D29',borderRadius:6}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+  if($('#cRepReason')) reportCharts.reason=new Chart($('#cRepReason'),{type:'bar',data:{labels:reasonTop.map(([c])=>c),
+    datasets:[{data:reasonTop.map(([,v])=>v.count),backgroundColor:G,borderRadius:6}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
+  if($('#cRepBlood')) reportCharts.blood=new Chart($('#cRepBlood'),{type:'doughnut',data:{labels:bloodEntries.map(([k])=>k),
+    datasets:[{data:bloodEntries.map(([,v])=>v),backgroundColor:[N,A,B,G,'#BD2D29','#566476','#7092B8','#128755']}]},options:{responsive:true,maintainAspectRatio:false}});
+  if($('#cRepTrend')) reportCharts.trend=new Chart($('#cRepTrend'),{type:'line',data:{labels:monthKeys,
+    datasets:[{label:'المسحوب',data:monthKeys.map(k=>agg.monthly[k].collected),borderColor:N,backgroundColor:'rgba(27,58,107,.08)',fill:true,tension:.35},
+      {label:'المستبعد',data:monthKeys.map(k=>agg.monthly[k].discarded),borderColor:'#BD2D29',tension:.35}]},
+    options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true}}}});
+
+  $$('[data-namesave]').forEach(b=>b.onclick=async()=>{
+    const id=b.dataset.namesave, n=$(`[data-nameid="${id}"]`).value.trim(); if(!n){toast('اكتب اسماً أولاً');return}
+    REPORT_STAFF[id]={name:n}; await cloudSet('reportStaff',id,REPORT_STAFF[id]); toast('تم الحفظ ✓'); renderReportPage(agg);
+  });
+  $('#repSaveBtn').onclick=async()=>{
+    const id=`${agg.dateFrom}_${agg.dateTo}`; REPORTS[id]=agg; await cloudSet('reports',id,agg);
+    toast('تم حفظ التقرير ✓'); renderReportArchive();
+  };
+  $('#repPdfBtn').onclick=()=>{
+    const old=document.title; document.title=`Donations_Analysis_${agg.label.replace(/ /g,'_')}`;
+    window.print(); setTimeout(()=>document.title=old,700);
+  };
+  $('#repPptxBtn').onclick=()=>exportReportPptx(agg);
+}
+async function exportReportPptx(agg){
+  buildJobIdIndex();
+  const NAVY='1B3A6B',AMBER='F0A500',TEAL='0D7377',GOLD='C8860A';
+  const P=new PptxGenJS(); P.defineLayout({name:'A4L',width:11.69,height:8.27}); P.layout='A4L';
+  let s=P.addSlide(); s.background={color:NAVY};
+  s.addText('Central Blood Bank In Dammam',{x:0,y:2.7,w:'100%',align:'center',fontSize:28,bold:true,color:'FFFFFF'});
+  s.addText('Donations Analysis',{x:0,y:3.5,w:'100%',align:'center',fontSize:20,bold:true,color:AMBER});
+  s.addText(`Date ${agg.label}`,{x:0,y:4.2,w:'100%',align:'center',fontSize:16,color:'FFFFFF'});
+  s.addText('DONE BY : HASAN ALAGOUL',{x:0,y:7.6,w:'100%',align:'center',fontSize:11,color:'9fb3d1'});
+
+  s=P.addSlide(); s.background={color:'FFFFFF'};
+  s.addText('Key Indicators',{x:0.4,y:0.3,fontSize:20,bold:true,color:NAVY});
+  const officeCount=(agg.bySite['2001F']||0)+(agg.bySite['2001D']||0);
+  const discardRatePct=agg.totalCollected?(agg.totalDiscarded/agg.totalCollected*100).toFixed(1):'0';
+  const kpis=[['Total Collected',agg.totalCollected],['Total Discarded',agg.totalDiscarded],['Discard Rate',discardRatePct+'%'],['Office Sites',officeCount]];
+  kpis.forEach((k,i)=>{
+    const x=0.4+(i%2)*5.7, y=1.2+Math.floor(i/2)*2.0;
+    s.addShape('roundRect',{x,y,w:5.3,h:1.7,fill:{color:'F4F7FA'},line:{color:TEAL,width:1.5},rectRadius:0.08});
+    s.addText(String(k[1]),{x,y:y+0.15,w:5.3,align:'center',fontSize:30,bold:true,color:NAVY});
+    s.addText(k[0],{x,y:y+1.0,w:5.3,align:'center',fontSize:13,color:'566476'});
+  });
+
+  const byCollected=Object.entries(agg.perStaff).filter(([,v])=>v.collected>0).map(([id,v])=>({name:reportStaffName(id),...v})).sort((a,b)=>b.collected-a.collected).slice(0,15);
+  if(byCollected.length){
+    s=P.addSlide(); s.background={color:'FFFFFF'};
+    s.addText('Staff Productivity Ranking',{x:0.4,y:0.3,fontSize:18,bold:true,color:NAVY});
+    const rows=[[{text:'#',options:{bold:true,fill:{color:NAVY},color:'FFFFFF'}},{text:'Staff',options:{bold:true,fill:{color:NAVY},color:'FFFFFF'}},{text:'Collected',options:{bold:true,fill:{color:NAVY},color:'FFFFFF'}},{text:'Discarded',options:{bold:true,fill:{color:NAVY},color:'FFFFFF'}}]];
+    byCollected.forEach((p,i)=>rows.push([String(i+1),p.name,String(p.collected),String(p.discarded)]));
+    s.addTable(rows,{x:0.4,y:1.0,w:10.9,fontSize:11,border:{type:'solid',color:'D9E2EC',pt:0.5}});
+  }
+  const canvasIds=['cRepSite','cRepType','cRepRankDiscard','cRepReason','cRepBlood','cRepTrend'];
+  canvasIds.forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    const sl=P.addSlide(); sl.background={color:'FFFFFF'};
+    sl.addImage({data:el.toDataURL('image/png'),x:0.7,y:0.6,w:10.29,h:6.9,sizing:{type:'contain',w:10.29,h:6.9}});
+  });
+  await P.writeFile({fileName:`Donations_Analysis_${agg.label.replace(/ /g,'_')}.pptx`});
+}
+function renderReportArchive(){
+  const ks=Object.keys(REPORTS).sort().reverse();
+  $('#reportArcBody').innerHTML=ks.length?ks.map(k=>{const r=REPORTS[k];
+    const rate=r.totalCollected?(r.totalDiscarded/r.totalCollected*100).toFixed(1)+'%':'—';
+    return `<tr><td class="nm">${r.label}</td><td>${r.totalCollected}</td><td>${r.totalDiscarded}</td><td>${rate}</td>
+    <td>${(r.generatedAt||'').slice(0,10)}</td><td><button class="btn sm ghost" data-openrep="${k}">فتح</button></td></tr>`;
+  }).join(''):'<tr><td colspan="6" style="padding:18px;color:var(--faint)">لا توجد تقارير محفوظة بعد</td></tr>';
+  $$('[data-openrep]').forEach(b=>b.onclick=()=>{
+    curReportAgg=REPORTS[b.dataset.openrep]; renderReportPage(curReportAgg);
+    $('#reportOut').scrollIntoView({behavior:'smooth'});
+  });
+}
 
 boot();
 </script>
