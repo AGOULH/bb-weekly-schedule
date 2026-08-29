@@ -332,7 +332,7 @@ table.rpt-rate .rratebar{display:inline-block;height:6px;background:var(--rblue2
     <div class="sh-title">Central Blood Bank In Dammam</div>
     <div class="sh-sub" id="shSub">Weekly Schedule&nbsp; Date — To —</div>
     <table class="sh">
-      <thead><tr><th>#</th><th>ITEM / TASK</th><th>STAFF 1</th><th>STAFF 2</th><th>STAFF 3</th><th>STAFF 4</th><th>STAFF 5</th></tr></thead>
+      <thead><tr><th>#</th><th>ITEM / TASK</th><th>STAFF 1</th><th>STAFF 2</th><th>STAFF 3</th><th>STAFF 4</th><th>STAFF 5</th><th>STAFF 6</th></tr></thead>
       <tbody id="shBody"></tbody>
     </table>
     <div class="sh-foot">DONE BY : HASAN ALAGOUL</div>
@@ -657,7 +657,7 @@ function taskOpts(tid,a,j){
 }
 function rowCells(t){
   const a=WEEKS[curWeek].assignments[t.id]||[];
-  return [0,1,2,3,4].map(j=>`<td><select data-j="${j}">${taskOpts(t.id,a,j)}</select></td>`).join('');
+  return [0,1,2,3,4,5].map(j=>`<td><select data-j="${j}">${taskOpts(t.id,a,j)}</select></td>`).join('');
 }
 function bindRow(tr,t){
   tr.querySelectorAll('select').forEach(s=>s.onchange=()=>{
