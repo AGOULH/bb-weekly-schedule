@@ -1523,7 +1523,7 @@ function renderReportPage(agg){
     </div></div>`:'';
   const maxRate=Math.max(0.01,...rateRows.map(r=>r.rate));
   const rateTableHtml=rateRows.length?`<div class="rpt-tablewrap"><table class="rpt-rate"><thead><tr><th>Staff</th><th>Drawn</th>
-    ${topReasons.map(([,v])=>`<th>${v.desc}</th>`).join('')}<th>Discarded</th><th>Rate</th></tr></thead><tbody>
+    ${topReasons.map(([c,v])=>`<th title="${v.desc.replace(/"/g,'&quot;')}">${c}</th>`).join('')}<th>Discarded</th><th>Rate</th></tr></thead><tbody>
     ${rateRows.map(p=>`<tr><td>${p.name} <small style="color:var(--rmuted)">${p.id}</small></td><td class="rtot">${fmtNum(p.collected)}</td>
       ${topReasons.map(([c])=>`<td class="${p.byReason[c]?'':'rmuted'}">${p.byReason[c]?fmtNum(p.byReason[c]):'·'}</td>`).join('')}
       <td class="rtot">${fmtNum(p.disc)}</td><td class="rtot">${p.rate.toFixed(2)}%<span class="rratebar" style="width:${Math.round(p.rate/maxRate*50)}px"></span></td></tr>`).join('')}
@@ -1589,6 +1589,7 @@ function renderReportPage(agg){
       <div class="rpt-eyebrow"><span class="rpt-rule"></span>04 —— RATE BY STAFF</div>
       <div class="rpt-headrow"><h2 class="rpt-h2">Discards per collector</h2><p class="rpt-ar-h">ربط كل وحدة مستبعدة بالموظف الذي سحبها — مرتّبة بنسبة الاستبعاد</p></div>
       ${rateTableHtml}
+      <p class="rpt-foot" style="margin-top:6px">${topReasons.map(([c,v])=>`${c} — ${v.desc}`).join(' &nbsp;·&nbsp; ')}</p>
       <p class="rpt-foot-row"><span>Staff with ${RATE_TABLE_MIN_DRAWN}+ draws.${omitted.length?` ${omitted.length} IDs below ${RATE_TABLE_MIN_DRAWN} draws omitted (${fmtNum(omitted.reduce((s,p)=>s+p.collected,0))} draws, ${fmtNum(omitted.reduce((s,p)=>s+discardInTop(p),0))} discards combined).`:''}</span><span>Baseline rate ${overallRate.toFixed(2)}%${unmatchedNote}</span></p>
     </section>
 
