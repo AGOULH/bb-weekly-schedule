@@ -53,7 +53,16 @@ font-family: Arial (للجدول) + Cairo أو Tajawal من Google Fonts (للو
    كل أسبوع تصله بيانات من الملف **يُحفظ مباشرة** في Firestore دون المرور بزر «💾 حفظ النتائج» (الاستيراد يعيد حساب نتائج/إجماليات ذلك الأسبوع بالكامل من الملف في كل مرة، فيُعدّل فوق أي استيراد سابق)؛ سجلات لا تقع ضمن أي أسبوع محفوظ تُتجاهَل ويُذكَر عددها في سجل الاستيراد. ارفع أحدث ملف مصدَّر من النظام في كل مرة.
 3. **👥 قائمة الموظفين** — إضافة/تعطيل موظف (لا حذف نهائي للحفاظ على التاريخ)، القائمة الحالية: FAHED, AQEELHA, DOHA, AFNAN, ALASEED, IBRIH, MARDEEF, SULTAN, ABDJALIL, REDA, MATWHA, AWTIF, HAMED. لكل موظف **فئة وظيفية**: `technical` (فني) أو `reception` (استقبال) — **AWTIF وREDA وABDJALIL موظفو استقبال**، والبقية فنيون. تُعدَّل من زر «نقل لـ...» بجانب كل موظف، وتُختار عند إضافة موظف جديد. سجلات قديمة بلا الحقل تُرحَّل تلقائياً عند التحميل (افتراضي فني، إلا الثلاثة أعلاه). لكل موظف أيضاً **رقم وظيفي** (`staffId`) اختياري، يُدخَل عند الإضافة أو يُعدَّل لاحقاً بزر «✎ الرقم الوظيفي»؛ عُبّئ من ملف إكسل مصدره حسن لثمانية موظفين (FAHED, SULTAN, DOHA, MARDEEF, IBRIH, AFNAN, AQEELHA, ALASEED عبر ثابت `STAFF_JOB_IDS`)، والبقية (ABDJALIL, REDA, MATWHA, AWTIF, HAMED) تُستكمل لاحقاً يدوياً أو من نفس الملف عند توفر أرقامهم.
 4. **📈 الإحصائيات والمقارنة** — فلترة من تاريخ إلى تاريخ + لوحة مؤشرات
-5. **🗂️ الأرشيف** — كل الأسابيع السابقة، فتح أي أسبوع وطباعته PDF
+5. **📊 تقارير التبرعات** — صفحة مستقلة عن الجدول الأسبوعي بالكامل (لا تعتمد على `WEEKS`/`assignments`)، لتحليل تصدير خام من نظام بنك الدم يغطي القسم كله (كل نقاط السحب، ~٢٧ موظفاً — أوسع من فريق الجدول الأسبوعي الـ١٣). ترفع ملفَين CSV حقيقيين (وليسا HTML كملفات استيراد النتائج):
+   - **List of donations** (`HIIG Number, Donation Number, Donation Date DD/MM/YYYY, Donation Time, Collection Point, Donation Type, Use Of Donation, GENDER, STAFFID`) — Donation Type ∈ {Whole blood, Plateletpheresis, Plasmapheresis}. Collection Point يُصنَّف: `2001F`/`2001D` = مقر (نفس `IMPORT_SITES`)، وأي كود آخر (أرقام حملات ميدانية) يُجمَّع تحت `OTHER`.
+   - **Discarded products** (تصدير يبدأ بجداول ملخّص نصية يتجاهلها المحلّل، ثم جدول تفصيلي فعلي برأس `Site Code, Discard Date DD-MON-YY, Collection date, Unit Number, ABORh, Product code, Product Description, Discard Code, Discard Description, Staff id`).
+   المحلّل (`parseDonationsCsv`/`parseDiscardedCsv`) يبحث عن سطر الرأس الحقيقي بالاسم (`findHeaderRow`) متجاهلاً أي مقدّمة قبله، ثم يقرأ الصفوف بعده حتى نهاية الملف — مفيد لأن تصدير discarded يحوي جداول ملخّصة قبل الجدول التفصيلي. الفترة (من–إلى) **تُستخرَج تلقائياً** من أقدم/أحدث تاريخ فعلي في الملفين معاً (وليس من سطر "Start Date" النصي في مقدمة الملف) — لا يُطلب من المستخدم إدخالها. يمكن رفع ملف واحد فقط إذا تعذّر توفر الآخر.
+   **قائمة أسماء منفصلة** (`reportStaff` في Firestore، وليست `staff`): لأن الملفات تغطي موظفين أوسع من فريق الجدول الأسبوعي. الاسم يُحل بالأولوية: `REPORT_STAFF[staffId].name` ← وإلا `staffId` المطابق في قائمة الفريق الفني الحالية (`STAFF`, نفس حقل `staffId` المستخدم في استيراد النتائج) ← وإلا يُعرض كـ`#staffId` مع رابط تسمية داخل التقرير نفسه (بطاقة «موظفون بلا اسم مسجَّل»، تُحفظ في `reportStaff` عند الضغط «حفظ»).
+   محتوى التقرير: بطاقات KPI (إجمالي المتبرعين، المستبعد، نسبة الاستبعاد، توزيع مقر/ميداني)، توزيع نقاط السحب، توزيع أنواع التبرع، ترتيب الموظفين بالإنتاجية (وحدات مسحوبة) وبمعدّل الاستبعاد (المستبعد ÷ المسحوب لنفس الموظف — يُحسب فقط لمن لديه وحدات مسحوبة)، أسباب الاستبعاد (Discard Code/Description)، فصائل الدم للمستبعد، واتجاه شهري (Chart.js line) لعدد المسحوب/المستبعد. **نفس الهوية البصرية بالضبط** لباقي الموقع (`.sh-title`/`.sh-sub`/`.wkband`/`.kpis`/`.rk` — لا CSS جديد).
+   **التخزين:** يُحفظ **الملخّص الرقمي فقط** (`aggregateReport()` — الإجماليات، توزيع نقاط السحب/الأنواع، بيانات كل موظف، أسباب الاستبعاد، فصائل الدم، تجميع شهري) في مستند `reports/{dateFrom_dateTo}`؛ لا تُخزَّن ملفات PDF/PPTX ولا الملف الخام. أي تقرير محفوظ يمكن فتحه لاحقاً من «🗂️ التقارير المحفوظة» وإعادة تصدير PDF/PPT منه في أي وقت دون رفع الملفات من جديد.
+   **التصدير:** «🖨️ PDF» عبر `window.print()` (نفس نمط زر طباعة الإحصائيات — تنسيق طباعة A4 landscape الموجود أصلاً يُطبَّق تلقائياً)، و«📊 PowerPoint» عبر مكتبة `pptxgenjs` من CDN: شريحة غلاف (نفس هوية navy/amber)، شريحة مؤشرات، جدول PowerPoint أصلي لترتيب الإنتاجية، ثم شريحة لكل رسم بياني (تُلتقط كصورة من الـ`<canvas>` مباشرة عبر `toDataURL`). اسم الملف في الحالتين: `Donations_Analysis_{من}_To_{إلى}` (نفس نمط تسمية جدول الأسبوع).
+6. **🩸 جدول الصفائح** — انظر القرار رقم ٦ أدناه (مزامنة تلقائية من الجدول الأسبوعي)
+7. **🗂️ الأرشيف** — كل الأسابيع السابقة، فتح أي أسبوع وطباعته PDF
 
 ## تصدير PDF ومشاركة واتساب
 - زر "تصدير PDF" يستخدم `window.print()` مع `@media print` CSS يخفي كل شيء عدا الجدول بالهوية الكاملة (ألوان الطباعة: `print-color-adjust: exact`)
@@ -75,6 +84,13 @@ weeks/{weekId}:  weekId = "2026-08-09" (تاريخ بداية الأسبوع)
     status: "draft" | "published" | "closed" }
 settings/tasks:  { list: [{id, name, type: "count"|"rating", weight}] }  // rating: excellent|satisfactory|unsatisfactory
 settings/target: { monthly: number }  // الهدف الشهري لعدد المتبرعين، يُعدَّل من صفحة الإحصائيات
+reportStaff/{staffId}: { name }  // قائمة أسماء خاصة بصفحة "تقارير التبرعات" — منفصلة عن staff/{id}
+reports/{dateFrom_dateTo}:  // ملخّص رقمي محفوظ من صفحة "تقارير التبرعات" (بلا ملفات PDF/PPTX)
+  { dateFrom, dateTo, label, totalCollected, totalDiscarded,
+    bySite: { "2001F"|"2001D"|"OTHER": n }, byType: { "Whole blood"|"Plateletpheresis"|"Plasmapheresis": n },
+    perStaff: { staffId: { collected, discarded } },
+    discardReasons: { code: { desc, count } }, bloodGroups: { group: n },
+    monthly: { "YYYY-MM": { collected, discarded } }, generatedAt }
 ```
 
 ## القرارات المعتمدة (من حسن — لا تُغيّر)
@@ -132,7 +148,7 @@ settings/target: { monthly: number }  // الهدف الشهري لعدد الم
 
 ## قواعد التطوير
 - ملف واحد `index.html` (HTML + CSS + JS)، بدون build tools
-- Chart.js، html2canvas، jsPDF (لتصدير/مشاركة PDF)، و Google Fonts — كلها من CDN
+- Chart.js، html2canvas، jsPDF (لتصدير/مشاركة PDF)، pptxgenjs (لتصدير PowerPoint من صفحة تقارير التبرعات)، و Google Fonts — كلها من CDN
 - كل التواريخ ميلادي، مع عرض هجري اختياري في رأس الجدول (مثل مشروع الإجازات)
 - حفظ تلقائي إلى Firestore مع مؤشر "تم الحفظ ✓"
 - يعمل بشكل ممتاز على الجوال (الفريق يفتح من الواتساب)
