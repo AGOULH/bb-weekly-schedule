@@ -332,10 +332,10 @@ table.rpt-rate .rratebar{display:inline-block;height:6px;background:var(--rblue2
   <div id="sheet">
     <div class="sh-title">Central Blood Bank In Dammam</div>
     <div class="sh-sub" id="shSub">Weekly Schedule&nbsp; Date — To —</div>
-    <table class="sh">
+    <div style="overflow-x:auto"><table class="sh">
       <thead><tr><th>#</th><th>ITEM / TASK</th><th>STAFF 1</th><th>STAFF 2</th><th>STAFF 3</th><th>STAFF 4</th><th>STAFF 5</th><th>STAFF 6</th></tr></thead>
       <tbody id="shBody"></tbody>
-    </table>
+    </table></div>
     <div class="sh-foot">DONE BY : HASAN ALAGOUL</div>
   </div>
   <div class="card noprint" style="margin-top:16px"><h3>⚖️ تنبيهات توازن التوزيع</h3><div id="balAlerts"></div></div>
@@ -417,7 +417,7 @@ table.rpt-rate .rratebar{display:inline-block;height:6px;background:var(--rblue2
   <div id="reportOut"></div>
   <div class="card">
     <h3>🗂️ التقارير المحفوظة</h3>
-    <table class="rk"><thead><tr><th>الفترة</th><th>المتبرعون</th><th>المستبعد</th><th>نسبة الاستبعاد</th><th>تاريخ التوليد</th><th>إجراء</th></tr></thead><tbody id="reportArcBody"></tbody></table>
+    <div style="overflow-x:auto"><table class="rk"><thead><tr><th>الفترة</th><th>المتبرعون</th><th>المستبعد</th><th>نسبة الاستبعاد</th><th>تاريخ التوليد</th><th>إجراء</th></tr></thead><tbody id="reportArcBody"></tbody></table></div>
   </div>
 </section>
 
@@ -441,10 +441,10 @@ table.rpt-rate .rratebar{display:inline-block;height:6px;background:var(--rblue2
     <div class="sh-title">🩸 Apheresis Schedule · جدول سحب الصفائح</div>
     <div class="sh-title" style="background:var(--teal);font-size:13px">Central Blood Bank In Dammam</div>
     <div class="sh-sub" style="background:var(--gold);color:#fff" id="apxSub">Month —</div>
-    <table class="sh">
+    <div style="overflow-x:auto"><table class="sh">
       <thead><tr><th>#</th><th>STAFF 1</th><th>STAFF 2</th><th>DATE RANGE</th><th>PERIOD</th></tr></thead>
       <tbody id="apxBody"></tbody>
-    </table>
+    </table></div>
     <div class="sh-foot">DONE BY : HASAN AL-AGOUL</div>
   </div>
 </section>
@@ -458,13 +458,13 @@ table.rpt-rate .rratebar{display:inline-block;height:6px;background:var(--rblue2
     <div class="field"><label for="newStaffRole">الفئة الوظيفية</label><select class="inp" id="newStaffRole" style="min-width:130px"><option value="technical">فني</option><option value="reception">استقبال</option></select></div>
     <button class="btn" id="addStaffBtn">＋ إضافة</button>
   </div></div>
-  <div class="card"><table class="rk"><thead><tr><th>#</th><th style="text-align:right">الاسم</th><th>الرقم الوظيفي</th><th>الفئة</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody id="staffBody"></tbody></table></div>
+  <div class="card"><div style="overflow-x:auto"><table class="rk"><thead><tr><th>#</th><th style="text-align:right">الاسم</th><th>الرقم الوظيفي</th><th>الفئة</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody id="staffBody"></tbody></table></div></div>
 </section>
 
 <!-- ============ ARCHIVE ============ -->
 <section class="page" id="pg-archive">
   <div class="pghead"><div><h2 tabindex="-1">الأرشيف</h2><p>كل الأسابيع المحفوظة — افتح أي أسبوع لعرضه أو طباعته</p></div></div>
-  <div class="card"><table class="rk"><thead><tr><th>الأسبوع</th><th>المتبرعون</th><th>Rh−</th><th>الصفائح</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody id="arcBody"></tbody></table></div>
+  <div class="card"><div style="overflow-x:auto"><table class="rk"><thead><tr><th>الأسبوع</th><th>المتبرعون</th><th>Rh−</th><th>الصفائح</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody id="arcBody"></tbody></table></div></div>
 </section>
 
 </main>
@@ -814,7 +814,7 @@ function renderResults(){
     }).join('');
     return `<tr><td class="num">${i+1}</td><td class="task">${t.name} <small style="color:var(--teal)">${t.type==='count'?'عدد':'تقييم'}</small></td><td class="assignees"><div class="reswrap">${cells}</div></td></tr>`;
   }).join('');
-  $('#resWrap').innerHTML=`<table class="res"><thead><tr><th>#</th><th>المهمة</th><th>الموظفون المكلّفون</th></tr></thead><tbody>${rows}</tbody></table>`;
+  $('#resWrap').innerHTML=`<div style="overflow-x:auto"><table class="res"><thead><tr><th>#</th><th>المهمة</th><th>الموظفون المكلّفون</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   $$('#resWrap input,#resWrap select').forEach(el=>el.onchange=()=>{
     const t=el.dataset.t,s=el.dataset.s;
     WEEKS[curWeek].results[t]=WEEKS[curWeek].results[t]||{};
@@ -1145,12 +1145,12 @@ function renderStats(){
       <div class="kpi g"><div class="lb">متبرعو الصفائح</div><div class="vl">${dept.apheresisDonors}</div><div class="dt">${delta(dept.apheresisDonors,prev.aph)}</div></div>
       <div class="kpi"><div class="lb">متوسط أسبوعي</div><div class="vl">${avgApxWk}</div><div class="dt flat">خلال ${dept.weeks} أسبوع</div></div>
     </div>
-    <table class="rk"><thead><tr><th>#</th><th style="text-align:right">الموظف</th><th>Schedule Apheresis Donor</th><th>Bleeder Apheresis</th><th>الإجمالي</th><th>مرات التكليف</th><th>المعدّل لكل تكليف</th><th>مرات تغطية الجدول الشهري</th><th>الأداء النسبي</th></tr></thead><tbody>`;
+    <div style="overflow-x:auto"><table class="rk"><thead><tr><th>#</th><th style="text-align:right">الموظف</th><th>Schedule Apheresis Donor</th><th>Bleeder Apheresis</th><th>الإجمالي</th><th>مرات التكليف</th><th>المعدّل لكل تكليف</th><th>مرات تغطية الجدول الشهري</th><th>الأداء النسبي</th></tr></thead><tbody>`;
     apxList.forEach((x,i)=>{
       html+=`<tr><td>${medal(i)||i+1}</td><td class="nm">${x.name}</td><td>${x.schedule}</td><td>${x.bleeder}</td><td><b>${x.combined}</b></td><td>${x.assigned}</td><td><b>${x.rate.toFixed(1)}</b></td><td>${x.coverage}</td>
       <td><div class="bar"><i style="width:${Math.round(x.rate/maxApxRate*100)}%"></i></div></td></tr>`;
     });
-    html+=`</tbody></table><div class="hint">«المعدّل لكل تكليف» = الإجمالي ÷ مرات التكليف بمهمتَي «Schedule Apheresis Donor» و«Bleeder Apheresis»، وهو أساس الترتيب و«الأداء النسبي» لمقارنة عادلة بين من كُلّف مرات أكثر أو أقل. «مرات تغطية الجدول الشهري» = عدد ظهور الموظف (STAFF 1/2) في جدول الصفائح الشهري خلال المدى المحدد.</div>
+    html+=`</tbody></table></div><div class="hint">«المعدّل لكل تكليف» = الإجمالي ÷ مرات التكليف بمهمتَي «Schedule Apheresis Donor» و«Bleeder Apheresis»، وهو أساس الترتيب و«الأداء النسبي» لمقارنة عادلة بين من كُلّف مرات أكثر أو أقل. «مرات تغطية الجدول الشهري» = عدد ظهور الموظف (STAFF 1/2) في جدول الصفائح الشهري خلال المدى المحدد.</div>
     <div class="chartbox" style="margin-top:12px"><canvas id="cApx"></canvas></div></div>`;
   }
 
