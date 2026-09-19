@@ -9,6 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{
   /* الهوية البصرية — إلزامية، مستخرجة من ملف الإكسل الأصلي (لا تُغيّر) */
@@ -269,6 +270,147 @@ table.rpt-rate .rratebar{display:inline-block;height:6px;background:var(--rblue2
   .rpt-page:last-child{page-break-after:auto}
 }
 
+/* ===== Leaves (إدارة الإجازات) — صفحة مدمجة، تعيد استخدام متغيرات الهوية الأساسية أعلاه ===== */
+:root{
+  --lv-surface2:#EEF3F8; --lv-surface3:#E3EBF3;
+  --lv-warn:#B45309;
+}
+.btn.danger{background:var(--bad);color:#fff}
+@media(hover:hover){.btn.danger:hover{background:#96201d}}
+.lv-subnav{display:flex;overflow-x:auto;gap:2px;background:#fff;border:1px solid var(--line);border-radius:10px 10px 0 0;padding:0 6px}
+.lv-tab{background:none;border:0;border-bottom:3px solid transparent;color:var(--muted);padding:11px 14px;font-size:12.5px;font-weight:700;white-space:nowrap;transition:color 150ms,border-color 150ms}
+.lv-tab:hover{color:var(--ink)}
+.lv-tab.active{color:var(--navy);border-bottom-color:var(--amber)}
+.lv-body{background:#fff;border:1px solid var(--line);border-top:0;border-radius:0 0 10px 10px;padding:16px;margin-bottom:16px}
+.lv-pane{display:none}.lv-pane.on{display:block}
+
+.lv-fbar{display:flex;gap:9px;margin-bottom:14px;flex-wrap:wrap}
+.lv-fbar select,.lv-fbar input{flex:1;min-width:160px}
+
+.lv-badge{display:inline-block;padding:3px 11px;border-radius:20px;font-size:11.5px;font-weight:800}
+.lv-b-annual{background:#e6f6f4;color:#0f766e}
+.lv-b-sick{background:#fde4e4;color:#bd2d29}
+.lv-b-emergency{background:#fde8dc;color:#c2410c}
+.lv-b-maternity{background:#e0f2f6;color:#0d7377}
+.lv-b-study{background:#e2e9fb;color:#1d4ed8}
+.lv-b-unpaid{background:#eceff2;color:#475569}
+.lv-b-shift{background:#efe6fb;color:#6d28d9}
+.lv-b-assignment{background:#fbf1da;color:#a16207}
+.lv-b-hajj{background:#fbecd9;color:#b45309}
+.lv-b-sick_ext{background:#fbe0e8;color:#be123c}
+.lv-b-compassionate{background:#e5e4fb;color:#4338ca}
+.lv-b-remote{background:#e0f5e6;color:#15803d}
+
+.lv-legend{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:14px}
+.lv-leg-item{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--muted)}
+.lv-leg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
+.lv-cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;flex-wrap:wrap}
+.lv-cal-title{text-align:center;flex:1}
+.lv-cal-nav{background:var(--lv-surface2);border:1px solid var(--line);color:var(--ink);padding:8px 18px;border-radius:9px;font-size:16px}
+.lv-toggle-row{display:flex;gap:8px;margin-bottom:12px;justify-content:center;flex-wrap:wrap}
+.lv-toggle{background:var(--lv-surface2);border:1px solid var(--line);color:var(--muted);padding:6px 18px;border-radius:20px;font-size:12.5px;font-weight:800}
+.lv-toggle.active{background:var(--navy);border-color:var(--navy);color:#fff}
+.lv-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.lv-cal-dh{text-align:center;font-size:11px;color:var(--muted);padding:7px 2px;font-weight:800}
+.lv-cal-day{background:var(--lv-surface2);border:1px solid var(--line);border-radius:7px;min-height:96px;padding:7px;overflow:hidden}
+.lv-cal-day.empty{background:transparent;border-color:transparent}
+.lv-cal-day.today{border-color:var(--navy);box-shadow:0 0 0 1px var(--navy) inset}
+.lv-cal-filter{background:var(--lv-surface2);border:1px solid var(--line);border-radius:11px;padding:12px 16px;margin-bottom:14px}
+.lv-cal-multi{margin-bottom:24px}
+
+.lv-leave-card{position:relative;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:11px;box-shadow:var(--shadow-card)}
+.lv-lc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;gap:10px;flex-wrap:wrap}
+.lv-lc-emp{display:flex;align-items:center;gap:10px}
+.lv-lc-avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:900;color:#fff;flex-shrink:0}
+.lv-lc-name{font-size:14px;font-weight:800;font-family:Arial;direction:ltr;text-align:right}
+.lv-lc-actions{display:flex;gap:7px;flex-shrink:0}
+.lv-lc-body{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:9px;padding-top:11px;border-top:1px solid var(--line)}
+.lv-lc-field{background:var(--lv-surface2);border-radius:8px;padding:8px 11px}
+.lv-lc-flabel{font-size:10.5px;color:var(--faint);margin-bottom:3px;font-weight:700}
+.lv-lc-fval{font-size:12.5px;font-weight:700;color:var(--ink)}
+.lv-lc-note{grid-column:1/-1;background:var(--lv-surface2);border-radius:8px;padding:8px 11px}
+
+.lv-conf-card{background:var(--lv-surface2);border:1px solid var(--line);border-radius:10px;padding:11px 14px;margin-bottom:8px;display:flex;align-items:flex-start;gap:11px}
+.lv-csev{width:10px;height:10px;border-radius:50%;margin-top:4px;flex-shrink:0}
+.lv-sh{background:var(--bad)}.lv-sm{background:var(--amber)}.lv-sl{background:var(--teal)}
+.lv-brow{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.lv-bdate{font-size:11.5px;color:var(--muted);width:110px;flex-shrink:0;direction:ltr;text-align:right}
+.lv-bbg{flex:1;background:var(--lv-surface3);border-radius:4px;height:20px;overflow:hidden}
+.lv-bbar{height:100%;border-radius:4px;display:flex;align-items:center;padding-right:8px;font-size:11px;font-weight:800;color:#fff}
+.lv-bcnt{font-size:11.5px;width:22px;text-align:center}
+
+.lv-sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:16px}
+.lv-scard{background:var(--lv-surface2);border:1px solid var(--line);border-radius:11px;padding:14px;display:flex;align-items:center;gap:11px}
+.lv-sicon{font-size:1.5rem}
+.lv-sval{font-size:1.25rem;font-weight:900;color:var(--navy)}
+.lv-slabel{font-size:11px;color:var(--muted)}
+.lv-bchart{display:flex;flex-direction:column;gap:8px}
+.lv-brow2{display:flex;align-items:center;gap:10px}
+.lv-bname{width:78px;font-size:11.5px;color:var(--muted);text-align:right;flex-shrink:0;direction:ltr}
+.lv-bbg2{flex:1;background:var(--lv-surface3);border-radius:4px;height:22px;overflow:hidden}
+.lv-bfill{height:100%;border-radius:4px;display:flex;align-items:center;padding-right:8px;font-size:10.5px;font-weight:800;color:#fff;min-width:26px}
+.lv-bval{font-size:11.5px;color:var(--muted);width:28px;text-align:left}
+.lv-tdist{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:9px}
+.lv-titem{background:var(--lv-surface2);border:1px solid var(--line);border-radius:9px;padding:12px;text-align:center}
+.lv-tcount{font-size:1.25rem;font-weight:900;color:var(--navy);margin-bottom:3px}
+.lv-tname{font-size:11px;color:var(--muted)}
+.lv-ol-grid{display:flex;flex-wrap:wrap;gap:8px}
+.lv-ol-chip{background:var(--lv-surface3);border:1px solid var(--line);border-radius:20px;padding:6px 13px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px}
+
+.lv-emp-profile-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:11px}
+.lv-emp-pcard{background:var(--lv-surface2);border:1px solid var(--line);border-radius:12px;padding:14px;cursor:pointer;transition:border-color 150ms,transform 150ms}
+.lv-emp-pcard:hover{border-color:var(--teal);transform:translateY(-2px)}
+.lv-emp-ph{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.lv-emp-avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:900;color:#fff;flex-shrink:0}
+.lv-emp-pname{font-size:13.5px;font-weight:800;direction:ltr;text-align:right}
+.lv-emp-psub{font-size:10.5px;color:var(--muted)}
+.lv-emp-pstats{display:flex;gap:8px;flex-wrap:wrap}
+.lv-ep-stat{background:var(--lv-surface3);border-radius:7px;padding:6px 10px;font-size:11px;text-align:center}
+.lv-ep-sval{font-size:13.5px;font-weight:900;display:block;color:var(--navy)}
+.lv-ep-slabel{color:var(--muted)}
+
+.lv-pmodal,.lv-emodal{display:none;position:fixed;inset:0;background:rgba(19,41,77,.55);z-index:300;align-items:center;justify-content:center;padding:16px}
+.lv-pmodal.open,.lv-emodal.open{display:flex}
+.lv-pmodal-inner,.lv-emodal-inner{background:#fff;border-radius:16px;padding:22px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-card-hover)}
+.lv-pmodal-header,.lv-emodal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:15px}
+.lv-pm-title{font-size:15px;font-weight:800;color:var(--navy)}
+.lv-pm-close{background:var(--lv-surface2);border:1px solid var(--line);color:var(--ink);width:32px;height:32px;border-radius:8px;font-size:15px}
+.lv-pm-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:13px}
+.lv-pm-stat{background:var(--lv-surface2);border:1px solid var(--line);border-radius:9px;padding:10px;text-align:center}
+.lv-pm-sval{font-size:16px;font-weight:900;color:var(--navy)}
+.lv-pm-slabel{font-size:10px;color:var(--muted)}
+.lv-pm-type-dist{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+.lv-pm-leavelist{display:flex;flex-direction:column;gap:7px}
+.lv-pm-lrow{background:var(--lv-surface2);border-radius:8px;padding:9px 12px;display:flex;align-items:center;justify-content:space-between;font-size:12px}
+.lv-sec-title{font-size:13px;font-weight:800;color:var(--navy);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+
+.lv-fgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:560px){.lv-fgrid{grid-template-columns:1fr}}
+.lv-fg{display:flex;flex-direction:column;gap:5px}
+.lv-ffull{grid-column:1/-1}
+.lv-dprev{background:var(--lv-surface2);border:1px solid var(--line);border-radius:9px;padding:9px 12px;font-size:12.5px;color:var(--teal);font-weight:800;text-align:center}
+
+.lv-dp-wrap{background:#fff;border:1px solid var(--line-strong);border-radius:8px;padding:9px 12px;cursor:pointer;display:flex;align-items:center;gap:9px}
+.lv-dp-wrap:hover{border-color:var(--teal)}
+.lv-dp-val{font-size:12.5px;color:var(--ink);flex:1}
+.lv-dp-val.placeholder{color:var(--faint)}
+.lv-cpmodal{display:none;position:fixed;inset:0;background:rgba(19,41,77,.6);z-index:400;align-items:center;justify-content:center;padding:16px}
+.lv-cpmodal.open{display:flex}
+.lv-cpmodal-inner{background:#fff;border-radius:16px;padding:24px;width:100%;max-width:480px;box-shadow:var(--shadow-card-hover)}
+.lv-cp-dh{text-align:center;font-size:11.5px;color:var(--muted);padding:6px 2px;font-weight:800}
+.lv-cp-day{background:var(--lv-surface2);border:1px solid transparent;border-radius:9px;padding:7px 3px;text-align:center;cursor:pointer;font-weight:700;color:var(--ink);min-height:48px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.lv-cp-day:hover{background:var(--lv-surface3)}
+.lv-cp-day.selected{background:var(--navy);color:#fff}
+.lv-cp-day.today{border-color:var(--amber);color:var(--gold)}
+.lv-cp-day.selected.today{background:var(--navy);color:#fff}
+.lv-cp-day.other-month{opacity:.3}
+.lv-cp-day.in-range{background:#d6eafb}
+
+.lv-empty{text-align:center;padding:30px 14px;color:var(--faint);font-size:12.5px}
+.lv-empty .lv-ei{font-size:2rem;margin-bottom:8px}
+@media(max-width:820px){.lv-cal-day{min-height:70px}.lv-sgrid{grid-template-columns:1fr 1fr}.lv-pm-stats{grid-template-columns:repeat(2,1fr)}.lv-lc-actions{width:100%}.lv-lc-actions .btn{flex:1}}
+
 /* ===== PRINT ===== */
 @media print{
   @page{size:A4 landscape;margin:10mm}
@@ -299,6 +441,7 @@ table.rpt-rate .rratebar{display:inline-block;height:6px;background:var(--rblue2
     <button class="navbtn" data-pg="reports"><span class="ic" aria-hidden="true">📊</span> تقارير التبرعات</button>
     <button class="navbtn" data-pg="apheresis"><span class="ic" aria-hidden="true">🩸</span> جدول الصفائح</button>
     <button class="navbtn" data-pg="staff"><span class="ic" aria-hidden="true">👥</span> قائمة الموظفين</button>
+    <button class="navbtn" data-pg="leaves"><span class="ic" aria-hidden="true">🏖️</span> الإجازات</button>
     <button class="navbtn" data-pg="archive"><span class="ic" aria-hidden="true">🗂️</span> الأرشيف</button>
   </nav>
   <div class="foot">
@@ -314,6 +457,7 @@ table.rpt-rate .rratebar{display:inline-block;height:6px;background:var(--rblue2
     <div><h2 tabindex="-1">الجدول الأسبوعي</h2><p>توزيع المهام على الفريق — يُطبع بنفس هوية القسم</p></div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn ghost" id="newWeekBtn">＋ أسبوع جديد</button>
+      <button class="btn ghost" id="refreshLeaveBtn" title="تحديث بيانات الإجازات من نظام الإجازات">🏖️ تحديث الإجازات</button>
       <button class="btn amber" id="printBtn">🖨️ تصدير PDF</button>
       <button class="btn teal" id="shareWaBtn">📲 حفظ ومشاركة واتساب</button>
       <button class="btn" id="saveSchedBtn">💾 حفظ</button>
@@ -328,6 +472,7 @@ table.rpt-rate .rratebar{display:inline-block;height:6px;background:var(--rblue2
       <div class="field"><label>الحالة</label><div id="wStatus"></div></div>
     </div>
     <div class="hint">الأسبوع = ٧ أيام تبدأ من التاريخ المختار. اسم ملف الـPDF يُضبط تلقائياً بتاريخ الأسبوع. عند إنشاء أسبوع جديد يُنسخ توزيع آخر أسبوع تلقائياً — يكفي تعديل ما تغيّر بدل التعبئة من جديد. تأكد دائماً من الشريط الأزرق أعلاه قبل التعديل أو التصدير — هو الأسبوع الذي سيُحفظ فعلياً.</div>
+    <div class="hint" id="leaveInfo" style="display:none"></div>
   </div>
   <div id="sheet">
     <div class="sh-title">Central Blood Bank In Dammam</div>
@@ -461,6 +606,198 @@ table.rpt-rate .rratebar{display:inline-block;height:6px;background:var(--rblue2
   <div class="card"><div style="overflow-x:auto"><table class="rk"><thead><tr><th>#</th><th style="text-align:right">الاسم</th><th>الرقم الوظيفي</th><th>الفئة</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody id="staffBody"></tbody></table></div></div>
 </section>
 
+<!-- ============ LEAVES ============ -->
+<section class="page" id="pg-leaves">
+  <div class="pghead noprint">
+    <div><h2 tabindex="-1">🏖️ الإجازات</h2><p>تقويم وسجل إجازات الفريق — مدمج مع الجدول الأسبوعي؛ الموظف المجاز يُستبعد تلقائياً من قوائم التكليف</p></div>
+  </div>
+  <div class="lv-subnav noprint" id="lvSubnav">
+    <button class="lv-tab active" data-lvtab="calendar">📅 التقويم</button>
+    <button class="lv-tab" data-lvtab="list">📋 القائمة</button>
+    <button class="lv-tab" data-lvtab="prelim">🗓️ حجز مبدئي</button>
+    <button class="lv-tab" data-lvtab="conflicts">⚠️ التداخلات</button>
+    <button class="lv-tab" data-lvtab="stats">📊 الإحصائيات</button>
+    <button class="lv-tab" data-lvtab="profiles">👤 الموظفون</button>
+    <button class="lv-tab" data-lvtab="add">➕ إضافة إجازة</button>
+  </div>
+  <div class="lv-body">
+
+    <!-- CALENDAR -->
+    <div class="lv-pane on" id="lv-pane-calendar">
+      <div class="lv-cal-head">
+        <button class="lv-cal-nav" id="lvCalPrev">→</button>
+        <div class="lv-cal-title" id="lvCalTitle"></div>
+        <button class="lv-cal-nav" id="lvCalNext">←</button>
+      </div>
+      <div class="lv-toggle-row">
+        <button class="lv-toggle active" id="lvModeAr">🗓️ هجري</button>
+        <button class="lv-toggle" id="lvModeEn">📅 ميلادي</button>
+      </div>
+      <div class="lv-toggle-row">
+        <span style="font-size:11.5px;color:var(--muted);align-self:center;font-weight:700">عرض:</span>
+        <button class="lv-toggle active" id="lvMview1">شهر</button>
+        <button class="lv-toggle" id="lvMview3">٣ أشهر</button>
+        <button class="lv-toggle" id="lvMview6">٦ أشهر</button>
+        <button class="lv-toggle" id="lvMview12">سنة كاملة</button>
+      </div>
+      <div class="lv-cal-filter">
+        <div style="font-size:12.5px;font-weight:800;color:var(--muted);margin-bottom:10px">🔍 فلتر — عرض من هم في إجازة خلال فترة</div>
+        <div class="row">
+          <div class="field"><label>من تاريخ</label><div class="lv-dp-wrap" data-lvcal="lvCalFStart"><span>📅</span><span class="lv-dp-val placeholder" id="lvCalFStart-display">اضغط لاختيار</span><input type="hidden" id="lvCalFStart"></div></div>
+          <div class="field"><label>إلى تاريخ</label><div class="lv-dp-wrap" data-lvcal="lvCalFEnd"><span>📅</span><span class="lv-dp-val placeholder" id="lvCalFEnd-display">اضغط لاختيار</span><input type="hidden" id="lvCalFEnd"></div></div>
+          <button class="btn ghost sm" id="lvCalFClear">✕ إلغاء الفلتر</button>
+        </div>
+        <div id="lvCalFilterResult" style="margin-top:9px;font-size:12px;color:var(--teal);font-weight:700"></div>
+      </div>
+      <div class="lv-legend" id="lvCalLegend"></div>
+      <div class="lv-cal-grid" id="lvCalGrid"></div>
+      <div class="lv-cal-multi" id="lvCalMulti" style="display:none"></div>
+    </div>
+
+    <!-- LIST -->
+    <div class="lv-pane" id="lv-pane-list">
+      <div class="lv-fbar">
+        <select class="inp" id="lvFName"><option value="">👤 كل الموظفين</option></select>
+        <select class="inp" id="lvFType"><option value="">🗂️ كل الأنواع</option></select>
+        <div id="lvListCount" style="font-size:12px;color:var(--muted);white-space:nowrap;align-self:center"></div>
+      </div>
+      <div id="lvLeaveCards"></div>
+      <div class="lv-empty" id="lvListEmpty" style="display:none"><div class="lv-ei">📭</div>لا توجد إجازات</div>
+    </div>
+
+    <!-- PRELIM -->
+    <div class="lv-pane" id="lv-pane-prelim">
+      <div class="card" style="border-top:3px solid var(--lv-warn)">
+        <div class="lv-sec-title">🔔 تذكير دوري بطلب الإجازات المستقبلية</div>
+        <div id="lvPrelimBanner"></div>
+      </div>
+      <div class="card">
+        <div class="lv-sec-title" id="lvPrelimFormTitle">➕ إضافة حجز مبدئي</div>
+        <p class="hint" style="margin-bottom:12px">قائمة تذكيرية للإجازات المستقبلية قبل اعتمادها رسمياً — عند تعارض التواريخ لنفس الموظف يظهر تنبيه فقط دون رفض الحفظ.</p>
+        <div class="lv-fgrid">
+          <div class="lv-fg"><label class="hint">الموظف</label><select class="inp" id="lvPrelimEmp"></select></div>
+          <div class="lv-fg"><label class="hint">نوع الإجازة المتوقع</label><select class="inp" id="lvPrelimType"></select></div>
+          <div class="lv-fg"><label class="hint">📅 من تاريخ</label><div class="lv-dp-wrap" data-lvcal="lvPrelimStart"><span>📅</span><span class="lv-dp-val placeholder" id="lvPrelimStart-display">اضغط لاختيار التاريخ</span><input type="hidden" id="lvPrelimStart"></div></div>
+          <div class="lv-fg"><label class="hint">📅 إلى تاريخ</label><div class="lv-dp-wrap" data-lvcal="lvPrelimEnd"><span>📅</span><span class="lv-dp-val placeholder" id="lvPrelimEnd-display">اضغط لاختيار التاريخ</span><input type="hidden" id="lvPrelimEnd"></div></div>
+          <div class="lv-fg lv-ffull"><label class="hint">ملاحظة (اختياري)</label><input class="inp" id="lvPrelimNote" placeholder="مثال: طلب مبدئي لإجازة صيفية..."></div>
+          <div class="lv-fg lv-ffull"><div class="lv-dprev" id="lvPrelimDaysPrev">اختر تواريخ لحساب عدد الأيام</div></div>
+          <div class="lv-fg lv-ffull" style="display:flex;gap:9px;justify-content:flex-end">
+            <button class="btn ghost" id="lvPrelimCancelBtn" style="display:none">إلغاء التعديل</button>
+            <button class="btn" id="lvPrelimSaveBtn">✅ حفظ الحجز المبدئي</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="lv-sec-title">📋 قائمة الحجوزات المبدئية</div>
+        <div id="lvPrelimCount" style="font-size:12px;color:var(--muted);margin-bottom:9px"></div>
+        <div id="lvPrelimCards"></div>
+        <div class="lv-empty" id="lvPrelimEmpty" style="display:none"><div class="lv-ei">🗓️</div>لا توجد حجوزات مبدئية بعد</div>
+      </div>
+    </div>
+
+    <!-- CONFLICTS -->
+    <div class="lv-pane" id="lv-pane-conflicts">
+      <div class="card"><div class="lv-sec-title">⚠️ أيام التداخل</div><div id="lvConfList"></div></div>
+      <div class="card"><div class="lv-sec-title">📊 أكثر الأيام ازدحاماً</div><div id="lvBusyChart"></div></div>
+    </div>
+
+    <!-- STATS -->
+    <div class="lv-pane" id="lv-pane-stats">
+      <div class="lv-sgrid" id="lvStatsCards"></div>
+      <div class="card"><div class="lv-sec-title">📊 إجمالي أيام الإجازة لكل موظف</div><div class="lv-bchart" id="lvEmpChart"></div></div>
+      <div class="card"><div class="lv-sec-title">🎨 توزيع أنواع الإجازات</div><div class="lv-tdist" id="lvTypeDist"></div></div>
+      <div class="card"><div class="lv-sec-title">🟢 في إجازة الآن</div><div class="lv-ol-grid" id="lvOnLeaveNow"></div></div>
+    </div>
+
+    <!-- PROFILES -->
+    <div class="lv-pane" id="lv-pane-profiles">
+      <div class="lv-cal-filter">
+        <div style="font-size:12.5px;font-weight:800;color:var(--muted);margin-bottom:10px">🔍 فلتر بفترة زمنية — احتساب الإحصائيات ضمن فترة محددة</div>
+        <div class="row">
+          <div class="field"><label>من تاريخ</label><div class="lv-dp-wrap" data-lvcal="lvProfFStart"><span>📅</span><span class="lv-dp-val placeholder" id="lvProfFStart-display">اضغط لاختيار</span><input type="hidden" id="lvProfFStart"></div></div>
+          <div class="field"><label>إلى تاريخ</label><div class="lv-dp-wrap" data-lvcal="lvProfFEnd"><span>📅</span><span class="lv-dp-val placeholder" id="lvProfFEnd-display">اضغط لاختيار</span><input type="hidden" id="lvProfFEnd"></div></div>
+          <button class="btn ghost sm" id="lvProfFClear">✕ إلغاء الفلتر</button>
+        </div>
+      </div>
+      <div class="lv-emp-profile-grid" id="lvProfileGrid"></div>
+    </div>
+
+    <!-- ADD/EDIT -->
+    <div class="lv-pane" id="lv-pane-add">
+      <div class="card" style="border-top:3px solid var(--teal)">
+        <div class="lv-sec-title">📥 استيراد إجازات من ملف Excel</div>
+        <p class="hint">الأعمدة المطلوبة: <b>اسم الموظف | نوع الإجازة | بداية الإجازة | نهاية الإجازة</b> — التواريخ <b>هجرية</b> بصيغة 1447-03-15 — يدعم عدة أوراق (ورقة لكل موظف). اسم لا يُطابَق موظفاً معروفاً يُذكَر في التقرير بدل تجاهله بصمت.</p>
+        <label class="btn teal" style="display:inline-flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer">📂 اختر ملف Excel<input type="file" id="lvImportFile" accept=".xlsx,.xls" style="display:none"></label>
+        <div id="lvImportStatus" class="hint" style="margin-top:10px"></div>
+      </div>
+      <div class="card">
+        <div class="lv-sec-title" id="lvFormTitle">➕ إضافة إجازة جديدة</div>
+        <div class="lv-fgrid">
+          <div class="lv-fg"><label class="hint">الموظف</label><select class="inp" id="lvAddEmp"></select></div>
+          <div class="lv-fg"><label class="hint">نوع الإجازة</label><select class="inp" id="lvAddType"></select></div>
+          <div class="lv-fg"><label class="hint">📅 من تاريخ</label><div class="lv-dp-wrap" data-lvcal="lvAddStart"><span>📅</span><span class="lv-dp-val placeholder" id="lvAddStart-display">اضغط لاختيار التاريخ</span><input type="hidden" id="lvAddStart"></div></div>
+          <div class="lv-fg"><label class="hint">📅 إلى تاريخ</label><div class="lv-dp-wrap" data-lvcal="lvAddEnd"><span>📅</span><span class="lv-dp-val placeholder" id="lvAddEnd-display">اضغط لاختيار التاريخ</span><input type="hidden" id="lvAddEnd"></div></div>
+          <div class="lv-fg lv-ffull"><label class="hint">ملاحظات (اختياري)</label><input class="inp" id="lvAddNote" placeholder="أي ملاحظات..."></div>
+          <div class="lv-fg lv-ffull"><div class="lv-dprev" id="lvDaysPrev">اختر تواريخ لحساب عدد الأيام</div></div>
+          <div class="lv-fg lv-ffull" style="display:flex;gap:9px;justify-content:flex-end">
+            <button class="btn" id="lvSaveLeaveBtn">✅ حفظ الإجازة</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- Profile modal -->
+<div class="lv-pmodal" id="lvProfileModal">
+  <div class="lv-pmodal-inner">
+    <div class="lv-pmodal-header"><div class="lv-pm-title" id="lvPmTitle"></div><button class="lv-pm-close" id="lvPmClose">✕</button></div>
+    <div class="lv-pm-stats" id="lvPmStats"></div>
+    <div class="lv-sec-title">توزيع الإجازات</div>
+    <div class="lv-pm-type-dist" id="lvPmTypeDist"></div>
+    <div class="lv-sec-title">سجل الإجازات</div>
+    <div class="lv-pm-leavelist" id="lvPmLeaveList"></div>
+  </div>
+</div>
+
+<!-- Edit modal -->
+<div class="lv-emodal" id="lvEditModal">
+  <div class="lv-emodal-inner">
+    <div class="lv-emodal-header"><div class="lv-pm-title">✏️ تعديل الإجازة</div><button class="lv-pm-close" id="lvEmClose">✕</button></div>
+    <div class="lv-fgrid">
+      <div class="lv-fg"><label class="hint">الموظف</label><select class="inp" id="lvEditEmp"></select></div>
+      <div class="lv-fg"><label class="hint">نوع الإجازة</label><select class="inp" id="lvEditType"></select></div>
+      <div class="lv-fg"><label class="hint">من</label><div class="lv-dp-wrap" data-lvcal="lvEditStart"><span>📅</span><span class="lv-dp-val placeholder" id="lvEditStart-display">اضغط لاختيار التاريخ</span><input type="hidden" id="lvEditStart"></div></div>
+      <div class="lv-fg"><label class="hint">إلى</label><div class="lv-dp-wrap" data-lvcal="lvEditEnd"><span>📅</span><span class="lv-dp-val placeholder" id="lvEditEnd-display">اضغط لاختيار التاريخ</span><input type="hidden" id="lvEditEnd"></div></div>
+      <div class="lv-fg lv-ffull"><label class="hint">ملاحظات</label><input class="inp" id="lvEditNote"></div>
+      <div class="lv-fg lv-ffull" style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn ghost" id="lvEmCancel">إلغاء</button>
+        <button class="btn" id="lvEmSave">✅ حفظ التعديل</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Custom Hijri/Gregorian date-picker modal -->
+<div class="lv-cpmodal" id="lvCpModal">
+  <div class="lv-cpmodal-inner">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+      <button class="lv-cal-nav" id="lvCpPrev">→</button>
+      <div id="lvCpTitle" style="text-align:center;flex:1"></div>
+      <button class="lv-cal-nav" id="lvCpNext">←</button>
+    </div>
+    <div class="lv-toggle-row">
+      <button class="lv-toggle active" id="lvCpLangAr">عربي</button>
+      <button class="lv-toggle" id="lvCpLangEn">English</button>
+    </div>
+    <div id="lvCpGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:16px">
+      <button class="btn ghost" id="lvCpClose">إلغاء</button>
+    </div>
+  </div>
+</div>
+
 <!-- ============ ARCHIVE ============ -->
 <section class="page" id="pg-archive">
   <div class="pghead"><div><h2 tabindex="-1">الأرشيف</h2><p>كل الأسابيع المحفوظة — افتح أي أسبوع لعرضه أو طباعته</p></div></div>
@@ -519,6 +856,10 @@ async function cloudAll(col){
   }
   return LS.get('bb_'+col,{});
 }
+async function cloudDel(col,id){
+  if(CLOUD){ await db.fs.deleteDoc(db.fs.doc(db.d,col,id)); }
+  const all=LS.get('bb_'+col,{}); delete all[id]; LS.set('bb_'+col,all);
+}
 
 /* ---------- ثوابت ---------- */
 const TASKS=[
@@ -545,6 +886,17 @@ const SEED=['FAHED','AQEELHA','DOHA','AFNAN','ALASEED','IBRIH','MARDEEF','SULTAN
 const RECEPTION_NAMES=['AWTIF','REDA','ABDJALIL']; // موظفو استقبال — ليسوا ضمن الفريق الفني، للترتيب المنفصل في الإحصائيات
 const RECEPTION_TASKS=['t1','t2','t10']; // مهام يظهر فيها موظفو الاستقبال فقط في قائمة الاختيار؛ باقي المهام تعرض الفنيين فقط
 const STAFF_JOB_IDS={FAHED:'2649451',SULTAN:'3506824',DOHA:'3821573',MARDEEF:'3821733',IBRIH:'3838919',AFNAN:'3845448',AQEELHA:'3519889',ALASEED:'3843859'}; // من ملف الإكسل — يُستكمل لاحقاً لبقية الموظفين
+// نظام الإجازات مدمج بالكامل الآن (مجموعتا Firestore: leaves/prelim) — لا نظام خارجي منفصل بعد اليوم.
+// ARABIC_ALIAS للعرض الاحتياطي ومطابقة أسماء ملفات إكسل HR فقط (نفس فلسفة REPORT_STAFF_NAMES) — المعرّف الفعلي المخزَّن دائماً هو staffId، لا الاسم.
+const ARABIC_ALIAS={FAHED:'فهد',AQEELHA:'عقيلة',DOHA:'ضحى',AFNAN:'افنان',ALASEED:'السعيد',IBRIH:'ابريه',MARDEEF:'مراضيف',SULTAN:'سلطان',ABDJALIL:'عبدالجليل',REDA:'رضا',MATWHA:'المطوع',AWTIF:'عواطف',HAMED:'حمد',ALANOUD:'العنود'};
+const LV_TYPES={annual:'سنوية',sick:'مرضية',emergency:'اضطراري',maternity:'أمومة',study:'دراسية',unpaid:'بدون راتب',shift:'بدل مناوبة',assignment:'بدل تكليف',hajj:'إجازة حج',sick_ext:'إجازة مرضية مطولة',compassionate:'إجازة وفاة',remote:'عمل عن بُعد',compensatory:'تعويضية',patient_escort:'مرافقة مريض',absence_comp:'بدل أيام غياب'};
+const LV_TCLASS={annual:'annual',sick:'sick',emergency:'emergency',maternity:'maternity',study:'study',unpaid:'unpaid',shift:'shift',assignment:'assignment',hajj:'hajj',sick_ext:'sick_ext',compassionate:'compassionate',remote:'remote',compensatory:'shift',patient_escort:'maternity',absence_comp:'unpaid'};
+const LV_MONTHS=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+const LV_HIJRI_MONTHS=['محرّم','صفر','ربيع الأول','ربيع الآخر','جمادى الأولى','جمادى الآخرة','رجب','شعبان','رمضان','شوّال','ذو القعدة','ذو الحجة'];
+const LV_DAYS=['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+const LV_COLORS=['#1B3A6B','#0D7377','#C8860A','#BD2D29','#7092B8','#128755','#6d28d9','#c2410c','#0f766e','#be123c','#475569','#1d4ed8','#15803d','#a16207','#4338ca'];
+const LV_AR_MONTHS=LV_MONTHS, LV_EN_MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const LV_AR_DAYS=['أح','إث','ثل','أر','خم','جم','سب'], LV_EN_DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MON=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const MON3=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
 const IMPORT_SITES=['2001F','2001D']; // نقاط التبرع بمقر بنك الدم — الأساس لاستيراد النتائج من إكسل
@@ -564,6 +916,7 @@ const REPORT_STAFF_NAMES={ // من ملف "Donation & Discard Statistics" الذ
 
 /* ---------- الحالة ---------- */
 let STAFF={}, WEEKS={}, APX={}, TARGET={monthly:0}, curWeek=null, curApx=null, charts={}, lastStatsList=[];
+let LEAVES={}, PRELIM={}, LV_PRELIM_SETTINGS={lastReq:'',reminderDays:90};
 let REPORT_STAFF={}, REPORTS={}, curReportAgg=null, reportCharts={};
 
 const $=s=>document.querySelector(s);
@@ -579,10 +932,13 @@ async function boot(){
   await initCloud();
   STAFF=await cloudAll('staff'); WEEKS=await cloudAll('weeks'); APX=await cloudAll('apheresis');
   REPORT_STAFF=await cloudAll('reportStaff'); REPORTS=await cloudAll('reports');
+  await loadLeaves();
   for(const [id,name] of Object.entries(REPORT_STAFF_NAMES)){
     if(!REPORT_STAFF[id]){ REPORT_STAFF[id]={name}; await cloudSet('reportStaff',id,REPORT_STAFF[id]); }
   }
-  TARGET=(await cloudAll('settings')).target||{monthly:0};
+  const SETTINGS=await cloudAll('settings');
+  TARGET=SETTINGS.target||{monthly:0};
+  LV_PRELIM_SETTINGS=SETTINGS.leavePrelim||{lastReq:'',reminderDays:90};
   if(!Object.keys(STAFF).length){
     SEED.forEach((n,i)=>STAFF['s'+(i+1)]={name:n,active:true,role:RECEPTION_NAMES.includes(n)?'reception':'technical',order:i+1});
     for(const [k,v] of Object.entries(STAFF)) await cloudSet('staff',k,v);
@@ -608,7 +964,17 @@ async function boot(){
 }
 const idOf=n=>Object.entries(STAFF).find(([,v])=>v.name===n)?.[0];
 
-function renderAll(){ fillWeekPicks(); renderSheet(); renderResults(); renderStaff(); renderArchive(); renderApx(); renderAlerts(); renderReportArchive(); }
+/* ---------- الإجازات (مدمجة — Firestore leaves/prelim) ---------- */
+async function loadLeaves(){
+  LEAVES=await cloudAll('leaves');
+  PRELIM=await cloudAll('prelim');
+}
+// هل هذا الموظف في إجازة تتداخل مع مدى تاريخ الأسبوع (dateFrom–dateTo)؟ يعيد سجل الإجازة أو null
+function isOnLeave(staffId,dateFrom,dateTo){
+  return Object.values(LEAVES).find(l=>l.staffId===staffId && l.start<=dateTo && l.end>=dateFrom) || null;
+}
+
+function renderAll(){ fillWeekPicks(); renderSheet(); renderResults(); renderStaff(); renderArchive(); renderApx(); renderAlerts(); renderReportArchive(); lvRenderAll(); }
 
 /* ---------- التنقل ---------- */
 $$('.navbtn').forEach(b=>b.onclick=()=>{
@@ -643,13 +1009,27 @@ function renderSheet(){
   renderWkBand('#wkBandSched');
   $('#shBody').innerHTML=TASKS.map((t,i)=>`<tr data-tid="${t.id}"><td class="num">${i+1}</td><td class="task">${t.name}</td>${rowCells(t)}</tr>`).join('');
   $$('#shBody tr').forEach(tr=>bindRow(tr,TASKS.find(t=>t.id===tr.dataset.tid)));
+  renderLeaveInfo(w);
   $('#printBtn').onclick=()=>{ const old=document.title; document.title=`Weekly_Schedule_${w.label.replace(/ /g,'_')}`; window.print(); setTimeout(()=>document.title=old,700); };
 }
+function renderLeaveInfo(w){
+  const el=$('#leaveInfo'); if(!el)return;
+  const onLeave=activeStaff().map(s=>({s,lv:isOnLeave(s.id,w.dateFrom,w.dateTo)})).filter(x=>x.lv);
+  if(!onLeave.length){ el.style.display='none'; return; }
+  el.style.display='block';
+  el.innerHTML='🏖️ في إجازة ضمن هذا الأسبوع (مستبعدون تلقائياً من قوائم التكليف): '
+    +onLeave.map(x=>`<b>${x.s.name}</b> <span dir="ltr">(${x.lv.start} → ${x.lv.end})</span>`).join('، ');
+}
+$('#refreshLeaveBtn').onclick=async()=>{ await loadLeaves(); renderSheet(); toast('🏖️ تم تحديث بيانات الإجازات'); };
 function taskOpts(tid,a,j){
   const wantRole=RECEPTION_TASKS.includes(tid)?'reception':'technical';
   const id=a[j], used=new Set(a.filter((v,k)=>k!==j&&v));
-  const avail=s=>!used.has(s.id)||s.id===id;
-  const optHtml=list=>list.map(s=>`<option value="${s.id}" ${s.id===id?'selected':''}>${s.name}</option>`).join('');
+  const w=WEEKS[curWeek];
+  const onLeave=s=>isOnLeave(s.id,w.dateFrom,w.dateTo);
+  // موظف مجاز خلال هذا الأسبوع يُستبعد من الخيارات المتاحة؛ إن كان مكلَّفاً بها أصلاً (قبل تسجيل الإجازة) يبقى ظاهراً في خانته مع تنبيه بدل اختفائه فجأة
+  const avail=s=>(!used.has(s.id)||s.id===id)&&(s.id===id||!onLeave(s));
+  const optLabel=s=>onLeave(s)&&s.id===id?`${s.name} ⚠️ إجازة`:s.name;
+  const optHtml=list=>list.map(s=>`<option value="${s.id}" ${s.id===id?'selected':''}>${optLabel(s)}</option>`).join('');
   const primary=activeStaff().filter(s=>s.role===wantRole&&avail(s));
   const rest=activeStaff().filter(s=>s.role!==wantRole&&avail(s));
   const lbl=r=>r==='reception'?'الاستقبال':'الفنيون';
@@ -1736,6 +2116,799 @@ function renderReportArchive(){
     $('#reportOut').scrollIntoView({behavior:'smooth'});
   });
 }
+
+/* ============ الإجازات (مدمجة بالكامل) ============ */
+const lv$=id=>document.getElementById(id);
+const lvDays=(a,b)=>Math.round((new Date(b)-new Date(a))/86400000)+1;
+const lvRange=(s,e)=>{const r=[];let d=new Date(s),en=new Date(e);while(d<=en){r.push(d.toISOString().slice(0,10));d.setDate(d.getDate()+1);}return r;};
+const lvToday=()=>new Date().toISOString().slice(0,10);
+const lvGenId=()=>'lv'+Date.now()+Math.random().toString(36).slice(2,7);
+const lvArr=obj=>Object.entries(obj).map(([id,v])=>({id,...v}));
+function lvColor(staffId){ const i=activeStaff().findIndex(s=>s.id===staffId); return LV_COLORS[(i<0?0:i)%LV_COLORS.length]; }
+function lvFindOverlap(arr,staffId,start,end,excludeId){
+  return arr.find(l=>l.staffId===staffId && l.id!==excludeId && l.start<=end && l.end>=start);
+}
+async function lvPutLeave(id,data){ LEAVES[id]=data; await cloudSet('leaves',id,data); }
+async function lvRemoveLeaveDoc(id){ delete LEAVES[id]; await cloudDel('leaves',id); }
+async function lvPutPrelim(id,data){ PRELIM[id]=data; await cloudSet('prelim',id,data); }
+async function lvRemovePrelimDoc(id){ delete PRELIM[id]; await cloudDel('prelim',id); }
+async function lvSavePrelimSettings(){ await cloudSet('settings','leavePrelim',LV_PRELIM_SETTINGS); }
+
+let lvEditingId=null, lvPrelimEditId=null;
+let lvCalMode='ar', lvCalFilterStart='', lvCalFilterEnd='', lvCalMonthView=1;
+let lvProfFilterStart='', lvProfFilterEnd='';
+let lvCy=new Date().getFullYear(), lvCm=new Date().getMonth();
+let lvCpField=null, lvCpY=new Date().getFullYear(), lvCpM=new Date().getMonth(), lvCpLang='ar';
+const LV_TYPE_OPTS_HTML=Object.entries(LV_TYPES).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
+
+function lvSw(name){
+  $$('.lv-tab').forEach(b=>b.classList.toggle('active',b.dataset.lvtab===name));
+  $$('.lv-pane').forEach(p=>p.classList.remove('on'));
+  lv$('lv-pane-'+name).classList.add('on');
+  if(name==='calendar')lvRenderCal();
+  if(name==='list')lvRenderList();
+  if(name==='prelim'){lvPopulateSel();lvRenderPrelim();}
+  if(name==='conflicts')lvRenderConf();
+  if(name==='stats')lvRenderStats();
+  if(name==='profiles')lvRenderProfiles();
+  if(name==='add')lvPopulateSel();
+}
+function lvRenderAll(){
+  ['lvAddType','lvEditType','lvPrelimType'].forEach(id=>{ if(lv$(id)) lv$(id).innerHTML=LV_TYPE_OPTS_HTML; });
+  lvPopulateSel();
+  lvRenderCal();
+}
+
+/* ── عطل السعودية ── */
+function lvSaudiHolidays(y){
+  const h=[];
+  lvRange(`${y}-02-21`,`${y}-02-22`).forEach(d=>h.push({date:d,name:'🏛️ التأسيس',color:'#1d4ed8'}));
+  const eidFitr={2025:['2025-03-29','2025-04-02'],2026:['2026-03-19','2026-03-23'],2027:['2027-02-25','2027-02-25']};
+  const eidAdha={2025:['2025-06-05','2025-06-09'],2026:['2026-05-26','2026-05-30'],2027:['2027-05-06','2027-05-06']};
+  lvRange(`${y}-09-22`,`${y}-09-23`).forEach(d=>h.push({date:d,name:'🇸🇦 وطني',color:'#0f766e'}));
+  lvRange(`${y}-06-15`,`${y}-08-31`).forEach(d=>h.push({date:d,name:'☀️ صيفية',color:'#a16207'}));
+  if(eidFitr[y]) lvRange(eidFitr[y][0],eidFitr[y][1]).forEach(d=>h.push({date:d,name:'🌙 عيد الفطر',color:'#c2410c'}));
+  if(eidAdha[y]) lvRange(eidAdha[y][0],eidAdha[y][1]).forEach(d=>h.push({date:d,name:'🐑 عيد الأضحى',color:'#7c3aed'}));
+  return h;
+}
+
+/* ── تحويل هجري/ميلادي ── */
+function lvHijriParts(dateObj){
+  const parts=new Intl.DateTimeFormat('en-US-u-ca-islamic',{year:'numeric',month:'numeric',day:'numeric'}).formatToParts(dateObj);
+  let y=0,m=0,d=0;
+  parts.forEach(p=>{ if(p.type==='year')y=+p.value; if(p.type==='month')m=+p.value; if(p.type==='day')d=+p.value; });
+  return {year:y,month:m,day:d};
+}
+function lvHijriDay(y,m,d){ try{return new Date(y,m,d).toLocaleDateString('ar-SA-u-ca-islamic',{day:'numeric'});}catch(e){return d;} }
+function lvGoToHijri(hYear,hMonth){
+  const approxGregYear=Math.floor(hYear*0.970224+621.5);
+  let testDate=new Date(approxGregYear,0,1); let found=null;
+  for(let i=0;i<1200;i++){
+    const p=lvHijriParts(testDate);
+    if(p.year===hYear&&p.month===hMonth){found=new Date(testDate);break;}
+    if(p.year<hYear||(p.year===hYear&&p.month<hMonth)) testDate.setDate(testDate.getDate()+1);
+    else testDate.setDate(testDate.getDate()-1);
+  }
+  if(found){lvCy=found.getFullYear();lvCm=found.getMonth();}
+  lvRenderCal();
+}
+
+/* ── التقويم ── */
+function lvBuildDayCell(year,month,d,holidayMap,fStart,fEnd,td){
+  const ds=`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  let on=lvArr(LEAVES).filter(l=>l.start<=ds&&l.end>=ds);
+  if(fStart&&fEnd) on=on.filter(l=>!(l.end<fStart||l.start>fEnd));
+  else if(fStart) on=on.filter(l=>l.end>=fStart);
+  else if(fEnd) on=on.filter(l=>l.start<=fEnd);
+  const outOfRange=(fStart&&ds<fStart)||(fEnd&&ds>fEnd);
+  const isTd=ds===td;
+  const holiday=holidayMap[ds];
+  const dispNum=lvCalMode==='ar'?lvHijriDay(year,month,d):d;
+  const subNum=lvCalMode==='ar'?d:lvHijriDay(year,month,d);
+  const holBorder=holiday?`border-color:${holiday.color}55;background:${holiday.color}0d`:'';
+  const dimStyle=outOfRange?'opacity:.28;':'';
+  let html=`<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:3px;gap:3px">
+    <div style="display:flex;align-items:baseline;gap:5px;flex-wrap:wrap;flex:1;min-width:0">
+      <span style="font-size:1.2rem;font-weight:900;color:${isTd?'var(--navy)':'var(--ink)'};line-height:1;flex-shrink:0">${dispNum}</span>
+      <span style="font-size:.75rem;color:var(--muted);line-height:1;flex-shrink:0;font-weight:700">${subNum}</span>
+      ${holiday?`<span style="font-size:.65rem;font-weight:800;color:${holiday.color};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${holiday.name}</span>`:''}
+    </div>
+    ${on.length>1?'<span style="font-size:.68rem;flex-shrink:0">⚠️</span>':''}
+  </div>`;
+  if(on.length){
+    html+=`<div style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:4px">${on.map(l=>`<span style="width:9px;height:9px;border-radius:50%;background:${lvColor(l.staffId)};display:inline-block;flex-shrink:0"></span>`).join('')}</div>`;
+    html+=`<div style="display:flex;flex-direction:column;gap:2px">${on.map(l=>`<div style="display:flex;align-items:center;gap:4px"><span style="width:7px;height:7px;min-width:7px;border-radius:50%;background:${lvColor(l.staffId)};display:inline-block"></span><span style="font-size:.75rem;font-weight:800;color:var(--ink);line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:ltr">${sName(l.staffId)}</span></div>`).join('')}</div>`;
+  }
+  return `<div class="lv-cal-day${isTd?' today':''}" style="${holBorder}${dimStyle}">${html}</div>`;
+}
+function lvBuildMonthBlock(year,month,holidayMap,fStart,fEnd,td){
+  const greg=`${LV_MONTHS[month]} ${year}`;
+  const hijri=new Date(year,month,15).toLocaleDateString('ar-SA-u-ca-islamic',{month:'long',year:'numeric'});
+  const title=lvCalMode==='ar'?`${hijri} — <span style="color:var(--faint);font-size:.8rem">${greg}</span>`:`${greg} — <span style="color:var(--faint);font-size:.8rem">${hijri}</span>`;
+  let cells=LV_DAYS.map(d=>`<div class="lv-cal-dh">${d}</div>`).join('');
+  const first=new Date(year,month,1).getDay();
+  const total=new Date(year,month+1,0).getDate();
+  for(let i=0;i<first;i++) cells+=`<div class="lv-cal-day empty"></div>`;
+  for(let d=1;d<=total;d++) cells+=lvBuildDayCell(year,month,d,holidayMap,fStart,fEnd,td);
+  return `<div style="margin-bottom:22px"><div style="font-size:1.05rem;font-weight:900;color:var(--navy);margin-bottom:11px;padding-bottom:7px;border-bottom:2px solid var(--amber)">${title}</div><div class="lv-cal-grid">${cells}</div></div>`;
+}
+function lvBuildHijriMonthBlock(hYear,hMonth,holidayMap,fStart,fEnd,td){
+  const approx=Math.floor(hYear*0.970224+621.5);
+  let firstGreg=null, t=new Date(approx,0,1);
+  for(let i=0;i<800;i++){
+    const p=lvHijriParts(t);
+    if(p.year===hYear&&p.month===hMonth&&p.day===1){firstGreg=new Date(t);break;}
+    const diff=(hYear-p.year)*360+(hMonth-p.month)*30+(1-p.day);
+    t.setDate(t.getDate()+(diff>0?Math.max(1,Math.min(diff,30)):Math.min(-1,Math.max(diff,-30))));
+  }
+  if(!firstGreg) return '';
+  const hMonthName=LV_HIJRI_MONTHS[hMonth-1];
+  const gregLabel=firstGreg.toLocaleDateString('ar-SA-u-ca-gregory',{month:'long',year:'numeric'});
+  const title=`${hMonthName} ${hYear} هـ — <span style="color:var(--faint);font-size:.8rem">${gregLabel}</span>`;
+  let cells=LV_DAYS.map(d=>`<div class="lv-cal-dh">${d}</div>`).join('');
+  const firstWeekday=firstGreg.getDay();
+  for(let i=0;i<firstWeekday;i++) cells+=`<div class="lv-cal-day empty"></div>`;
+  let cur=new Date(firstGreg);
+  for(let hd=1;hd<=30;hd++){
+    const p=lvHijriParts(cur);
+    if(p.month!==hMonth||p.year!==hYear) break;
+    cells+=lvBuildDayCell(cur.getFullYear(),cur.getMonth(),cur.getDate(),holidayMap,fStart,fEnd,td);
+    cur.setDate(cur.getDate()+1);
+  }
+  return `<div style="margin-bottom:22px"><div style="font-size:1.05rem;font-weight:900;color:var(--navy);margin-bottom:11px;padding-bottom:7px;border-bottom:2px solid var(--amber)">${title}</div><div class="lv-cal-grid">${cells}</div></div>`;
+}
+function lvSetMonthView(n){
+  lvCalMonthView=n;
+  [1,3,6,12].forEach(v=>{ const b=lv$('lvMview'+v); if(b) b.classList.toggle('active', v===n); });
+  lvRenderCal();
+}
+function lvRenderCal(){
+  const hijriFull=new Date(lvCy,lvCm,15).toLocaleDateString('ar-SA-u-ca-islamic',{month:'long',year:'numeric'});
+  const gregFull=`${LV_MONTHS[lvCm]} ${lvCy}`;
+  const yearNow=new Date().getFullYear();
+  const bigTitle=lvCalMode==='ar'?hijriFull:gregFull;
+  const subTitle=lvCalMode==='ar'?gregFull:hijriFull;
+  let monthOpts='',yearOpts='';
+  if(lvCalMode==='ar'){
+    const cur=lvHijriParts(new Date(lvCy,lvCm,15));
+    monthOpts=LV_HIJRI_MONTHS.map((m,i)=>`<option value="${i+1}" ${(i+1)===cur.month?'selected':''}>${m}</option>`).join('');
+    for(let yy=cur.year-3;yy<=cur.year+5;yy++) yearOpts+=`<option value="${yy}" ${yy===cur.year?'selected':''}>${yy} هـ</option>`;
+  } else {
+    monthOpts=LV_MONTHS.map((m,i)=>`<option value="${i}" ${i===lvCm?'selected':''}>${m}</option>`).join('');
+    for(let yy=yearNow-3;yy<=yearNow+5;yy++) yearOpts+=`<option value="${yy}" ${yy===lvCy?'selected':''}>${yy}</option>`;
+  }
+  lv$('lvCalTitle').innerHTML=`<div style="line-height:1.5">
+    <div style="font-size:1.15rem;font-weight:900;color:var(--navy);margin-bottom:7px">${bigTitle}</div>
+    <div style="display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap">
+      <select class="inp" data-role="month" style="width:auto">${monthOpts}</select>
+      <select class="inp" data-role="year" style="width:auto">${yearOpts}</select>
+    </div>
+    <div style="font-size:11.5px;color:var(--muted);margin-top:5px">${subTitle}</div>
+    <button data-role="today" style="background:none;border:none;color:var(--teal);font-size:11px;font-weight:700;cursor:pointer;margin-top:3px;font-family:Cairo">↺ الشهر الحالي</button>
+  </div>`;
+  lv$('lvCalLegend').innerHTML=activeStaff().map(s=>`<div class="lv-leg-item"><div class="lv-leg-dot" style="background:${lvColor(s.id)}"></div><span dir="ltr">${s.name}</span></div>`).join('');
+  const holidays=lvSaudiHolidays(lvCy); const holidayMap={}; holidays.forEach(h=>holidayMap[h.date]=h);
+  const fStart=lvCalFilterStart, fEnd=lvCalFilterEnd, td=lvToday();
+  const leavesArr=lvArr(LEAVES);
+  const resEl=lv$('lvCalFilterResult');
+  if(fStart||fEnd){
+    const hit=new Set();
+    leavesArr.forEach(l=>{
+      const s=new Date(fStart||l.start), e2=new Date(fEnd||l.end);
+      const ls=new Date(l.start), le=new Date(l.end);
+      if(ls<=e2&&le>=s) hit.add(l.staffId);
+    });
+    resEl.innerHTML=hit.size?`👥 في إجازة خلال هذه الفترة (${hit.size}): <strong>${[...hit].map(sName).join(' — ')}</strong>`:'✅ لا يوجد موظفون في إجازة خلال هذه الفترة';
+  } else resEl.textContent='';
+  if(fStart&&fEnd){
+    const sD=new Date(fStart+'T00:00:00'), eD=new Date(fEnd+'T00:00:00');
+    if(lvCalMode==='ar'){
+      const sH=lvHijriParts(sD), eH=lvHijriParts(eD);
+      const span=(eH.year-sH.year)*12+(eH.month-sH.month);
+      if(span>=1){
+        const allHol={}; for(let yy=sD.getFullYear();yy<=eD.getFullYear()+1;yy++) lvSaudiHolidays(yy).forEach(h=>allHol[h.date]=h);
+        lv$('lvCalGrid').style.display='none'; const multi=lv$('lvCalMulti'); multi.style.display='block';
+        let blocks='', hy=sH.year, hm=sH.month;
+        for(let k=0;k<=span;k++){ blocks+=lvBuildHijriMonthBlock(hy,hm,allHol,fStart,fEnd,td); if(hm===12){hm=1;hy++;}else hm++; }
+        multi.innerHTML=blocks; return;
+      }
+    } else {
+      const span=(eD.getFullYear()-sD.getFullYear())*12+(eD.getMonth()-sD.getMonth());
+      if(span>=1){
+        const allHol={}; for(let yy=sD.getFullYear();yy<=eD.getFullYear();yy++) lvSaudiHolidays(yy).forEach(h=>allHol[h.date]=h);
+        lv$('lvCalGrid').style.display='none'; const multi=lv$('lvCalMulti'); multi.style.display='block';
+        let blocks='', my=sD.getFullYear(), mm=sD.getMonth();
+        for(let k=0;k<=span;k++){ blocks+=lvBuildMonthBlock(my,mm,allHol,fStart,fEnd,td); if(mm===11){mm=0;my++;}else mm++; }
+        multi.innerHTML=blocks; return;
+      }
+    }
+  }
+  if(lvCalMonthView>1){
+    lv$('lvCalGrid').style.display='none'; const multi=lv$('lvCalMulti'); multi.style.display='block';
+    const allHol2={}; for(let yy=lvCy-1;yy<=lvCy+2;yy++) lvSaudiHolidays(yy).forEach(h=>allHol2[h.date]=h);
+    let blocks='';
+    if(lvCalMode==='ar'){
+      const curH=lvHijriParts(new Date(lvCy,lvCm,15)); let hy=curH.year, hm=curH.month;
+      for(let k=0;k<lvCalMonthView;k++){ blocks+=lvBuildHijriMonthBlock(hy,hm,allHol2,fStart,fEnd,td); if(hm===12){hm=1;hy++;}else hm++; }
+    } else {
+      let my=lvCy, mm2=lvCm;
+      for(let k=0;k<lvCalMonthView;k++){ blocks+=lvBuildMonthBlock(my,mm2,allHol2,fStart,fEnd,td); if(mm2===11){mm2=0;my++;}else mm2++; }
+    }
+    multi.innerHTML=blocks; return;
+  }
+  lv$('lvCalGrid').style.display='grid'; lv$('lvCalMulti').style.display='none';
+  const grid=lv$('lvCalGrid');
+  grid.innerHTML=LV_DAYS.map(d=>`<div class="lv-cal-dh">${d}</div>`).join('');
+  const first=new Date(lvCy,lvCm,1).getDay();
+  const total=new Date(lvCy,lvCm+1,0).getDate();
+  for(let i=0;i<first;i++) grid.innerHTML+=`<div class="lv-cal-day empty"></div>`;
+  for(let d=1;d<=total;d++) grid.innerHTML+=lvBuildDayCell(lvCy,lvCm,d,holidayMap,fStart,fEnd,td);
+}
+
+/* ── القائمة ── */
+function lvRenderList(){
+  const fn=lv$('lvFName'); const cv=fn.value;
+  fn.innerHTML='<option value="">👤 كل الموظفين</option>'+activeStaff().map(s=>`<option value="${s.id}" ${s.id===cv?'selected':''}>${s.name}</option>`).join('');
+  const ft=lv$('lvFType'); if(!ft.dataset.filled){ ft.innerHTML='<option value="">🗂️ كل الأنواع</option>'+LV_TYPE_OPTS_HTML; ft.dataset.filled='1'; }
+  const nf=fn.value, tf=ft.value;
+  const filtered=lvArr(LEAVES).filter(l=>(!nf||l.staffId===nf)&&(!tf||l.type===tf)).sort((a,b)=>b.start.localeCompare(a.start));
+  const container=lv$('lvLeaveCards'), empty=lv$('lvListEmpty'), countEl=lv$('lvListCount');
+  if(!filtered.length){ container.innerHTML=''; empty.style.display='block'; countEl.textContent=''; return; }
+  empty.style.display='none'; countEl.textContent=`${filtered.length} إجازة`;
+  container.innerHTML=filtered.map(l=>{
+    const days=lvDays(l.start,l.end); const td=lvToday();
+    const active=l.start<=td&&l.end>=td;
+    const statusColor=active?'var(--ok)':'var(--faint)';
+    const statusText=active?'🟢 جارية الآن':'⚫ منتهية أو مستقبلية';
+    const nm=sName(l.staffId);
+    return `<div class="lv-leave-card">
+      <div class="lv-lc-top">
+        <div class="lv-lc-emp"><div class="lv-lc-avatar" style="background:${lvColor(l.staffId)}">${nm.charAt(0)}</div><div><div class="lv-lc-name">${nm}</div><div style="font-size:11px;color:${statusColor};margin-top:2px">${statusText}</div></div></div>
+        <div class="lv-lc-actions">
+          <button class="btn ghost sm" data-action="edit" data-id="${l.id}">✏️ تعديل</button>
+          <button class="btn danger sm" data-action="del" data-id="${l.id}">🗑️ حذف</button>
+        </div>
+      </div>
+      <div class="lv-lc-body">
+        <div class="lv-lc-field"><div class="lv-lc-flabel">نوع الإجازة</div><div class="lv-lc-fval"><span class="lv-badge lv-b-${LV_TCLASS[l.type]||'annual'}">${LV_TYPES[l.type]||l.type}</span></div></div>
+        <div class="lv-lc-field"><div class="lv-lc-flabel">تاريخ البداية</div><div class="lv-lc-fval" dir="ltr">📅 ${l.start}</div></div>
+        <div class="lv-lc-field"><div class="lv-lc-flabel">تاريخ النهاية</div><div class="lv-lc-fval" dir="ltr">📅 ${l.end}</div></div>
+        <div class="lv-lc-field"><div class="lv-lc-flabel">عدد الأيام</div><div class="lv-lc-fval" style="font-size:14px;color:var(--teal)">${days} يوم</div></div>
+        ${l.note?`<div class="lv-lc-note"><div class="lv-lc-flabel">ملاحظات</div><div class="lv-lc-fval" style="color:var(--muted)">${l.note}</div></div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ── التداخلات ── */
+function lvRenderConf(){
+  const dm={};
+  lvArr(LEAVES).forEach(l=>lvRange(l.start,l.end).forEach(d=>{ (dm[d]=dm[d]||[]).push(l.staffId); }));
+  const cdays=Object.entries(dm).filter(([,e])=>e.length>=2).sort(([a],[b])=>b.localeCompare(a));
+  const cl=lv$('lvConfList');
+  if(!cdays.length){ cl.innerHTML='<div class="lv-empty"><div class="lv-ei">✅</div>لا توجد تداخلات</div>'; }
+  else cl.innerHTML=cdays.slice(0,40).map(([date,ids])=>{
+    const c=ids.length, sev=c>=5?'sh':c>=3?'sm':'sl', label=c>=5?'🔴 خطرة':c>=3?'🟡 متوسطة':'🔵 منخفضة';
+    return `<div class="lv-conf-card"><div class="lv-csev lv-${sev}"></div><div><div style="font-weight:800;font-size:12.5px" dir="ltr">${date}</div><div style="font-size:11.5px;color:var(--muted);margin-top:2px">${[...new Set(ids)].map(sName).join(' ، ')}</div><div style="font-size:10.5px;color:var(--faint);margin-top:3px">${c} موظفين — ${label}</div></div></div>`;
+  }).join('');
+  const busy=Object.entries(dm).filter(([,e])=>e.length>=2).sort(([,a],[,b])=>b.length-a.length).slice(0,10);
+  const bc=lv$('lvBusyChart');
+  if(!busy.length){ bc.innerHTML='<div class="lv-empty"><div class="lv-ei">📊</div>لا توجد بيانات</div>'; return; }
+  const mx=busy[0][1].length;
+  bc.innerHTML=busy.map(([date,ids])=>{
+    const clr=ids.length>=5?'var(--bad)':ids.length>=3?'var(--amber)':'var(--ok)';
+    return `<div class="lv-brow"><div class="lv-bdate">${date}</div><div class="lv-bbg"><div class="lv-bbar" style="width:${(ids.length/mx)*100}%;background:${clr}">${ids.length}</div></div><div class="lv-bcnt" style="color:${clr}">${ids.length}</div></div>`;
+  }).join('');
+}
+
+/* ── الإحصائيات ── */
+function lvRenderStats(){
+  const td=lvToday();
+  const leavesArr=lvArr(LEAVES);
+  const onL=leavesArr.filter(l=>l.start<=td&&l.end>=td);
+  const totDays=leavesArr.reduce((s,l)=>s+lvDays(l.start,l.end),0);
+  lv$('lvStatsCards').innerHTML=`
+    <div class="lv-scard"><div class="lv-sicon">📋</div><div><div class="lv-sval">${leavesArr.length}</div><div class="lv-slabel">إجمالي الإجازات</div></div></div>
+    <div class="lv-scard"><div class="lv-sicon">📅</div><div><div class="lv-sval">${totDays}</div><div class="lv-slabel">إجمالي الأيام</div></div></div>
+    <div class="lv-scard"><div class="lv-sicon">🟢</div><div><div class="lv-sval" style="color:var(--ok)">${onL.length}</div><div class="lv-slabel">في إجازة الآن</div></div></div>
+    <div class="lv-scard"><div class="lv-sicon">👥</div><div><div class="lv-sval">${activeStaff().length}</div><div class="lv-slabel">الموظفون</div></div></div>`;
+  const ed=activeStaff().map(s=>({id:s.id,name:s.name,days:leavesArr.filter(l=>l.staffId===s.id).reduce((sum,l)=>sum+lvDays(l.start,l.end),0)})).sort((a,b)=>b.days-a.days);
+  const mx=Math.max(...ed.map(e=>e.days),1);
+  lv$('lvEmpChart').innerHTML=ed.map(e=>`<div class="lv-brow2"><div class="lv-bname">${e.name}</div><div class="lv-bbg2"><div class="lv-bfill" style="width:${(e.days/mx)*100}%;background:${lvColor(e.id)}">${e.days>0?e.days:''}</div></div><div class="lv-bval">${e.days}</div></div>`).join('');
+  const tc={}; leavesArr.forEach(l=>{ tc[l.type]=(tc[l.type]||0)+1; });
+  lv$('lvTypeDist').innerHTML=Object.entries(LV_TYPES).map(([k,v])=>`<div class="lv-titem"><div class="lv-tcount">${tc[k]||0}</div><div class="lv-tname">${v}</div></div>`).join('');
+  const ol=lv$('lvOnLeaveNow');
+  if(!onL.length) ol.innerHTML='<div style="color:var(--faint);font-size:11.5px">لا أحد في إجازة حالياً</div>';
+  else ol.innerHTML=onL.map(l=>`<div class="lv-ol-chip"><span style="width:8px;height:8px;border-radius:50%;background:${lvColor(l.staffId)};display:inline-block"></span>${sName(l.staffId)} — <span class="lv-badge lv-b-${LV_TCLASS[l.type]}" style="margin:0 3px">${LV_TYPES[l.type]}</span></div>`).join('');
+}
+
+/* ── ملفات الموظفين ── */
+function lvRenderProfiles(){
+  const td=lvToday();
+  const grid=lv$('lvProfileGrid');
+  const fStart=lvProfFilterStart, fEnd=lvProfFilterEnd;
+  grid.innerHTML=activeStaff().map(s=>{
+    const allEl=lvArr(LEAVES).filter(l=>l.staffId===s.id);
+    let el=allEl;
+    if(fStart||fEnd){ const st=new Date(fStart||'0001-01-01'), en=new Date(fEnd||'9999-12-31'); el=el.filter(l=>new Date(l.start)<=en&&new Date(l.end)>=st); }
+    const totD=el.reduce((sum,l)=>sum+lvDays(l.start,l.end),0);
+    const onNow=allEl.filter(l=>l.start<=td&&l.end>=td).length>0;
+    const types=[...new Set(el.map(l=>l.type))];
+    return `<div class="lv-emp-pcard" data-staff="${s.id}">
+      <div class="lv-emp-ph"><div class="lv-emp-avatar" style="background:${lvColor(s.id)}">${s.name.charAt(0)}</div><div><div class="lv-emp-pname">${s.name}</div><div class="lv-emp-psub">${onNow?'🟢 في إجازة الآن':'⚫ حاضر'}</div></div></div>
+      <div class="lv-emp-pstats">
+        <div class="lv-ep-stat"><span class="lv-ep-sval">${el.length}</span><span class="lv-ep-slabel">إجازة</span></div>
+        <div class="lv-ep-stat"><span class="lv-ep-sval">${totD}</span><span class="lv-ep-slabel">يوم</span></div>
+        <div class="lv-ep-stat"><span class="lv-ep-sval">${types.length}</span><span class="lv-ep-slabel">نوع</span></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function lvOpenProfile(staffId){
+  const allEl=lvArr(LEAVES).filter(l=>l.staffId===staffId);
+  let el=allEl; const fStart=lvProfFilterStart, fEnd=lvProfFilterEnd;
+  if(fStart||fEnd){ const st=new Date(fStart||'0001-01-01'), en=new Date(fEnd||'9999-12-31'); el=el.filter(l=>new Date(l.start)<=en&&new Date(l.end)>=st); }
+  el=el.sort((a,b)=>b.start.localeCompare(a.start));
+  const totD=el.reduce((sum,l)=>sum+lvDays(l.start,l.end),0);
+  const td=lvToday();
+  const onNow=allEl.filter(l=>l.start<=td&&l.end>=td).length;
+  const name=sName(staffId);
+  lv$('lvPmTitle').innerHTML=`<span style="display:inline-flex;align-items:center;gap:9px"><span style="width:26px;height:26px;border-radius:50%;background:${lvColor(staffId)};display:inline-flex;align-items:center;justify-content:center;font-weight:900;font-size:12px;color:#fff">${name.charAt(0)}</span>${name}</span>`;
+  lv$('lvPmStats').innerHTML=`
+    <div class="lv-pm-stat"><div class="lv-pm-sval">${el.length}</div><div class="lv-pm-slabel">إجمالي الإجازات</div></div>
+    <div class="lv-pm-stat"><div class="lv-pm-sval">${totD}</div><div class="lv-pm-slabel">إجمالي الأيام</div></div>
+    <div class="lv-pm-stat"><div class="lv-pm-sval" style="color:var(--ok)">${onNow}</div><div class="lv-pm-slabel">في إجازة الآن</div></div>
+    <div class="lv-pm-stat"><div class="lv-pm-sval">${el.length?lvDays(el[el.length-1].start,el[el.length-1].end):0}</div><div class="lv-pm-slabel">أقل إجازة (أيام)</div></div>`;
+  const tc={}; el.forEach(l=>{ tc[l.type]=(tc[l.type]||0)+1; });
+  lv$('lvPmTypeDist').innerHTML=Object.entries(tc).map(([k,v])=>`<span class="lv-badge lv-b-${LV_TCLASS[k]}">${LV_TYPES[k]}: ${v}</span>`).join('');
+  lv$('lvPmLeaveList').innerHTML=el.length?el.map(l=>`<div class="lv-pm-lrow"><span><span class="lv-badge lv-b-${LV_TCLASS[l.type]}">${LV_TYPES[l.type]}</span></span><span style="color:var(--muted)" dir="ltr">${l.start} → ${l.end}</span><span style="font-weight:800">${lvDays(l.start,l.end)} يوم</span></div>`).join(''):'<div class="lv-empty" style="padding:14px">لا توجد إجازات</div>';
+  lv$('lvProfileModal').classList.add('open');
+}
+
+/* ── إضافة/تعديل إجازة ── */
+function lvPopulateSel(){
+  ['lvAddEmp','lvEditEmp','lvPrelimEmp'].forEach(id=>{
+    const el=lv$(id); if(!el) return;
+    const cv=el.value;
+    el.innerHTML=activeStaff().map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+    if(cv) el.value=cv;
+  });
+}
+function lvCalcDays(){
+  const s=lv$('lvAddStart').value, e=lv$('lvAddEnd').value, p=lv$('lvDaysPrev');
+  if(s&&e&&s<=e) p.textContent=`📅 عدد الأيام: ${lvDays(s,e)} يوم`;
+  else if(s&&e&&s>e) p.textContent='⚠️ تاريخ البداية بعد تاريخ النهاية!';
+  else p.textContent='اختر تواريخ لحساب عدد الأيام';
+}
+async function lvSaveLeave(){
+  const staffId=lv$('lvAddEmp').value, type=lv$('lvAddType').value;
+  const start=lv$('lvAddStart').value, end=lv$('lvAddEnd').value, note=lv$('lvAddNote').value;
+  if(!staffId||!start||!end){ toast('⚠️ يرجى ملء جميع الحقول'); return; }
+  if(start>end){ toast('⚠️ تاريخ البداية بعد تاريخ النهاية'); return; }
+  const overlap=lvFindOverlap(lvArr(LEAVES),staffId,start,end,null);
+  if(overlap){ toast(`❌ مرفوض: ${sName(staffId)} لديه إجازة من ${overlap.start} إلى ${overlap.end}`); return; }
+  const id=lvGenId();
+  await lvPutLeave(id,{staffId,type,start,end,note,createdAt:new Date().toISOString()});
+  toast(`✅ تم حفظ إجازة ${sName(staffId)}`);
+  ['lvAddStart','lvAddEnd','lvAddNote'].forEach(i=>lv$(i).value='');
+  ['lvAddStart','lvAddEnd'].forEach(i=>{ const d=lv$(i+'-display'); if(d){d.textContent='اضغط لاختيار التاريخ';d.classList.add('placeholder');} });
+  lv$('lvDaysPrev').textContent='اختر تواريخ لحساب عدد الأيام';
+  lvRenderCal();
+}
+function lvOpenEdit(id){
+  const l=LEAVES[id]; if(!l) return;
+  lvPopulateSel();
+  lv$('lvEditEmp').value=l.staffId; lv$('lvEditType').value=l.type;
+  lv$('lvEditStart').value=l.start; lv$('lvEditEnd').value=l.end; lv$('lvEditNote').value=l.note||'';
+  lvSetDateDisplay('lvEditStart',l.start); lvSetDateDisplay('lvEditEnd',l.end);
+  lvEditingId=id;
+  lv$('lvEditModal').classList.add('open');
+}
+async function lvSaveEditModal(){
+  const staffId=lv$('lvEditEmp').value, type=lv$('lvEditType').value;
+  const start=lv$('lvEditStart').value, end=lv$('lvEditEnd').value, note=lv$('lvEditNote').value;
+  if(!start||!end||start>end){ toast('⚠️ تحقق من التواريخ'); return; }
+  const overlap=lvFindOverlap(lvArr(LEAVES),staffId,start,end,lvEditingId);
+  if(overlap){ toast(`❌ مرفوض: ${sName(staffId)} لديه إجازة من ${overlap.start} إلى ${overlap.end}`); return; }
+  await lvPutLeave(lvEditingId,{...LEAVES[lvEditingId],staffId,type,start,end,note});
+  lvCloseEdit(); lvRenderList(); lvRenderCal();
+  toast('✅ تم التعديل بنجاح');
+}
+function lvCloseEdit(){ lv$('lvEditModal').classList.remove('open'); lvEditingId=null; }
+async function lvDelLeave(id){
+  if(!confirm('هل أنت متأكد من حذف هذه الإجازة؟')) return;
+  await lvRemoveLeaveDoc(id); lvRenderList(); lvRenderCal(); toast('🗑️ تم الحذف');
+}
+
+/* ── حجز مبدئي ── */
+function lvCalcPrelimDays(){
+  const s=lv$('lvPrelimStart').value, e=lv$('lvPrelimEnd').value, p=lv$('lvPrelimDaysPrev');
+  if(!p) return;
+  if(s&&e&&s<=e) p.textContent=`📅 عدد الأيام: ${lvDays(s,e)} يوم`;
+  else if(s&&e&&s>e) p.textContent='⚠️ تاريخ البداية بعد تاريخ النهاية!';
+  else p.textContent='اختر تواريخ لحساب عدد الأيام';
+}
+function lvRenderPrelim(){
+  const td=lvToday();
+  const bannerEl=lv$('lvPrelimBanner');
+  const reminderDays=LV_PRELIM_SETTINGS.reminderDays||90;
+  const daysSince=LV_PRELIM_SETTINGS.lastReq?Math.floor((new Date(td)-new Date(LV_PRELIM_SETTINGS.lastReq))/86400000):null;
+  let statusColor,statusText;
+  if(daysSince===null){ statusColor='var(--bad)'; statusText='🔴 لم يُسجَّل أي طلب حجز مبدئي من الموظفين بعد'; }
+  else if(daysSince<=Math.floor(reminderDays*0.7)){ statusColor='var(--ok)'; statusText=`🟢 آخر طلب قبل ${daysSince} يوم — لا حاجة للتذكير الآن`; }
+  else if(daysSince<=reminderDays){ statusColor='var(--lv-warn)'; statusText=`🟡 يقترب موعد التذكير — آخر طلب قبل ${daysSince} يوم`; }
+  else { statusColor='var(--bad)'; statusText=`🔴 حان وقت طلب الإجازات المستقبلية من الموظفين — مضى ${daysSince} يوم على آخر طلب`; }
+  bannerEl.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <div style="font-weight:800;color:${statusColor}">${statusText}</div>
+      <button class="btn sm" id="lvSendReminderBtn">🔔 تم إرسال الطلب الآن</button>
+    </div>
+    <div style="margin-top:10px;display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--muted)">
+      🔁 كل كم يوم أُذكَّر بطلب التحديث؟ <input type="number" min="7" step="1" value="${reminderDays}" class="inp" style="width:75px;padding:6px 9px" id="lvPrelimIntervalInp"> يوم
+    </div>`;
+  lv$('lvSendReminderBtn').onclick=lvSendPrelimReminder;
+  lv$('lvPrelimIntervalInp').onchange=e=>lvSetPrelimInterval(e.target.value);
+  const container=lv$('lvPrelimCards'), empty=lv$('lvPrelimEmpty'), countEl=lv$('lvPrelimCount');
+  const prelimArr=lvArr(PRELIM);
+  if(!prelimArr.length){ container.innerHTML=''; empty.style.display='block'; countEl.textContent=''; return; }
+  empty.style.display='none'; countEl.textContent=`${prelimArr.length} حجز مبدئي`;
+  const sorted=[...prelimArr].sort((a,b)=>a.start.localeCompare(b.start));
+  container.innerHTML=sorted.map(p=>{
+    const days=lvDays(p.start,p.end);
+    const confirmedConf=lvFindOverlap(lvArr(LEAVES),p.staffId,p.start,p.end,null);
+    const otherConf=lvFindOverlap(prelimArr,p.staffId,p.start,p.end,p.id);
+    const hasConflict=confirmedConf||otherConf;
+    const nm=sName(p.staffId);
+    return `<div class="lv-leave-card" style="${hasConflict?'border-color:rgba(189,45,41,.4)':'border-style:dashed'}">
+      <div class="lv-lc-top">
+        <div class="lv-lc-emp"><div class="lv-lc-avatar" style="background:${lvColor(p.staffId)}">${nm.charAt(0)}</div><div><div class="lv-lc-name">${nm}</div><div style="font-size:11px;color:var(--faint);margin-top:2px">⏳ حجز مبدئي — بانتظار الاعتماد</div></div></div>
+        <div class="lv-lc-actions">
+          <button class="btn teal sm" data-paction="approve" data-id="${p.id}">✅ اعتماد</button>
+          <button class="btn ghost sm" data-paction="edit" data-id="${p.id}">✏️ تعديل</button>
+          <button class="btn danger sm" data-paction="del" data-id="${p.id}">🗑️ حذف</button>
+        </div>
+      </div>
+      <div class="lv-lc-body">
+        <div class="lv-lc-field"><div class="lv-lc-flabel">نوع الإجازة المتوقع</div><div class="lv-lc-fval"><span class="lv-badge lv-b-${LV_TCLASS[p.type]||'annual'}">${LV_TYPES[p.type]||'سنوية'}</span></div></div>
+        <div class="lv-lc-field"><div class="lv-lc-flabel">من تاريخ</div><div class="lv-lc-fval" dir="ltr">📅 ${p.start}</div></div>
+        <div class="lv-lc-field"><div class="lv-lc-flabel">إلى تاريخ</div><div class="lv-lc-fval" dir="ltr">📅 ${p.end}</div></div>
+        <div class="lv-lc-field"><div class="lv-lc-flabel">عدد الأيام</div><div class="lv-lc-fval" style="font-size:14px;color:var(--teal)">${days} يوم</div></div>
+        ${p.note?`<div class="lv-lc-note"><div class="lv-lc-flabel">ملاحظة</div><div class="lv-lc-fval" style="color:var(--muted)">${p.note}</div></div>`:''}
+        ${hasConflict?`<div class="lv-lc-note" style="background:rgba(189,45,41,.08);color:var(--bad)">⚠️ ${confirmedConf?`يتعارض مع إجازة معتمدة (${confirmedConf.start} → ${confirmedConf.end})`:'يتعارض مع حجز مبدئي آخر لنفس الموظف'}</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+async function lvSendPrelimReminder(){
+  LV_PRELIM_SETTINGS.lastReq=lvToday();
+  await lvSavePrelimSettings(); lvRenderPrelim();
+  toast('🔔 تم تسجيل إرسال الطلب — سيتم التذكير بعد الفترة المحددة');
+}
+async function lvSetPrelimInterval(v){
+  const n=parseInt(v,10);
+  if(!n||n<7){ toast('⚠️ الحد الأدنى 7 أيام'); lvRenderPrelim(); return; }
+  LV_PRELIM_SETTINGS.reminderDays=n;
+  await lvSavePrelimSettings(); lvRenderPrelim();
+}
+async function lvSavePrelim(){
+  const staffId=lv$('lvPrelimEmp').value, type=lv$('lvPrelimType').value;
+  const start=lv$('lvPrelimStart').value, end=lv$('lvPrelimEnd').value, note=lv$('lvPrelimNote').value;
+  if(!staffId||!start||!end){ toast('⚠️ يرجى ملء جميع الحقول'); return; }
+  if(start>end){ toast('⚠️ تاريخ البداية بعد تاريخ النهاية'); return; }
+  const confirmedConf=lvFindOverlap(lvArr(LEAVES),staffId,start,end,null);
+  const otherConf=lvFindOverlap(lvArr(PRELIM),staffId,start,end,lvPrelimEditId);
+  if(confirmedConf||otherConf) toast(`⚠️ تنبيه: يوجد تعارض بالتاريخ لدى ${sName(staffId)} — تم الحفظ مع ذلك`);
+  const id=lvPrelimEditId||lvGenId();
+  await lvPutPrelim(id,{staffId,type,start,end,note,createdAt:(PRELIM[id]&&PRELIM[id].createdAt)||new Date().toISOString()});
+  if(lvPrelimEditId){
+    lvCancelPrelimEdit();
+    if(!confirmedConf&&!otherConf) toast('✅ تم تعديل الحجز المبدئي');
+  } else {
+    if(!confirmedConf&&!otherConf) toast(`✅ تم حفظ حجز مبدئي لـ ${sName(staffId)}`);
+    ['lvPrelimStart','lvPrelimEnd','lvPrelimNote'].forEach(i=>lv$(i).value='');
+    ['lvPrelimStart','lvPrelimEnd'].forEach(i=>{ const d=lv$(i+'-display'); if(d){d.textContent='اضغط لاختيار التاريخ';d.classList.add('placeholder');} });
+    lv$('lvPrelimDaysPrev').textContent='اختر تواريخ لحساب عدد الأيام';
+  }
+  lvRenderPrelim();
+}
+function lvCancelPrelimEdit(){
+  lvPrelimEditId=null;
+  lv$('lvPrelimFormTitle').textContent='➕ إضافة حجز مبدئي';
+  lv$('lvPrelimSaveBtn').textContent='✅ حفظ الحجز المبدئي';
+  lv$('lvPrelimCancelBtn').style.display='none';
+  ['lvPrelimStart','lvPrelimEnd'].forEach(i=>{ lv$(i).value=''; const d=lv$(i+'-display'); if(d){d.textContent='اضغط لاختيار التاريخ';d.classList.add('placeholder');} });
+  lv$('lvPrelimDaysPrev').textContent='اختر تواريخ لحساب عدد الأيام';
+}
+function lvOpenEditPrelim(id){
+  const p=PRELIM[id]; if(!p) return;
+  lvPopulateSel();
+  lv$('lvPrelimEmp').value=p.staffId; lv$('lvPrelimType').value=p.type||'annual';
+  lv$('lvPrelimStart').value=p.start; lv$('lvPrelimEnd').value=p.end; lv$('lvPrelimNote').value=p.note||'';
+  lvSetDateDisplay('lvPrelimStart',p.start); lvSetDateDisplay('lvPrelimEnd',p.end);
+  lvCalcPrelimDays();
+  lvPrelimEditId=id;
+  lv$('lvPrelimFormTitle').textContent='✏️ تعديل الحجز المبدئي';
+  lv$('lvPrelimSaveBtn').textContent='✅ حفظ التعديل';
+  lv$('lvPrelimCancelBtn').style.display='inline-block';
+  lv$('lv-pane-prelim').scrollIntoView({behavior:'smooth'});
+}
+async function lvDelPrelim(id){
+  if(!confirm('هل أنت متأكد من حذف هذا الحجز المبدئي؟')) return;
+  await lvRemovePrelimDoc(id); lvRenderPrelim(); toast('🗑️ تم الحذف');
+}
+async function lvApprovePrelim(id){
+  const p=PRELIM[id]; if(!p) return;
+  const overlap=lvFindOverlap(lvArr(LEAVES),p.staffId,p.start,p.end,null);
+  if(overlap){ toast(`❌ لا يمكن الاعتماد: ${sName(p.staffId)} لديه إجازة معتمدة متعارضة (${overlap.start} → ${overlap.end})`); return; }
+  if(!confirm(`اعتماد حجز ${sName(p.staffId)} من ${p.start} إلى ${p.end} كإجازة رسمية؟`)) return;
+  const newId=lvGenId();
+  await lvPutLeave(newId,{staffId:p.staffId,type:p.type||'annual',start:p.start,end:p.end,note:p.note?`${p.note} (من حجز مبدئي)`:'من حجز مبدئي',createdAt:new Date().toISOString()});
+  await lvRemovePrelimDoc(id);
+  lvRenderPrelim(); lvRenderCal();
+  toast(`✅ تم اعتماد إجازة ${sName(p.staffId)}`);
+}
+
+/* ── استيراد Excel (تواريخ هجرية) ── */
+function lvHijriToGreg(hStr){
+  const m=String(hStr).trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if(!m) return null;
+  const hY=+m[1], hM=+m[2], hD=+m[3];
+  if(hM<1||hM>12||hD<1||hD>30) return null;
+  const approx=Math.floor(hY*0.970224+621.5);
+  let t=new Date(approx,0,1);
+  for(let i=0;i<800;i++){
+    const p=lvHijriParts(t);
+    if(p.year===hY&&p.month===hM&&p.day===hD) return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+    const diff=(hY-p.year)*360+(hM-p.month)*30+(hD-p.day);
+    t.setDate(t.getDate()+(diff>0?Math.max(1,Math.min(diff,30)):Math.min(-1,Math.max(diff,-30))));
+  }
+  return null;
+}
+function lvGuessType(txt){
+  const s=String(txt||'').trim();
+  if(s.includes('تعويض'))return 'compensatory';
+  if(s.includes('سنوية')||s.includes('إعتيادية')||s.includes('اعتيادية'))return 'annual';
+  if(s.includes('مرافق'))return 'patient_escort';
+  if(s.includes('مرضية مطولة'))return 'sick_ext';
+  if(s.includes('مرضية')||s.includes('مرضي'))return 'sick';
+  if(s.includes('إضطرار')||s.includes('اضطرار')||s.includes('طارئ'))return 'emergency';
+  if(s.includes('وفاة'))return 'compassionate';
+  if(s.includes('أمومة')||s.includes('امومة'))return 'maternity';
+  if(s.includes('دراس'))return 'study';
+  if(s.includes('بدون راتب'))return 'unpaid';
+  if(s.includes('غياب'))return 'absence_comp';
+  if(s.includes('مناوبة'))return 'shift';
+  if(s.includes('تكليف'))return 'assignment';
+  if(s.includes('حج'))return 'hajj';
+  if(s.includes('بعد'))return 'remote';
+  return 'annual';
+}
+function lvResolveArabicName(name){
+  const n=String(name||'').trim();
+  const eng=Object.keys(ARABIC_ALIAS).find(k=>ARABIC_ALIAS[k]===n);
+  if(!eng) return null;
+  return Object.entries(STAFF).find(([,v])=>v.name===eng)?.[0]||null;
+}
+async function lvImportExcel(input){
+  const file=input.files[0]; if(!file) return;
+  const status=lv$('lvImportStatus');
+  status.innerHTML='<span style="color:var(--muted)">⏳ جارٍ قراءة الملف...</span>';
+  try{
+    const buf=await file.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array'});
+    let added=0, rejectedOverlap=0, rejectedBad=0; const unmatched=new Set();
+    const rejectedDetails=[];
+    for(const sheetName of wb.SheetNames){
+      if(sheetName.includes('ملخص')||sheetName.includes('Summary')) continue;
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{defval:''});
+      for(const row of rows){
+        const empName=String(row['اسم الموظف']||'').trim();
+        const typeTxt=row['نوع الإجازة'];
+        const startH=row['بداية الإجازة'], endH=row['نهاية الإجازة'];
+        if(!empName||!startH||!endH) continue;
+        if(String(endH).includes('المجموع')) continue;
+        const start=lvHijriToGreg(startH), end=lvHijriToGreg(endH);
+        if(!start||!end||start>end){ rejectedBad++; rejectedDetails.push(`⚠️ ${empName}: تاريخ غير صالح (${startH} → ${endH})`); continue; }
+        const staffId=lvResolveArabicName(empName);
+        if(!staffId){ unmatched.add(empName); rejectedDetails.push(`❓ ${empName}: غير مطابق لأي موظف معروف — أضِفه من صفحة الموظفين ثم أعد الاستيراد`); continue; }
+        const overlap=lvFindOverlap(lvArr(LEAVES),staffId,start,end,null);
+        if(overlap){ rejectedOverlap++; rejectedDetails.push(`❌ ${empName}: تداخل (${startH} → ${endH}) مع إجازة موجودة ${overlap.start} → ${overlap.end}`); continue; }
+        const id=lvGenId();
+        await lvPutLeave(id,{staffId,type:lvGuessType(typeTxt),start,end,note:'مستورد من Excel',createdAt:new Date().toISOString()});
+        added++;
+      }
+    }
+    lvRenderCal();
+    let html=`<div style="color:var(--ok);font-weight:800">✅ تم استيراد ${added} إجازة بنجاح</div>`;
+    if(unmatched.size) html+=`<div style="color:var(--lv-warn)">❓ ${unmatched.size} اسم غير مطابق (${[...unmatched].join('، ')})</div>`;
+    if(rejectedOverlap) html+=`<div style="color:var(--bad);font-weight:800">❌ رُفض ${rejectedOverlap} إجازة بسبب التداخل</div>`;
+    if(rejectedBad) html+=`<div style="color:var(--lv-warn)">⚠️ تم تجاهل ${rejectedBad} صف بتواريخ غير صالحة</div>`;
+    if(rejectedDetails.length) html+=`<details style="margin-top:8px;cursor:pointer"><summary style="color:var(--muted);font-size:11.5px">عرض التفاصيل (${rejectedDetails.length})</summary><div style="max-height:200px;overflow-y:auto;margin-top:6px;font-size:11px;color:var(--muted);line-height:1.9">${rejectedDetails.join('<br>')}</div></details>`;
+    status.innerHTML=html;
+    toast(`📥 استيراد: ${added} ✅ / ${rejectedOverlap} مرفوض تداخل`);
+  }catch(e){ status.innerHTML=`<span style="color:var(--bad)">❌ خطأ في قراءة الملف: ${e.message}</span>`; }
+  input.value='';
+}
+
+/* ── منتقي التاريخ المخصّص (هجري/ميلادي) ── */
+function lvOpenCal(fieldId){
+  lvCpField=fieldId;
+  const existing=lv$(fieldId).value;
+  if(existing){ const d=new Date(existing); lvCpY=d.getFullYear(); lvCpM=d.getMonth(); }
+  else{
+    let anchor='';
+    if(fieldId==='lvAddEnd') anchor=lv$('lvAddStart').value;
+    else if(fieldId==='lvEditEnd') anchor=lv$('lvEditStart').value;
+    else if(fieldId==='lvCalFEnd') anchor=lv$('lvCalFStart').value;
+    else if(fieldId==='lvProfFEnd') anchor=lv$('lvProfFStart').value;
+    else if(fieldId==='lvPrelimEnd') anchor=lv$('lvPrelimStart').value;
+    if(anchor){ const d=new Date(anchor); lvCpY=d.getFullYear(); lvCpM=d.getMonth(); }
+    else{ lvCpY=new Date().getFullYear(); lvCpM=new Date().getMonth(); }
+  }
+  lv$('lvCpModal').classList.add('open');
+  lvRenderCpGrid();
+}
+function lvCloseCal(){ lv$('lvCpModal').classList.remove('open'); lvCpField=null; }
+function lvCpGoToHijri(hYear,hMonth){
+  const approxGregYear=Math.floor(hYear*0.970224+621.5);
+  let testDate=new Date(approxGregYear,0,1); let found=null;
+  for(let i=0;i<1200;i++){
+    const p=lvHijriParts(testDate);
+    if(p.year===hYear&&p.month===hMonth){found=new Date(testDate);break;}
+    if(p.year<hYear||(p.year===hYear&&p.month<hMonth)) testDate.setDate(testDate.getDate()+1);
+    else testDate.setDate(testDate.getDate()-1);
+  }
+  if(found){lvCpY=found.getFullYear();lvCpM=found.getMonth();}
+  lvRenderCpGrid();
+}
+function lvCpSetLang(l){
+  lvCpLang=l;
+  lv$('lvCpLangAr').classList.toggle('active',l==='ar');
+  lv$('lvCpLangEn').classList.toggle('active',l==='en');
+  lvRenderCpGrid();
+}
+function lvRenderCpGrid(){
+  const months=lvCpLang==='ar'?LV_AR_MONTHS:LV_EN_MONTHS;
+  const days=lvCpLang==='ar'?LV_AR_DAYS:LV_EN_DAYS;
+  const hijriTitle=new Date(lvCpY,lvCpM,15).toLocaleDateString('ar-SA-u-ca-islamic',{month:'long',year:'numeric'});
+  const gregTitle=months[lvCpM]+' '+lvCpY;
+  const yearNow=new Date().getFullYear();
+  let monthOpts='', yearOpts='';
+  if(lvCpLang==='ar'){
+    const cur=lvHijriParts(new Date(lvCpY,lvCpM,15));
+    monthOpts=LV_HIJRI_MONTHS.map((m,i)=>`<option value="${i+1}" ${(i+1)===cur.month?'selected':''}>${m}</option>`).join('');
+    for(let yy=cur.year-3;yy<=cur.year+5;yy++) yearOpts+=`<option value="${yy}" ${yy===cur.year?'selected':''}>${yy} هـ</option>`;
+  } else {
+    monthOpts=months.map((m,i)=>`<option value="${i}" ${i===lvCpM?'selected':''}>${m}</option>`).join('');
+    for(let yy=yearNow-3;yy<=yearNow+5;yy++) yearOpts+=`<option value="${yy}" ${yy===lvCpY?'selected':''}>${yy}</option>`;
+  }
+  const bigT=lvCpLang==='ar'?hijriTitle:gregTitle, subT=lvCpLang==='ar'?gregTitle:hijriTitle;
+  lv$('lvCpTitle').innerHTML=`<div style="line-height:1.5">
+    <div style="font-size:1rem;font-weight:900;color:var(--navy);margin-bottom:6px">${bigT}</div>
+    <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
+      <select class="inp" data-role="month" style="width:auto">${monthOpts}</select>
+      <select class="inp" data-role="year" style="width:auto">${yearOpts}</select>
+    </div>
+    <div style="font-size:10.5px;color:var(--muted);margin-top:5px">${subT}</div>
+  </div>`;
+  const startVal=lv$('lvAddStart')?.value||lv$('lvEditStart')?.value||'';
+  const endVal=lv$('lvAddEnd')?.value||lv$('lvEditEnd')?.value||'';
+  const tdStr=lvToday();
+  let html=days.map(d=>`<div class="lv-cp-dh">${d}</div>`).join('');
+  const first=new Date(lvCpY,lvCpM,1).getDay();
+  const total=new Date(lvCpY,lvCpM+1,0).getDate();
+  const prevTotal=new Date(lvCpY,lvCpM,0).getDate();
+  for(let i=first-1;i>=0;i--) html+=`<div class="lv-cp-day other-month"><div>${prevTotal-i}</div></div>`;
+  for(let d=1;d<=total;d++){
+    const ds=`${lvCpY}-${String(lvCpM+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const hijriDay=new Date(lvCpY,lvCpM,d).toLocaleDateString('ar-SA-u-ca-islamic',{day:'numeric'});
+    let cls='lv-cp-day';
+    if(ds===tdStr) cls+=' today';
+    if(ds===startVal||ds===endVal) cls+=' selected';
+    else if(startVal&&endVal&&ds>startVal&&ds<endVal) cls+=' in-range';
+    html+=`<div class="${cls}" data-date="${ds}"><div style="font-size:1rem;font-weight:900;line-height:1.2">${d}</div><div style="font-size:.68rem;opacity:.65;line-height:1">${hijriDay}</div></div>`;
+  }
+  const total42=Math.ceil((first+total)/7)*7;
+  for(let d=1;d<=(total42-first-total);d++) html+=`<div class="lv-cp-day other-month"><div>${d}</div></div>`;
+  lv$('lvCpGrid').innerHTML=html;
+}
+function lvSetDateDisplay(fieldId,val){
+  const dispEl=lv$(fieldId+'-display');
+  if(dispEl&&val){
+    const d=new Date(val);
+    const mil=d.toLocaleDateString('ar-SA-u-ca-gregory',{year:'numeric',month:'long',day:'numeric'});
+    const hijri=d.toLocaleDateString('ar-SA-u-ca-islamic',{day:'numeric',month:'long',year:'numeric'});
+    dispEl.innerHTML=`<span style="display:block;font-weight:800">${mil}</span><span style="display:block;font-size:10.5px;color:var(--muted);margin-top:2px">🗓️ ${hijri}</span>`;
+    dispEl.classList.remove('placeholder');
+  }
+}
+function lvCpSelect(ds){
+  if(!lvCpField) return;
+  const field=lvCpField;
+  lv$(field).value=ds;
+  lvSetDateDisplay(field,ds);
+  lvCloseCal();
+  if(field==='lvCalFStart'||field==='lvCalFEnd'){
+    lvCalFilterStart=lv$('lvCalFStart').value; lvCalFilterEnd=lv$('lvCalFEnd').value; lvRenderCal();
+  } else if(field==='lvProfFStart'||field==='lvProfFEnd'){
+    lvProfFilterStart=lv$('lvProfFStart').value; lvProfFilterEnd=lv$('lvProfFEnd').value; lvRenderProfiles();
+  } else if(field==='lvPrelimStart'||field==='lvPrelimEnd'){
+    lvCalcPrelimDays();
+  } else {
+    lvCalcDays();
+  }
+}
+
+/* ── ربط الأحداث (مرة واحدة) ── */
+$$('.lv-tab').forEach(b=>b.onclick=()=>lvSw(b.dataset.lvtab));
+lv$('lvMview1').onclick=()=>lvSetMonthView(1);
+lv$('lvMview3').onclick=()=>lvSetMonthView(3);
+lv$('lvMview6').onclick=()=>lvSetMonthView(6);
+lv$('lvMview12').onclick=()=>lvSetMonthView(12);
+lv$('lvModeAr').onclick=()=>{lvCalMode='ar';lv$('lvModeAr').classList.add('active');lv$('lvModeEn').classList.remove('active');lvRenderCal();};
+lv$('lvModeEn').onclick=()=>{lvCalMode='en';lv$('lvModeEn').classList.add('active');lv$('lvModeAr').classList.remove('active');lvRenderCal();};
+lv$('lvCalPrev').onclick=()=>{ if(lvCm===0){lvCm=11;lvCy--;}else lvCm--; lvRenderCal(); };
+lv$('lvCalNext').onclick=()=>{ if(lvCm===11){lvCm=0;lvCy++;}else lvCm++; lvRenderCal(); };
+lv$('lvCalFClear').onclick=()=>{
+  lvCalFilterStart='';lvCalFilterEnd=''; lv$('lvCalFStart').value='';lv$('lvCalFEnd').value='';
+  ['lvCalFStart','lvCalFEnd'].forEach(id=>{const d=lv$(id+'-display'); if(d){d.textContent='اضغط لاختيار';d.classList.add('placeholder');}});
+  lvRenderCal();
+};
+lv$('lvProfFClear').onclick=()=>{
+  lvProfFilterStart='';lvProfFilterEnd=''; lv$('lvProfFStart').value='';lv$('lvProfFEnd').value='';
+  ['lvProfFStart','lvProfFEnd'].forEach(id=>{const d=lv$(id+'-display'); if(d){d.textContent='اضغط لاختيار';d.classList.add('placeholder');}});
+  lvRenderProfiles();
+};
+lv$('lvCalTitle').addEventListener('change',e=>{
+  const role=e.target.dataset.role; if(!role) return;
+  if(lvCalMode==='ar'){
+    const cur=lvHijriParts(new Date(lvCy,lvCm,15));
+    if(role==='month') lvGoToHijri(cur.year,+e.target.value); else lvGoToHijri(+e.target.value,cur.month);
+  } else {
+    if(role==='month'){ lvCm=+e.target.value; lvRenderCal(); } else { lvCy=+e.target.value; lvRenderCal(); }
+  }
+});
+lv$('lvCalTitle').addEventListener('click',e=>{
+  if(e.target.dataset.role==='today'){ lvCy=new Date().getFullYear(); lvCm=new Date().getMonth(); lvRenderCal(); }
+});
+lv$('lvFName').onchange=lvRenderList;
+lv$('lvFType').onchange=lvRenderList;
+lv$('lvLeaveCards').addEventListener('click',e=>{
+  const b=e.target.closest('[data-action]'); if(!b) return;
+  if(b.dataset.action==='edit') lvOpenEdit(b.dataset.id); else if(b.dataset.action==='del') lvDelLeave(b.dataset.id);
+});
+lv$('lvProfileGrid').addEventListener('click',e=>{
+  const c=e.target.closest('[data-staff]'); if(c) lvOpenProfile(c.dataset.staff);
+});
+lv$('lvPmClose').onclick=()=>lv$('lvProfileModal').classList.remove('open');
+lv$('lvSaveLeaveBtn').onclick=lvSaveLeave;
+lv$('lvEmClose').onclick=lvCloseEdit;
+lv$('lvEmCancel').onclick=lvCloseEdit;
+lv$('lvEmSave').onclick=lvSaveEditModal;
+lv$('lvPrelimSaveBtn').onclick=lvSavePrelim;
+lv$('lvPrelimCancelBtn').onclick=lvCancelPrelimEdit;
+lv$('lvPrelimCards').addEventListener('click',e=>{
+  const b=e.target.closest('[data-paction]'); if(!b) return;
+  const id=b.dataset.id, act=b.dataset.paction;
+  if(act==='approve') lvApprovePrelim(id); else if(act==='edit') lvOpenEditPrelim(id); else if(act==='del') lvDelPrelim(id);
+});
+lv$('lvImportFile').onchange=e=>lvImportExcel(e.target);
+$$('.lv-dp-wrap').forEach(el=>el.onclick=()=>lvOpenCal(el.dataset.lvcal));
+lv$('lvCpPrev').onclick=()=>{ if(lvCpM===0){lvCpM=11;lvCpY--;}else lvCpM--; lvRenderCpGrid(); };
+lv$('lvCpNext').onclick=()=>{ if(lvCpM===11){lvCpM=0;lvCpY++;}else lvCpM++; lvRenderCpGrid(); };
+lv$('lvCpLangAr').onclick=()=>lvCpSetLang('ar');
+lv$('lvCpLangEn').onclick=()=>lvCpSetLang('en');
+lv$('lvCpClose').onclick=lvCloseCal;
+lv$('lvCpGrid').addEventListener('click',e=>{ const c=e.target.closest('[data-date]'); if(c) lvCpSelect(c.dataset.date); });
+lv$('lvCpTitle').addEventListener('change',e=>{
+  const role=e.target.dataset.role; if(!role) return;
+  if(lvCpLang==='ar'){
+    const cur=lvHijriParts(new Date(lvCpY,lvCpM,15));
+    if(role==='month') lvCpGoToHijri(cur.year,+e.target.value); else lvCpGoToHijri(+e.target.value,cur.month);
+  } else {
+    if(role==='month'){ lvCpM=+e.target.value; lvRenderCpGrid(); } else { lvCpY=+e.target.value; lvRenderCpGrid(); }
+  }
+});
 
 boot();
 </script>
