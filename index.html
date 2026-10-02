@@ -538,6 +538,8 @@ body.dm-printing #dmSheet *{overflow:visible!important}
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn ghost" id="newWeekBtn">＋ أسبوع جديد</button>
       <button class="btn ghost" id="refreshLeaveBtn" title="تحديث بيانات الإجازات من نظام الإجازات">🏖️ تحديث الإجازات</button>
+      <button class="btn ghost" id="impSchedBtn" title="استيراد جداول أسابيع من ملف إكسل (ورقة لكل أسبوع باسم تاريخ بدايته)">📥 استيراد جداول من إكسل</button>
+      <input type="file" id="impSchedFile" accept=".xlsx,.xls" hidden>
       <button class="btn amber" id="printBtn">🖨️ تصدير PDF</button>
       <button class="btn teal" id="shareWaBtn">📲 حفظ ومشاركة واتساب</button>
       <button class="btn" id="saveSchedBtn">💾 حفظ</button>
@@ -1218,6 +1220,50 @@ $('#saveSchedBtn').onclick=async()=>{
   w.status='published';
   await cloudSet('weeks',curWeek,w); await syncApxFromWeek(w);
   toast('تم حفظ الجدول ومزامنة سحب الصفائح ✓'); renderSheet(); renderAlerts(); renderArchive();
+};
+/* ============ استيراد جداول أسابيع من إكسل ============ */
+// الملف: ورقة لكل أسبوع اسمها تاريخ بدايته (YYYY-MM-DD، أو «WEEK_ID YYYY-MM-DD» في أي خلية)، وفيها سطر رأس «ITEM / TASK»
+// ثم صف لكل مهمة: العمود B اسم المهمة، والأعمدة C–H أسماء الموظفين (STAFF 1–6).
+// المهام اليدوية تُستبدل بما في الملف؛ W.B Donation وBleeder Apheresis = ما في الملف + من سحب فعلياً حسب ملفات النظام (نتيجة > 0).
+$('#impSchedBtn').onclick=()=>$('#impSchedFile').click();
+$('#impSchedFile').onchange=async e=>{
+  const file=e.target.files[0]; e.target.value=''; if(!file) return;
+  let wb; try{ wb=XLSX.read(await file.arrayBuffer(),{type:'array'}); }catch(err){ toast('تعذّرت قراءة الملف'); return; }
+  const norm=v=>String(v??'').replace(/\s+/g,' ').trim();
+  const byName={}; Object.entries(STAFF).forEach(([id,st])=>byName[st.name.toUpperCase()]=id);
+  const taskOf=n=>{ n=norm(n).toLowerCase(); return TASKS.find(t=>t.name.toLowerCase()===n)||(n.startsWith('cleaning')?TASKS.find(t=>t.id==='t12'):null); };
+  const plan=[], unknown=new Set();
+  wb.SheetNames.forEach(sn=>{
+    const aoa=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:false,defval:''});
+    let wk=/^\d{4}-\d{2}-\d{2}$/.test(sn.trim())?sn.trim():null;
+    if(!wk) aoa.some(r=>r.some(c=>{ const m=norm(c).match(/^WEEK_ID\s+(\d{4}-\d{2}-\d{2})$/); if(m) wk=m[1]; return !!m; }));
+    const hi=aoa.findIndex(r=>r.some(c=>norm(c).toUpperCase()==='ITEM / TASK'));
+    if(!wk||hi<0) return;
+    const ti=aoa[hi].findIndex(c=>norm(c).toUpperCase()==='ITEM / TASK');
+    const asg={};
+    aoa.slice(hi+1).forEach(r=>{ const T=taskOf(r[ti]); if(!T) return;
+      const ids=[]; r.slice(ti+1,ti+7).map(norm).filter(Boolean).forEach(n=>{ const id=byName[n.toUpperCase()]; if(!id) unknown.add(n); else if(!ids.includes(id)) ids.push(id); });
+      asg[T.id]=ids; });
+    if(Object.values(asg).some(a=>a.length)) plan.push({wk,asg});
+  });
+  if(!plan.length){ toast('لا توجد أوراق أسابيع معبّأة في الملف'); return; }
+  const isNew=plan.filter(p=>!WEEKS[p.wk]).length;
+  if(!confirm(`استيراد جداول ${plan.length} أسبوع من الملف:\n${plan.map(p=>p.wk).join('، ')}\n\n`+
+    (isNew?`${isNew} أسبوع غير محفوظ سيُنشأ (٧ أيام من تاريخ الورقة).\n`:'')+
+    `المهام تُستبدل بما في الملف (الخانة الفارغة تُفرَّغ)، مع إبقاء من سحب فعلياً في W.B Donation وBleeder Apheresis حسب ملفات النظام. النتائج والإجماليات لا تُمس.`+
+    (unknown.size?`\n\n⚠️ أسماء غير موجودة في قائمة الموظفين ستُتجاهل: ${[...unknown].join('، ')}`:''))) return;
+  for(const {wk,asg} of plan){
+    const w=WEEKS[wk]||(WEEKS[wk]={dateFrom:wk,dateTo:addDays(wk,6),label:fmtLbl(wk,addDays(wk,6)),assignments:{},results:{},totals:{donors:0,rhNegative:0,apheresisDonors:0,workDays:5},status:'published'});
+    w.assignments=w.assignments||{}; w.results=w.results||{};
+    TASKS.forEach(T=>{
+      let ids=asg[T.id]||[];
+      if(T.id==='t7'||T.id==='t8') ids=[...ids,...Object.entries(w.results[T.id]||{}).filter(([id,v])=>v>0&&!ids.includes(id)).map(([id])=>id)];
+      if(ids.length) w.assignments[T.id]=ids; else delete w.assignments[T.id];
+    });
+    await cloudSet('weeks',wk,w); await syncApxFromWeek(w);
+  }
+  curWeek=plan[plan.length-1].wk; fillWeekPicks(); renderSheet(); renderAlerts(); renderArchive();
+  toast(`تم استيراد ${plan.length} أسبوع ✓`+(unknown.size?` — تُجوهل ${unknown.size} اسم غير معروف`:''));
 };
 /* ============ PDF ↔ واتساب ============ */
 async function elementToPdfBlob(el){
