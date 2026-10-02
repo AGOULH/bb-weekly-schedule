@@ -3033,7 +3033,8 @@ const dmEsc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'
 const dmOn=r=>(r?.staff||[]).filter(Boolean);
 const dmHasData=r=>!!r&&(dmOn(r).length>0||!!r.note||Object.values(r.comp||{}).some(Boolean));
 function dmDoc(mk){ return DAMMI[mk]||(DAMMI[mk]={month:mk,workDays:[...DM_DEFAULT_WORKDAYS],perDay:DM_DEFAULT_PER_DAY,days:{}}); }
-const dmSlots=(doc,ds)=>dmDow(ds)===5?1:(doc?.perDay||DM_DEFAULT_PER_DAY);
+// slots على مستوى اليوم = استثناء (مثل جمعة تاريخية بمناوبَين في ملف الإكسل)، وإلا الجمعة ١ وباقي الأيام perDay
+const dmSlots=(doc,ds)=>doc?.days?.[ds]?.slots||(dmDow(ds)===5?1:(doc?.perDay||DM_DEFAULT_PER_DAY));
 function dmIsWork(doc,ds){
   const r=doc?.days?.[ds];
   if(r&&r.open===true) return true;
@@ -3107,7 +3108,7 @@ function dmSlotCell(ds,j,rec,counts){
 function renderDammi(){
   if(!$('#dmBody')) return;
   const doc=dmNormalize(dmDoc(curDm)), counts=dmMonthCounts(curDm), hol=dmHolidays(curDm.slice(0,4));
-  const maxSlots=doc.perDay||DM_DEFAULT_PER_DAY;
+  const maxSlots=Math.max(doc.perDay||DM_DEFAULT_PER_DAY,...Object.values(doc.days).map(r=>r.slots||0));
   $('#dmMonth').value=curDm; $('#dmPerDay').value=String(maxSlots);
   $('#dmSub').textContent=dmTitle(curDm);
   $('#dmHead').innerHTML=`<th>#</th><th>DATE</th><th>DAY</th>${Array.from({length:maxSlots},(_,j)=>`<th>ON DUTY ${j+1}<br>المناوب ${j+1}</th>`).join('')}<th>NOTES<br>ملاحظات</th><th class="noprint">إجراء</th>`;
