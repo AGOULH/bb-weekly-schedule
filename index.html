@@ -1324,6 +1324,18 @@ function renderResults(){
   $('#resYearCtl').style.display=resMode==='year'?'':'none';
   if(resMode==='week') renderResultsWeek(); else renderResultsAgg();
 }
+// RH Contact (t11): رقم Rh Negative للأسبوع (من ملف Wateen) يُنسب تلقائياً للمكلَّف/المكلَّفين بالمهمة، مقسوماً بالتساوي
+// (الباقي للأول فالأول ليبقى المجموع مطابقاً). إن أُدخل رقم يدوي لأي مكلَّف بالمهمة في ذلك الأسبوع تُستخدم الأرقام اليدوية فقط.
+function rhAuto(w){
+  const a=(w.assignments?.t11||[]).filter(Boolean), R=+w.totals?.rhNegative||0, man=w.results?.t11||{};
+  if(!a.length||!R||a.some(sid=>man[sid]!==null&&man[sid]!==undefined&&man[sid]!=='')) return null;
+  const base=Math.floor(R/a.length), rem=R%a.length, o={};
+  a.forEach((sid,i)=>o[sid]=base+(i<rem?1:0)); return o;
+}
+function weekResults(w){
+  const auto=rhAuto(w); if(!auto) return w.results||{};
+  return {...(w.results||{}),t11:auto};
+}
 function renderResultsWeek(){
   const w=WEEKS[curWeek]; if(!w)return;
   $('#resWeekPick').value=curWeek;
@@ -1333,14 +1345,14 @@ function renderResultsWeek(){
   const rows=TASKS.map((t,i)=>{
     const a=w.assignments[t.id]||[];
     if(!a.length) return `<tr><td class="num">${i+1}</td><td class="task">${t.name}</td><td style="color:var(--faint);font-size:11px">غير مكلّف</td></tr>`;
-    const r=w.results[t.id]||{};
+    const r=w.results[t.id]||{}, auto=t.id==='t11'?rhAuto(w):null;
     const cells=a.map(sid=>{
       const v=r[sid];
       return `<div class="rescell"><span class="tagname">${sName(sid)}</span>`+(t.type==='count'
-        ? `<input type="number" min="0" value="${v??''}" data-t="${t.id}" data-s="${sid}">`
+        ? `<input type="number" min="0" value="${v??''}" data-t="${t.id}" data-s="${sid}"${auto?` placeholder="${auto[sid]}" title="تلقائي من Rh Negative للأسبوع (${auto[sid]}) — أدخل رقماً لتجاوزه"`:''}>`
         : `<select class="inp rate" data-t="${t.id}" data-s="${sid}"><option value="">—</option>${RATINGS.map(r2=>`<option value="${r2.v}" ${v===r2.v?'selected':''}>${r2.label}</option>`).join('')}</select>`)+`</div>`;
     }).join('');
-    return `<tr><td class="num">${i+1}</td><td class="task">${t.name} <small style="color:var(--teal)">${t.type==='count'?'عدد':'تقييم'}</small></td><td class="assignees"><div class="reswrap">${cells}</div></td></tr>`;
+    return `<tr><td class="num">${i+1}</td><td class="task">${t.name} <small style="color:var(--teal)">${t.type==='count'?'عدد':'تقييم'}</small>${auto?'<div style="font-size:10.5px;color:var(--muted)">تلقائي من Rh Negative للأسبوع</div>':''}</td><td class="assignees"><div class="reswrap">${cells}</div></td></tr>`;
   }).join('');
   $('#resWrap').innerHTML=`<div style="overflow-x:auto"><table class="res"><thead><tr><th>#</th><th>المهمة</th><th>الموظفون المكلّفون</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   $$('#resWrap input,#resWrap select').forEach(el=>el.onchange=()=>{
@@ -1363,7 +1375,7 @@ function renderResultsAgg(){
   let donors=0,rh=0,plt=0,days=0,closed=0; const per={};
   ks.forEach(k=>{ const w=WEEKS[k], tt=w.totals||{};
     donors+=tt.donors||0; rh+=tt.rhNegative||0; plt+=tt.apheresisDonors||0; days+=tt.workDays||5; if(w.status==='closed') closed++;
-    TASKS.forEach(task=>Object.entries(w.results?.[task.id]||{}).forEach(([sid,v])=>{
+    TASKS.forEach(task=>Object.entries(weekResults(w)[task.id]||{}).forEach(([sid,v])=>{
       if(v===null||v===undefined||v==='') return;
       const p=per[sid]||(per[sid]={tot:0});
       if(task.type==='count'){ p[task.id]=(p[task.id]||0)+(+v||0); p.tot+=+v||0; }
@@ -1653,7 +1665,7 @@ function aggregate(f,t){
         if(!per[sid]) per[sid]=blankPerson(sid,sName(sid)||'—',STAFF[sid]?.role);
         const p=per[sid]; p.assigned++; p.variety.add(T.id);
         p.taskAssigned[T.id]=(p.taskAssigned[T.id]||0)+1;
-        const v=w.results?.[T.id]?.[sid];
+        const v=weekResults(w)[T.id]?.[sid];
         if(T.type==='count'){ const n=+v||0; p.total+=n; p.tasks[T.id]=(p.tasks[T.id]||0)+n; p.weeks[k]=(p.weeks[k]||0)+n; p.countAssigned++; }
         else if(v){ const sc=RATINGS.find(r=>r.v===v)?.score||0; p.ratingCounts[v]=(p.ratingCounts[v]||0)+1; p.ratingTotal++; p.ratingScoreSum+=sc;
           const tr=p.taskRatings[T.id]||(p.taskRatings[T.id]={excellent:0,satisfactory:0,unsatisfactory:0,sum:0,n:0}); tr[v]=(tr[v]||0)+1; tr.sum+=sc; tr.n++;
@@ -1664,7 +1676,7 @@ function aggregate(f,t){
   return {ks,per,dept};
 }
 /* ---- مقارنة الأقسام والموظفين: اختيار أقسام (مهام) وموظفين، ترتيب بالأعلى، مصفوفة أرقام، ومؤشر مقارنة ---- */
-// «Rh Negative» على مستوى الموظف = مهمة RH Contact (t11)؛ رقم Rh Negative الكلي للقسم يبقى في بطاقات KPI أعلاه (ملف Wateen بلا موظف)
+// «Rh Negative» على مستوى الموظف = مهمة RH Contact (t11): رقم Rh Negative للأسبوع يُنسب لمكلَّفها تلقائياً (rhAuto)
 const CMP_TASK_PRESETS={core:['t8','t7','t6','t11'],technical:['t3','t4','t5','t6','t7','t8','t11'],reception:['t1','t2','t10'],rating:['t9','t10','t12']};
 const CMP_COLORS=['#1B3A6B','#0D7377','#F0A500','#C8860A','#5B8DEF','#2E9E6B','#B5487A','#7A5BC7','#E06D3A','#4A5568','#17A2B8','#8B6914'];
 let CMP=Object.assign({tasks:CMP_TASK_PRESETS.core,staff:null,metric:'total',sort:'total'},LS.get('bb_cmp',{})), cmpData=null;
@@ -1747,7 +1759,7 @@ function renderCompare(){
       ${cntT.length?`<td><b>${r.total===null?'—':isRate?r.total.toFixed(1):r.total}</b></td>`:''}
       <td style="min-width:120px">${r.index===null?'—':`<b>${Math.round(r.index)}</b><div class="bar" style="margin-top:3px"><i style="width:${Math.round(r.index)}%"></i></div><small>في ${r.nParts} من ${selT.length} أقسام</small>`}</td></tr>`).join('')}
     </tbody><tfoot><tr><td></td><td class="nm">${isRate?'متوسط المختارين':'إجمالي المختارين'}</td>${foot}${cntT.length?`<td>${isRate?(fA?(fN/fA).toFixed(1):'—'):fN}</td>`:''}<td></td></tr></tfoot></table></div>
-    <div class="hint">اضغط عنوان أي عمود لترتيب الموظفين حسبه (الأعلى أولاً). «—» = لم يُكلَّف بهذا القسم في المدى. التظليل الأغمق = رقم أعلى داخل العمود نفسه. «المجموع» = الأرقام الفعلية المنجزة؛ «المعدّل لكل تكليف» = المجموع ÷ مرات التكليف بالقسم (أعدل لمن كُلّف مرات أقل). <b>مؤشر المقارنة (0–100)</b> = متوسط نسبة الموظف من أعلى رقم في كل قسم مختار (100 = الأعلى في كل الأقسام المختارة؛ في «المجموع» القسم الذي لم يعمل فيه يُحسب 0، وفي «المعدّل» تُحتسب الأقسام التي شارك فيها فقط)، وللتقييمات يُستخدم مؤشر الجودة (Excellent=100، Satisfactory=60، Unsatisfactory=20). «RH Contact (Rh−)» هو رقم Rh Negative المنسوب لكل موظف؛ إجمالي Rh Negative للقسم في البطاقات أعلاه.</div></div>`;
+    <div class="hint">اضغط عنوان أي عمود لترتيب الموظفين حسبه (الأعلى أولاً). «—» = لم يُكلَّف بهذا القسم في المدى. التظليل الأغمق = رقم أعلى داخل العمود نفسه. «المجموع» = الأرقام الفعلية المنجزة؛ «المعدّل لكل تكليف» = المجموع ÷ مرات التكليف بالقسم (أعدل لمن كُلّف مرات أقل). <b>مؤشر المقارنة (0–100)</b> = متوسط نسبة الموظف من أعلى رقم في كل قسم مختار (100 = الأعلى في كل الأقسام المختارة؛ في «المجموع» القسم الذي لم يعمل فيه يُحسب 0، وفي «المعدّل» تُحتسب الأقسام التي شارك فيها فقط)، وللتقييمات يُستخدم مؤشر الجودة (Excellent=100، Satisfactory=60، Unsatisfactory=20). «RH Contact (Rh−)» = رقم Rh Negative لكل أسبوع منسوباً للمكلَّف بمهمة RH Contact في ذلك الأسبوع (يُقسم بالتساوي إن كانا اثنين، والرقم اليدوي إن أُدخل أولى)؛ أسابيع بلا مكلَّف تبقى في إجمالي القسم أعلاه فقط.</div></div>`;
 
   // ٣) الرسوم: توزيع الأرقام (مكدّس) + مؤشر المقارنة
   const byIdx=[...rows].filter(r=>r.index!==null).sort((a,b)=>b.index-a.index);
