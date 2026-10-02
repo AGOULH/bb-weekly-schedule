@@ -416,6 +416,31 @@ table.rpt-rate .rratebar{display:inline-block;height:6px;background:var(--rblue2
 .seg button{border:0;background:none;padding:7px 14px;border-radius:7px;font-weight:700;font-size:12.5px;color:var(--muted);transition:background-color 150ms,color 150ms}
 .seg button.on{background:#fff;color:var(--navy);box-shadow:var(--shadow-card)}
 #impPreview table.rk td{font-variant-numeric:tabular-nums}
+/* مقارنة الأقسام والموظفين (صفحة الإحصائيات) */
+.cmp-lbl{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;font-weight:800;color:var(--navy);font-size:13px}
+.cmp-lbl .lnk{display:flex;flex-wrap:wrap;gap:2px}
+.cmp-lbl .lnk button{background:none;border:0;color:var(--teal);font-weight:700;font-size:11.5px;padding:3px 7px;border-radius:6px;font-family:'Cairo'}
+@media(hover:hover){.cmp-lbl .lnk button:hover{background:#e6f6f4}}
+.cmp-chips{display:flex;flex-wrap:wrap;gap:6px;margin:7px 0 14px}
+.cmp-chip{border:1.5px solid var(--line-strong);background:#fff;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;font-family:Arial;color:var(--muted);direction:ltr;transition:background-color 150ms,color 150ms,border-color 150ms}
+.cmp-chip.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.cmp-chip.rec.on{background:var(--teal);border-color:var(--teal)}
+.cmp-chip small{font-family:'Cairo';font-size:10px;opacity:.8;margin-inline-start:4px}
+.cmp-leaders{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.cmp-lead{background:#fff;border-radius:11px;padding:12px 14px;box-shadow:var(--shadow-card);border-top:3px solid var(--amber)}
+.cmp-lead h4{margin:0 0 2px;font-family:Arial;font-size:13.5px;color:var(--navy);direction:ltr;text-align:right}
+.cmp-lead .sub{font-size:11px;color:var(--muted);margin-bottom:8px}
+.cmp-lead .ln{display:grid;grid-template-columns:24px 1fr auto;gap:6px;align-items:center;font-size:12.5px;margin:6px 0}
+.cmp-lead .ln .nm{font-family:Arial;font-weight:800;direction:ltr;text-align:right}
+.cmp-lead .ln b{font-family:Arial;font-variant-numeric:tabular-nums;color:var(--navy)}
+.cmp-lead .ln .bar{grid-column:2/4;height:5px;margin-top:-3px}
+table.cmp td{font-variant-numeric:tabular-nums;font-family:Arial;font-weight:700}
+table.cmp th button{background:none;border:0;color:#fff;font:inherit;padding:0;text-decoration:underline dotted;text-underline-offset:3px}
+table.cmp th.on{background:var(--teal)}
+table.cmp td small{display:block;font-size:9.5px;font-weight:600;opacity:.75}
+table.cmp tfoot td{background:var(--numcol);color:var(--navy);font-weight:800;border-top:2px solid var(--navy)}
+.cmp-charts{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:820px){.cmp-charts{grid-template-columns:1fr}}
 .imp-actions{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-top:12px}
 table.rk.resmx th{font-size:10.5px;white-space:nowrap}
 table.rk.resmx td{font-variant-numeric:tabular-nums}
@@ -436,16 +461,8 @@ table.rk.resmx td{font-variant-numeric:tabular-nums}
 .dm-badge{display:inline-block;font-family:'Cairo';font-size:10px;font-weight:700;border-radius:10px;padding:1px 7px;margin:2px 2px 0}
 .dm-badge.lv{background:#fde4e4;color:var(--bad)}
 .dm-badge.wk{background:#e2e9fb;color:#1d4ed8}
-.dm-comp{display:flex;align-items:center;gap:4px;justify-content:center;margin-top:3px;font-family:'Cairo';font-size:10px;color:var(--muted);font-weight:700}
-.dm-comp input{border:1px solid var(--line-strong);border-radius:5px;font-size:10.5px;padding:1px 3px;font-family:Arial;background:#fff}
-.dm-comp .dm-pv{display:none}
-.dm-comp-add{background:none;border:0;color:var(--teal);font-size:10.5px;font-weight:700;padding:2px 5px;border-radius:5px;font-family:'Cairo'}
-@media(hover:hover){.dm-comp-add:hover{background:#e6f6f4}}
 #dmSheet input.dm-note{width:100%;min-width:110px;border:1px solid transparent;border-radius:6px;padding:4px;font-family:'Cairo';font-size:11.5px;background:transparent}
 #dmSheet input.dm-note:hover,#dmSheet input.dm-note:focus-visible{border-color:var(--teal);background:#fff}
-.dm-act{white-space:nowrap}
-.dm-act button{background:none;border:1px solid transparent;border-radius:6px;padding:3px 6px;font-size:11.5px;font-weight:700;color:var(--navy);font-family:'Cairo'}
-@media(hover:hover){.dm-act button:hover{border-color:var(--line-strong);background:#fff}}
 .dm-wd{display:flex;gap:6px;flex-wrap:wrap}
 .dm-wd label{display:flex;align-items:center;gap:4px;font-size:12px;font-weight:700;background:#EEF3F8;padding:5px 10px;border-radius:20px;cursor:pointer}
 .dm-chips{display:flex;flex-wrap:wrap;gap:6px}
@@ -468,9 +485,6 @@ body.dm-printing #dmSheet table.sh select{-webkit-appearance:none;appearance:non
 body.dm-printing .dm-role{min-width:0}
 body.dm-printing .dm-dt small{font-size:7.5px;line-height:1.1}
 body.dm-printing .dm-hol{font-size:7.5px;line-height:1.1}
-body.dm-printing .dm-comp{display:inline-flex;margin:0 4px 0 0}
-body.dm-printing .dm-comp input{display:none}
-body.dm-printing .dm-comp .dm-pv{display:inline;color:var(--teal);font-family:Arial;font-size:8.5px}
 body.dm-printing #dmSheet input.dm-note{border:0;background:transparent;font-size:9px;padding:0;min-width:0}
 body.dm-printing #dmSheet .sh-foot{padding:4px 8px;font-size:10px}
 body.dm-printing #dmSheet *{overflow:visible!important}
@@ -604,7 +618,7 @@ body.dm-printing #dmSheet *{overflow:visible!important}
 <!-- ============ STATS ============ -->
 <section class="page" id="pg-stats">
   <div class="pghead noprint">
-    <div><h2 tabindex="-1">الإحصائيات ومقارنة الإنتاجية</h2><p>اختر مدى تاريخي لقياس أداء الفريق والموظفين</p></div>
+    <div><h2 tabindex="-1">الإحصائيات ومقارنة الإنتاجية</h2><p>اختر مدى تاريخي، ثم الأقسام والموظفين للمقارنة والترتيب</p></div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn ghost" id="targetBtn">🎯 تعديل الهدف الشهري</button>
       <button class="btn ghost" id="csvBtn">⬇️ تصدير CSV</button>
@@ -692,7 +706,7 @@ body.dm-printing #dmSheet *{overflow:visible!important}
       <div class="field"><span style="font-size:12px;font-weight:700;color:var(--muted)">أيام عمل المركز (لهذا الشهر)</span><div class="dm-wd" id="dmWorkDays"></div></div>
       <div class="field"><label for="dmPerDay">عدد المناوبين يومياً</label><select class="inp" id="dmPerDay"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
     </div>
-    <div class="hint">المناوبون يُختارون من قائمة الموظفين نفسها (أي موظف جديد يُضاف في «قائمة الموظفين» يظهر هنا فوراً)، والتوزيع بين الجميع بلا تقييد بالفئة. يوم الجمعة مناوب واحد فقط. الإنجاز الفعلي يُحسب من «إدخال النتائج». الرقم بجانب كل اسم = عدد مناوباته هذا الشهر، و«· أسبوعي» = مكلَّف في الجدول الأسبوعي في ذلك اليوم. من في إجازة لا يظهر كخيار. «⇣ الأسبوع» ينسخ مناوبي اليوم لبقية أسبوعه، و«＋ تعويض» يسجّل تاريخ يوم التعويض. الحفظ تلقائي.</div>
+    <div class="hint">المناوبون يُختارون من قائمة الموظفين نفسها (أي موظف جديد يُضاف في «قائمة الموظفين» يظهر هنا فوراً)، والتوزيع بين الجميع بلا تقييد بالفئة. يوم الجمعة مناوب واحد فقط. الإنجاز الفعلي يُحسب من «إدخال النتائج». الرقم بجانب كل اسم = عدد مناوباته هذا الشهر، و«· أسبوعي» = مكلَّف في الجدول الأسبوعي في ذلك اليوم. من في إجازة لا يظهر كخيار. الحفظ تلقائي.</div>
   </div>
   <div id="dmLeaveInfo"></div>
   <div id="dmSheet">
@@ -1628,29 +1642,150 @@ function aggregate(f,t){
   const ks=Object.keys(WEEKS).filter(k=>inRange(k,f,t)).sort();
   const per={}, dept={donors:0,rhNegative:0,apheresisDonors:0,days:0,weeks:ks.length};
   const blankRatings=()=>({excellent:0,satisfactory:0,unsatisfactory:0});
-  const blankPerson=(name,role)=>({name,role:role||'technical',total:0,tasks:{},taskAssigned:{},assigned:0,countAssigned:0,ratingCounts:blankRatings(),ratingTotal:0,ratingScoreSum:0,ratingByWeek:{},variety:new Set(),weeks:{}});
-  activeStaff().forEach(s=>per[s.id]=blankPerson(s.name,s.role));
+  const blankPerson=(id,name,role)=>({id,name,role:role||'technical',total:0,tasks:{},taskAssigned:{},taskRatings:{},assigned:0,countAssigned:0,ratingCounts:blankRatings(),ratingTotal:0,ratingScoreSum:0,ratingByWeek:{},variety:new Set(),weeks:{}});
+  activeStaff().forEach(s=>per[s.id]=blankPerson(s.id,s.name,s.role));
   ks.forEach(k=>{
     const w=WEEKS[k];
     dept.donors+=w.totals?.donors||0; dept.rhNegative+=w.totals?.rhNegative||0;
     dept.apheresisDonors+=w.totals?.apheresisDonors||0; dept.days+=w.totals?.workDays||5;
     TASKS.forEach(T=>{
       (w.assignments[T.id]||[]).forEach(sid=>{
-        if(!per[sid]) per[sid]=blankPerson(sName(sid)||'—',STAFF[sid]?.role);
+        if(!per[sid]) per[sid]=blankPerson(sid,sName(sid)||'—',STAFF[sid]?.role);
         const p=per[sid]; p.assigned++; p.variety.add(T.id);
         p.taskAssigned[T.id]=(p.taskAssigned[T.id]||0)+1;
         const v=w.results?.[T.id]?.[sid];
         if(T.type==='count'){ const n=+v||0; p.total+=n; p.tasks[T.id]=(p.tasks[T.id]||0)+n; p.weeks[k]=(p.weeks[k]||0)+n; p.countAssigned++; }
         else if(v){ const sc=RATINGS.find(r=>r.v===v)?.score||0; p.ratingCounts[v]=(p.ratingCounts[v]||0)+1; p.ratingTotal++; p.ratingScoreSum+=sc;
+          const tr=p.taskRatings[T.id]||(p.taskRatings[T.id]={excellent:0,satisfactory:0,unsatisfactory:0,sum:0,n:0}); tr[v]=(tr[v]||0)+1; tr.sum+=sc; tr.n++;
           p.ratingByWeek[k]=p.ratingByWeek[k]||{sum:0,count:0}; p.ratingByWeek[k].sum+=sc; p.ratingByWeek[k].count++; }
       });
     });
   });
   return {ks,per,dept};
 }
+/* ---- مقارنة الأقسام والموظفين: اختيار أقسام (مهام) وموظفين، ترتيب بالأعلى، مصفوفة أرقام، ومؤشر مقارنة ---- */
+// «Rh Negative» على مستوى الموظف = مهمة RH Contact (t11)؛ رقم Rh Negative الكلي للقسم يبقى في بطاقات KPI أعلاه (ملف Wateen بلا موظف)
+const CMP_TASK_PRESETS={core:['t8','t7','t6','t11'],technical:['t3','t4','t5','t6','t7','t8','t11'],reception:['t1','t2','t10'],rating:['t9','t10','t12']};
+const CMP_COLORS=['#1B3A6B','#0D7377','#F0A500','#C8860A','#5B8DEF','#2E9E6B','#B5487A','#7A5BC7','#E06D3A','#4A5568','#17A2B8','#8B6914'];
+let CMP=Object.assign({tasks:CMP_TASK_PRESETS.core,staff:null,metric:'total',sort:'total'},LS.get('bb_cmp',{})), cmpData=null;
+const cmpTaskLabel=t=>({t2:'B.B Reception (No Cleric)',t11:'RH Contact (Rh−)',t12:'Cleaning'}[t.id]||t.name);
+function cmpSave(){ LS.set('bb_cmp',CMP); renderCompare(); }
+function renderCompare(){
+  const box=$('#cmpSec'); if(!box||!cmpData) return;
+  const order=id=>STAFF[id]?.order??999;
+  const pool=Object.values(cmpData.per).filter(p=>p.assigned>0).sort((a,b)=>order(a.id)-order(b.id));
+  const selT=TASKS.filter(t=>CMP.tasks.includes(t.id)), cntT=selT.filter(t=>t.type==='count');
+  const selS=pool.filter(p=>!CMP.staff||CMP.staff.includes(p.id));
+  const isRate=CMP.metric==='rate';
+  // null = لم يُكلَّف بالقسم (يظهر «—» ولا يدخل في الترتيب)
+  const val=(p,t)=>{
+    if(t.type==='rating'){ const r=p.taskRatings[t.id]; return r?.n?Math.round(r.sum/r.n):null; }
+    const a=p.taskAssigned[t.id]||0, n=p.tasks[t.id]||0;
+    if(isRate) return a?n/a:null;
+    return a||n?n:null;
+  };
+  const fmt=(v,t)=>v===null?'—':t.type==='rating'?v+'%':isRate?v.toFixed(1):v;
+  const colMax={}, colVals={};
+  selT.forEach(t=>{ colVals[t.id]=selS.map(p=>val(p,t)).filter(v=>v!==null); colMax[t.id]=Math.max(0,...colVals[t.id]); });
+  const rankIn=(v,t)=>v===null?null:1+colVals[t.id].filter(x=>x>v).length;
+  const rows=selS.map(p=>{
+    const v={}; selT.forEach(t=>v[t.id]=val(p,t));
+    const sumN=cntT.reduce((s,t)=>s+(p.tasks[t.id]||0),0), sumA=cntT.reduce((s,t)=>s+(p.taskAssigned[t.id]||0),0);
+    const total=isRate?(sumA?sumN/sumA:null):(sumA||sumN?sumN:null);
+    // مؤشر المقارنة: متوسط نسبة الموظف من أعلى رقم في كل قسم مختار فيه أرقام (التقييمات = مؤشر الجودة نفسه).
+    // في «المجموع» القسم الذي لم يعمل فيه = 0 (حتى لا يتصدّر من عمل في قسم واحد فقط)؛ في «المعدّل» يُحتسب ما شارك فيه فقط
+    const parts=selT.filter(t=>t.type==='rating'?v[t.id]!==null:colMax[t.id]>0&&(v[t.id]!==null||!isRate))
+      .map(t=>t.type==='rating'?v[t.id]:(v[t.id]||0)/colMax[t.id]*100);
+    const nParts=selT.filter(t=>v[t.id]!==null&&(t.type==='rating'||v[t.id]>0)).length;
+    return {p,v,total,index:nParts&&parts.length?parts.reduce((a,b)=>a+b,0)/parts.length:null,nParts};
+  });
+  if(CMP.sort!=='total'&&CMP.sort!=='index'&&!selT.some(t=>t.id===CMP.sort)) CMP.sort='total';
+  const key=r=>CMP.sort==='total'?r.total:CMP.sort==='index'?r.index:r.v[CMP.sort];
+  rows.sort((a,b)=>(key(b)??-1)-(key(a)??-1)||order(a.p.id)-order(b.p.id));
+  const medal=i=>['🥇','🥈','🥉'][i]||i+1;
+  const staffSel=id=>!CMP.staff||CMP.staff.includes(id);
+
+  let h=`<div class="card noprint">
+    <h3>🔀 مقارنة الأقسام والموظفين</h3>
+    <div class="cmp-lbl">الأقسام (المهام) — اختر قسماً أو أكثر
+      <span class="lnk"><button data-tp="core">السحب والصفائح وRh</button><button data-tp="technical">الأقسام الفنية</button><button data-tp="reception">الاستقبال</button><button data-tp="rating">التقييمات</button><button data-tp="all">الكل</button><button data-tp="none">مسح</button></span></div>
+    <div class="cmp-chips">${TASKS.map(t=>`<button class="cmp-chip ${CMP.tasks.includes(t.id)?'on':''}" data-t="${t.id}" aria-pressed="${CMP.tasks.includes(t.id)}">${cmpTaskLabel(t)}</button>`).join('')}</div>
+    <div class="cmp-lbl">الموظفون — الكل أو مجموعة أو أشخاص معيّنون (${selS.length} من ${pool.length})
+      <span class="lnk"><button data-sp="all">الكل</button><button data-sp="technical">الفنيون</button><button data-sp="reception">الاستقبال</button><button data-sp="none">مسح</button></span></div>
+    <div class="cmp-chips">${pool.map(p=>`<button class="cmp-chip ${p.role==='reception'?'rec':''} ${staffSel(p.id)?'on':''}" data-s="${p.id}" aria-pressed="${staffSel(p.id)}">${p.name}<small>${p.role==='reception'?'استقبال':'فني'}</small></button>`).join('')||'<span class="hint">لا يوجد موظفون مكلَّفون في هذا المدى.</span>'}</div>
+    <div class="row" style="align-items:center;gap:10px"><b style="font-size:13px;color:var(--navy)">طريقة القياس:</b>
+      <div class="seg" role="group" aria-label="طريقة القياس"><button data-m="total" class="${!isRate?'on':''}" aria-pressed="${!isRate}">المجموع (الأرقام الفعلية)</button><button data-m="rate" class="${isRate?'on':''}" aria-pressed="${isRate}">المعدّل لكل تكليف</button></div></div>
+  </div>`;
+
+  if(!selT.length||!selS.length){
+    box.innerHTML=h+`<div class="card"><div class="empty">${!selT.length?'اختر قسماً واحداً على الأقل للمقارنة.':'اختر موظفاً واحداً على الأقل للمقارنة.'}</div></div>`;
+    ['cmpStack','cmpIdx'].forEach(k=>{charts[k]?.destroy();delete charts[k]}); return;
+  }
+
+  // ١) الأعلى في كل قسم
+  h+=`<div class="card"><h3>🏅 الأعلى في كل قسم ${isRate?'(المعدّل لكل تكليف)':'(المجموع)'}</h3><div class="cmp-leaders">${selT.map(t=>{
+    const top=selS.map(p=>({p,v:val(p,t)})).filter(x=>x.v!==null&&(t.type==='rating'||x.v>0)).sort((a,b)=>b.v-a.v).slice(0,3);
+    const sumRaw=selS.reduce((s,p)=>s+(p.tasks[t.id]||0),0);
+    const sub=t.type==='rating'?`مؤشر الجودة · ${colVals[t.id].length} موظف مُقيَّم`:`إجمالي القسم: <b>${sumRaw}</b> · ${colVals[t.id].length} موظف`;
+    return `<div class="cmp-lead"><h4>${cmpTaskLabel(t)}</h4><div class="sub">${sub}</div>${top.length?top.map((x,i)=>`<div class="ln"><span>${medal(i)}</span><span class="nm">${x.p.name}</span><b>${fmt(x.v,t)}</b><div class="bar"><i style="width:${colMax[t.id]?Math.round(x.v/colMax[t.id]*100):0}%"></i></div></div>`).join(''):'<div class="hint">لا توجد أرقام في هذا المدى.</div>'}</div>`;
+  }).join('')}</div></div>`;
+
+  // ٢) مصفوفة الأرقام موظف × قسم
+  const th=(k,lbl)=>`<th class="${CMP.sort===k?'on':''}"><button data-sort="${k}" title="ترتيب حسب هذا العمود">${lbl}${CMP.sort===k?' ▼':''}</button></th>`;
+  const heat=(v,t)=>{ if(v===null||!colMax[t.id]) return ''; const r=t.type==='rating'?v/100:v/colMax[t.id], a=(.06+.55*r).toFixed(2); return `background:rgba(13,115,119,${a});${r>.62?'color:#fff':''}`; };
+  const foot=selT.map(t=>{
+    if(t.type==='rating'){ const vs=colVals[t.id]; return `<td>${vs.length?Math.round(vs.reduce((a,b)=>a+b,0)/vs.length)+'%':'—'}</td>`; }
+    const n=selS.reduce((s,p)=>s+(p.tasks[t.id]||0),0), a=selS.reduce((s,p)=>s+(p.taskAssigned[t.id]||0),0);
+    return `<td>${isRate?(a?(n/a).toFixed(1):'—'):n}</td>`; }).join('');
+  const fN=selS.reduce((s,p)=>s+cntT.reduce((x,t)=>x+(p.tasks[t.id]||0),0),0), fA=selS.reduce((s,p)=>s+cntT.reduce((x,t)=>x+(p.taskAssigned[t.id]||0),0),0);
+  h+=`<div class="card"><h3>📋 مقارنة الأرقام — الموظفون × الأقسام</h3><div style="overflow-x:auto"><table class="rk cmp"><thead><tr><th>#</th><th style="text-align:right">الموظف</th>
+    ${selT.map(t=>th(t.id,cmpTaskLabel(t))).join('')}${cntT.length?th('total',isRate?'المعدّل العام':'الإجمالي'):''}${th('index','مؤشر المقارنة')}</tr></thead><tbody>
+    ${rows.map((r,i)=>`<tr><td>${key(r)===null?'—':medal(i)}</td><td class="nm">${r.p.name} <span class="pill ${r.p.role==='reception'?'dr':'pb'}" style="font-family:'Cairo'">${r.p.role==='reception'?'استقبال':'فني'}</span></td>
+      ${selT.map(t=>{ const v=r.v[t.id], rk=rankIn(v,t), tr=r.p.taskRatings[t.id];
+        const extra=t.type==='rating'&&tr?`<small>E${tr.excellent} · S${tr.satisfactory} · U${tr.unsatisfactory}</small>`:(rk&&v>0&&colVals[t.id].length>1?`<small>${rk===1?'🥇 الأعلى':'#'+rk}</small>`:'');
+        return `<td style="${heat(v,t)}">${fmt(v,t)}${extra}</td>`; }).join('')}
+      ${cntT.length?`<td><b>${r.total===null?'—':isRate?r.total.toFixed(1):r.total}</b></td>`:''}
+      <td style="min-width:120px">${r.index===null?'—':`<b>${Math.round(r.index)}</b><div class="bar" style="margin-top:3px"><i style="width:${Math.round(r.index)}%"></i></div><small>في ${r.nParts} من ${selT.length} أقسام</small>`}</td></tr>`).join('')}
+    </tbody><tfoot><tr><td></td><td class="nm">${isRate?'متوسط المختارين':'إجمالي المختارين'}</td>${foot}${cntT.length?`<td>${isRate?(fA?(fN/fA).toFixed(1):'—'):fN}</td>`:''}<td></td></tr></tfoot></table></div>
+    <div class="hint">اضغط عنوان أي عمود لترتيب الموظفين حسبه (الأعلى أولاً). «—» = لم يُكلَّف بهذا القسم في المدى. التظليل الأغمق = رقم أعلى داخل العمود نفسه. «المجموع» = الأرقام الفعلية المنجزة؛ «المعدّل لكل تكليف» = المجموع ÷ مرات التكليف بالقسم (أعدل لمن كُلّف مرات أقل). <b>مؤشر المقارنة (0–100)</b> = متوسط نسبة الموظف من أعلى رقم في كل قسم مختار (100 = الأعلى في كل الأقسام المختارة؛ في «المجموع» القسم الذي لم يعمل فيه يُحسب 0، وفي «المعدّل» تُحتسب الأقسام التي شارك فيها فقط)، وللتقييمات يُستخدم مؤشر الجودة (Excellent=100، Satisfactory=60، Unsatisfactory=20). «RH Contact (Rh−)» هو رقم Rh Negative المنسوب لكل موظف؛ إجمالي Rh Negative للقسم في البطاقات أعلاه.</div></div>`;
+
+  // ٣) الرسوم: توزيع الأرقام (مكدّس) + مؤشر المقارنة
+  const byIdx=[...rows].filter(r=>r.index!==null).sort((a,b)=>b.index-a.index);
+  const hpx=n=>Math.max(260,n*30+70);
+  h+=`<div class="cmp-charts">
+    ${cntT.length?`<div class="card"><h3>📊 ${isRate?'المعدّل لكل تكليف':'الأرقام'} لكل موظف حسب القسم</h3><div class="chartbox" style="height:${hpx(rows.length)}px"><canvas id="cCmpStack"></canvas></div></div>`:''}
+    <div class="card"><h3>🎯 مؤشر المقارنة (0–100)</h3><div class="chartbox" style="height:${hpx(byIdx.length)}px"><canvas id="cCmpIdx"></canvas></div></div>
+  </div>`;
+  box.innerHTML=h;
+
+  ['cmpStack','cmpIdx'].forEach(k=>{charts[k]?.destroy();delete charts[k]});
+  const ord=[...rows].sort((a,b)=>(b.total??-1)-(a.total??-1));
+  if($('#cCmpStack')) charts.cmpStack=new Chart($('#cCmpStack'),{type:'bar',data:{labels:ord.map(r=>r.p.name),
+    datasets:cntT.map(t=>({label:cmpTaskLabel(t),data:ord.map(r=>{const v=r.v[t.id];return v===null?0:+v.toFixed(2)}),backgroundColor:CMP_COLORS[TASKS.indexOf(t)%CMP_COLORS.length],borderRadius:4}))},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},scales:{x:{stacked:!isRate,beginAtZero:true},y:{stacked:!isRate}}}});
+  charts.cmpIdx=new Chart($('#cCmpIdx'),{type:'bar',data:{labels:byIdx.map(r=>r.p.name),
+    datasets:[{label:'مؤشر المقارنة',data:byIdx.map(r=>Math.round(r.index)),backgroundColor:byIdx.map((_,i)=>i<3?'#F0A500':'#0D7377'),borderRadius:6}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,max:100}}}});
+}
+$('#statsOut').addEventListener('click',e=>{
+  const b=e.target.closest('#cmpSec button'); if(!b) return;
+  const d=b.dataset, poolP=()=>Object.values(cmpData.per).filter(p=>p.assigned>0);
+  if(d.t){ CMP.tasks=CMP.tasks.includes(d.t)?CMP.tasks.filter(x=>x!==d.t):[...CMP.tasks,d.t]; }
+  else if(d.tp){ CMP.tasks=d.tp==='all'?TASKS.map(t=>t.id):d.tp==='none'?[]:[...CMP_TASK_PRESETS[d.tp]]; }
+  else if(d.s){ const all=poolP().map(p=>p.id), cur=CMP.staff||all;
+    CMP.staff=cur.includes(d.s)?cur.filter(x=>x!==d.s):[...cur,d.s];
+    if(all.every(id=>CMP.staff.includes(id))) CMP.staff=null; }
+  else if(d.sp){ CMP.staff=d.sp==='all'?null:d.sp==='none'?[]:poolP().filter(p=>(p.role==='reception')===(d.sp==='reception')).map(p=>p.id); }
+  else if(d.m){ CMP.metric=d.m; }
+  else if(d.sort){ CMP.sort=d.sort; }
+  else return;
+  cmpSave();
+});
+
 function renderStats(){
   const f=$('#sFrom').value,t=$('#sTo').value;
   const {ks,per,dept}=aggregate(f,t);
+  cmpData={per,ks};
   if(!ks.length){ $('#statsOut').innerHTML='<div class="card"><div class="empty">لا توجد بيانات في هذا المدى.</div></div>'; return; }
   // فترة سابقة مماثلة للمقارنة
   const span=ks.length, prevKeys=Object.keys(WEEKS).sort().filter(k=>k<ks[0]).slice(-span);
@@ -1720,7 +1855,9 @@ function renderStats(){
     <div class="kpi a"><div class="lb">🎯 الهدف الشهري (${MON[now.getMonth()]})</div><div class="vl">${curMonthDonors} / ${TARGET.monthly||'—'}</div>
       <div class="dt">${targetPct===null?'<span class="flat">لم يُحدَّد هدف — زر «تعديل الهدف الشهري»</span>':
         `<div class="bar" style="margin:4px 0"><i style="width:${Math.min(100,targetPct)}%"></i></div><span class="${targetPct>=100?'up':targetPct>=70?'flat':'down'}">${targetPct}%</span>`}</div></div>
-  </div>`;
+  </div>
+  <div id="cmpSec"></div>
+  <div style="margin:18px 2px 10px;font-weight:800;color:var(--navy);font-size:15px">📚 تحليلات تفصيلية — ترتيب الفئات، الصفائح، الجودة والاتجاهات</div>`;
 
   function rankTableHtml(title,g,rankCanvasId){
     if(!g.list.length) return '';
@@ -1856,6 +1993,7 @@ function renderStats(){
       options:{responsive:true,maintainAspectRatio:false}});
   };
   $('#cmpA').onchange=drawRadar; $('#cmpB').onchange=drawRadar; drawRadar();
+  renderCompare();
 }
 
 /* ============ الموظفون ============ */
@@ -3157,12 +3295,11 @@ lv$('lvCpTitle').addEventListener('change',e=>{
 });
 
 /* ============ جدول مركز دمي (Dammi Center) ============ */
-// مستند شهري dammi/{YYYY-MM}: { month, workDays:[0..6], perDay, days:{ 'YYYY-MM-DD': {staff:[id,...], comp:{slot:date}, note, open} } }
+// مستند شهري dammi/{YYYY-MM}: { month, workDays:[0..6], perDay, days:{ 'YYYY-MM-DD': {staff:[id,...], note, open} } } — حقل comp (التعويض) أُلغي من الواجهة؛ القيم القديمة تبقى مخزّنة دون عرض
 // مناوبون فقط بلا تحديد مهمة (الإنجاز الفعلي يُحسب من «إدخال النتائج»). الخانات من نفس قائمة STAFF — التوزيع بين الجميع بلا تقييد بالفئة.
 const DM_DEFAULT_WORKDAYS=[0,1,2,3,4,5]; // الأحد–الجمعة، السبت مغلق (نفس نمط ملف الإكسل الأصلي)
 const DM_DEFAULT_PER_DAY=2;             // مناوبان في أيام الأسبوع، والجمعة مناوب واحد فقط
 let DAMMI={}, curDm=new Date().toISOString().slice(0,7), dmSaveT=null;
-const dmCompOpen=new Set(); // خانات تعويض فُتحت للإدخال ولم تُعبّأ بعد
 
 const dmDate=s=>new Date(s+'T00:00:00Z');
 const dmISO=d=>d.toISOString().slice(0,10);
@@ -3175,7 +3312,7 @@ const dmTitle=mk=>{const [y,m]=mk.split('-');return `جدول دمي - ${LV_MONT
 const dmDM=ds=>`${ds.slice(8)}/${ds.slice(5,7)}`;
 const dmEsc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const dmOn=r=>(r?.staff||[]).filter(Boolean);
-const dmHasData=r=>!!r&&(dmOn(r).length>0||!!r.note||Object.values(r.comp||{}).some(Boolean));
+const dmHasData=r=>!!r&&(dmOn(r).length>0||!!r.note);
 function dmDoc(mk){ return DAMMI[mk]||(DAMMI[mk]={month:mk,workDays:[...DM_DEFAULT_WORKDAYS],perDay:DM_DEFAULT_PER_DAY,days:{}}); }
 // slots على مستوى اليوم = استثناء (مثل جمعة تاريخية بمناوبَين في ملف الإكسل)، وإلا الجمعة ١ وباقي الأيام perDay
 const dmSlots=(doc,ds)=>doc?.days?.[ds]?.slots||(dmDow(ds)===5?1:(doc?.perDay||DM_DEFAULT_PER_DAY));
@@ -3190,10 +3327,8 @@ function dmNormalize(doc){
   Object.values(doc.days||{}).forEach(r=>{
     if(r.staff) return;
     const old=['reception','draw','doctor'].map(k=>r[k]).filter(Boolean);
-    const oc=r.comp||{}, comp={};
-    ['reception','draw','doctor'].forEach(k=>{ const i=old.indexOf(r[k]); if(r[k]&&oc[k]) comp[i]=oc[k]; delete r[k]; });
+    ['reception','draw','doctor'].forEach(k=>delete r[k]);
     if(old.length) r.staff=old;
-    if(Object.keys(comp).length) r.comp=comp; else delete r.comp;
     delete r.donors;
     if(old.length>(doc.perDay||DM_DEFAULT_PER_DAY)) doc.perDay=old.length; // لا يُخفى أي مناوب مُرحَّل
   });
@@ -3216,7 +3351,6 @@ function dmQueueSave(){
     const d=DAMMI[mk]; if(!d) return;
     Object.keys(d.days).forEach(ds=>{ const r=d.days[ds];
       if(r.staff){ r.staff=r.staff.map(x=>x||''); while(r.staff.length&&!r.staff[r.staff.length-1]) r.staff.pop(); if(!r.staff.length) delete r.staff; }
-      if(r.comp&&!Object.values(r.comp).some(Boolean)) delete r.comp;
       if(!Object.keys(r).length) delete d.days[ds]; });
     d.updatedAt=new Date().toISOString();
     try{ await cloudSet('dammi',mk,JSON.parse(JSON.stringify(d))); $('#dmSaveState').textContent='تم الحفظ ✓'; }
@@ -3242,11 +3376,7 @@ function dmSlotCell(ds,j,rec,counts){
     const wt=dmWeeklyTasks(cur,ds);
     if(wt.length) flags+=`<span class="dm-badge wk noprint" title="مكلَّف بالجدول الأسبوعي: ${dmEsc(wt.join('، '))}">📅 أسبوعي</span>`;
   }
-  const cv=rec.comp?.[j]||'', key=ds+'|'+j;
-  const comp=(cv||dmCompOpen.has(key))
-    ? `<div class="dm-comp"><span class="noprint">تعويض</span><input type="date" data-comp="${j}" value="${cv}" aria-label="تاريخ التعويض — المناوب ${j+1}"><span class="dm-pv">COMP ${cv?dmDM(cv):''}</span><button class="dm-comp-add noprint" data-compx="${j}" title="إزالة التعويض">✕</button></div>`
-    : (cur?`<div class="dm-comp noprint"><button class="dm-comp-add" data-compadd="${j}">＋ تعويض</button></div>`:'');
-  return `<td class="dm-role"><select data-slot="${j}" aria-label="المناوب ${j+1} — ${ds}">${opts}</select>${flags?`<div>${flags}</div>`:''}${comp}</td>`;
+  return `<td class="dm-role"><select data-slot="${j}" aria-label="المناوب ${j+1} — ${ds}">${opts}</select>${flags?`<div>${flags}</div>`:''}</td>`;
 }
 
 function renderDammi(){
@@ -3255,18 +3385,16 @@ function renderDammi(){
   const maxSlots=Math.max(doc.perDay||DM_DEFAULT_PER_DAY,...Object.values(doc.days).map(r=>r.slots||0));
   $('#dmMonth').value=curDm; $('#dmPerDay').value=String(maxSlots);
   $('#dmSub').textContent=dmTitle(curDm);
-  $('#dmHead').innerHTML=`<th>#</th><th>DATE</th><th>DAY</th>${Array.from({length:maxSlots},(_,j)=>`<th>ON DUTY ${j+1}<br>المناوب ${j+1}</th>`).join('')}<th>NOTES<br>ملاحظات</th><th class="noprint">إجراء</th>`;
+  $('#dmHead').innerHTML=`<th>#</th><th>DATE</th><th>DAY</th>${Array.from({length:maxSlots},(_,j)=>`<th>ON DUTY ${j+1}<br>المناوب ${j+1}</th>`).join('')}<th>NOTES<br>ملاحظات</th>`;
   $('#dmWorkDays').innerHTML=LV_DAYS.map((d,i)=>`<label><input type="checkbox" data-wd="${i}" ${(doc.workDays||DM_DEFAULT_WORKDAYS).includes(i)?'checked':''}> ${d}</label>`).join('');
   $('#dmBody').innerHTML=dmMonthDays(curDm).map((ds,i)=>{
     const rec=doc.days[ds]||{}, dow=dmDow(ds), work=dmIsWork(doc,ds), h=lvHijriParts(dmDate(ds)), n=dmSlots(doc,ds);
     const holTag=hol[ds]?`<span class="dm-hol">${hol[ds]}</span>`:'';
     const head=`<td class="num">${i+1}</td><td class="dm-dt">${dmDM(ds)}<small>${h.day} ${LV_HIJRI_MONTHS[h.month-1]||''}</small></td><td class="dm-day">${LV_DAYS[dow]}${holTag}</td>`;
-    if(!work) return `<tr class="dm-off ${dow===0?'dm-wk':''}" data-d="${ds}">${head}<td colspan="${maxSlots+1}" class="dm-closed">مغلق</td>
-      <td class="dm-act noprint"><button data-act="open" title="فتح هذا اليوم للعمل">⏻ فتح</button></td></tr>`;
+    if(!work) return `<tr class="dm-off ${dow===0?'dm-wk':''}" data-d="${ds}">${head}<td colspan="${maxSlots+1}" class="dm-closed">مغلق</td></tr>`;
     const cells=Array.from({length:maxSlots},(_,j)=>j<n?dmSlotCell(ds,j,rec,counts):'<td class="dm-na">—</td>').join('');
     return `<tr class="${dow===0?'dm-wk':''} ${dow===5?'dm-fri':''}" data-d="${ds}">${head}${cells}
-      <td><input class="dm-note" data-f="note" value="${dmEsc(rec.note||'')}" aria-label="ملاحظات ${ds}"></td>
-      <td class="dm-act noprint"><button data-act="week" title="نسخ مناوبي هذا اليوم لبقية أيام العمل في نفس الأسبوع">⇣ الأسبوع</button><button data-act="clear" title="مسح هذا اليوم">✕</button><button data-act="close" title="إغلاق هذا اليوم (لا دوام)">⏻</button></td></tr>`;
+      <td><input class="dm-note" data-f="note" value="${dmEsc(rec.note||'')}" aria-label="ملاحظات ${ds}"></td></tr>`;
   }).join('');
   renderDmLeaveInfo(); renderDmSummary(); renderDmStats(); renderDmAnnual();
 }
@@ -3289,14 +3417,13 @@ function renderDmLeaveInfo(){
 // ملخص الشهر — يُطبع مع الجدول في PDF
 function renderDmSummary(){
   const doc=dmDoc(curDm), per={};
-  Object.entries(doc.days).forEach(([ds,r])=>{ if(!dmIsWork(doc,ds)) return; (r.staff||[]).forEach((s,j)=>{ if(!s) return;
-    const p=per[s]||(per[s]={t:0,f:0,c:0}); p.t++; if(dmDow(ds)===5) p.f++; if(r.comp?.[j]) p.c++; }); });
+  Object.entries(doc.days).forEach(([ds,r])=>{ if(!dmIsWork(doc,ds)) return; (r.staff||[]).forEach(s=>{ if(!s) return;
+    const p=per[s]||(per[s]={t:0,f:0}); p.t++; if(dmDow(ds)===5) p.f++; }); });
   const rows=Object.entries(per).sort((a,b)=>b[1].t-a[1].t);
   // جدول أفقي (الموظفون أعمدة) — يبقى قصيراً حتى يتسع الشهر كاملاً مع الملخص في صفحة PDF واحدة
   $('#dmSummary').innerHTML=rows.length?`<div class="dm-sumttl">Monthly Summary · ملخص الشهر</div><div style="overflow-x:auto"><table class="sh"><thead><tr><th>STAFF</th>${rows.map(([s])=>`<th>${dmEsc(sName(s)||s)}</th>`).join('')}</tr></thead><tbody>
     <tr><td class="num" style="width:auto">DUTY DAYS</td>${rows.map(([,p])=>`<td>${p.t}</td>`).join('')}</tr>
     <tr><td class="num" style="width:auto">FRIDAYS</td>${rows.map(([,p])=>`<td>${p.f}</td>`).join('')}</tr>
-    <tr><td class="num" style="width:auto">COMP</td>${rows.map(([,p])=>`<td>${p.c}</td>`).join('')}</tr>
     </tbody></table></div>`:'';
 }
 
@@ -3320,13 +3447,12 @@ function dmComputeStats(f,t){
   const days=dmCollect(f,t), ids=new Set(activeStaff().map(s=>s.id));
   days.forEach(({r})=>dmOn(r).forEach(s=>ids.add(s)));
   const per={};
-  ids.forEach(id=>per[id]={id,name:sName(id)||id,total:0,fri:0,comp:0,leave:0,conflicts:0,streak:0,_run:0});
-  let filled=0, slots=0, compAll=0;
+  ids.forEach(id=>per[id]={id,name:sName(id)||id,total:0,fri:0,leave:0,conflicts:0,streak:0,_run:0});
+  let filled=0, slots=0;
   days.forEach(({ds,r,n})=>{
     const dow=dmDow(ds), present=new Set(); slots+=n;
     (r.staff||[]).forEach((s,j)=>{ if(!s||j>=n) return; const p=per[s]; filled++; present.add(s);
       p.total++; if(dow===5) p.fri++;
-      if(r.comp?.[j]){ p.comp++; compAll++; }
       if(isOnLeave(s,ds,ds)) p.conflicts++; });
     Object.values(per).forEach(p=>{
       if(present.has(p.id)){ p._run++; p.streak=Math.max(p.streak,p._run); } else p._run=0;
@@ -3340,7 +3466,7 @@ function dmComputeStats(f,t){
   list.forEach(p=>{ p.expected=filled*p.avail/sumAvail; p.dev=p.total-p.expected; });
   const absDev=list.reduce((a,p)=>a+Math.abs(p.dev),0);
   const fairness=filled?Math.max(0,100-absDev/(2*filled)*100):null;
-  return {days,list,filled,slots,compAll,fairness,
+  return {days,list,filled,slots,fairness,
     conflicts:list.reduce((a,p)=>a+p.conflicts,0),fridays:days.filter(d=>dmDow(d.ds)===5).length};
 }
 function renderDmStats(){
@@ -3364,14 +3490,13 @@ function renderDmStats(){
     ${kpi('','تغطية المناوبات',cov+'%',`${S.filled} من ${S.slots} خانة`)}
     ${kpi('g','مؤشر عدالة التوزيع',S.fairness===null?'—':Math.round(S.fairness)+'%','100% = توزيع مطابق للأيام المتاحة لكل موظف')}
     ${kpi('','تعارضات مع الإجازات',S.conflicts,S.conflicts?'تحتاج تصحيحاً':'لا يوجد')}
-    ${kpi('a','تعويضات مسجّلة',S.compAll,'تاريخ تعويض مُدخل')}
   </div>
   ${alerts.length?`<div class="dm-alerts">${alerts.map(a=>`<div>${a}</div>`).join('')}</div>`:'<div class="dm-alerts ok"><div>✓ التوزيع متوازن — لا تنبيهات في هذا المدى</div></div>'}
-  <div style="overflow-x:auto"><table class="rk"><thead><tr><th>#</th><th style="text-align:right">الموظف</th><th>أيام المناوبة</th><th>الحصة العادلة</th><th>الفرق</th><th>نسبة المشاركة</th><th>الجمعة</th><th>أطول تتابع</th><th>أيام إجازة</th><th>تعويضات</th><th style="min-width:110px">الحصة</th></tr></thead><tbody>
+  <div style="overflow-x:auto"><table class="rk"><thead><tr><th>#</th><th style="text-align:right">الموظف</th><th>أيام المناوبة</th><th>الحصة العادلة</th><th>الفرق</th><th>نسبة المشاركة</th><th>الجمعة</th><th>أطول تتابع</th><th>أيام إجازة</th><th style="min-width:110px">الحصة</th></tr></thead><tbody>
   ${list.map((p,i)=>{ const dv=p.dev, cls=Math.abs(dv)<Math.max(2,p.expected*.25)?'flat':dv>0?'down':'up';
     return `<tr><td>${i+1}</td><td class="nm">${dmEsc(p.name)}</td>
     <td><b>${p.total}</b></td><td>${p.expected.toFixed(1)}</td><td class="${cls}" style="font-weight:800;direction:ltr">${dv>0?'+':''}${dv.toFixed(1)}</td>
-    <td>${p.avail?Math.round(p.total/p.avail*100)+'%':'—'}</td><td>${p.fri}</td><td>${p.streak}</td><td>${p.leave||'—'}</td><td>${p.comp||'—'}</td>
+    <td>${p.avail?Math.round(p.total/p.avail*100)+'%':'—'}</td><td>${p.fri}</td><td>${p.streak}</td><td>${p.leave||'—'}</td>
     <td><div class="bar"><i style="width:${p.total/mx*100}%"></i></div></td></tr>`; }).join('')}
   </tbody></table></div>
   <div class="hint">«الحصة العادلة» = المناوبات المعبّأة في المدى موزّعة على الموظفين النشطين بنسبة أيامهم المتاحة (أيام العمل ناقص أيام الإجازة) — فلا يُحاسَب موظف على أيام كان فيها مجازاً. «نسبة المشاركة» = أيام مناوبته ÷ أيامه المتاحة. الإنجاز الفعلي (الأعداد والمهام المنجزة) يُحسب من صفحة «إدخال النتائج» والإحصائيات.</div>`;
@@ -3417,22 +3542,6 @@ function dmAutoFill(){
   });
   return {filled,gaps};
 }
-function dmFillWeek(src){
-  const doc=dmDoc(curDm), on=doc.days[src]?.staff||[], wk=dmWeekStart(src);
-  if(!on.some(Boolean)){ toast('اختر المناوبين في هذا اليوم أولاً'); return; }
-  let set=0, skipped=[];
-  dmMonthDays(curDm).filter(ds=>ds>src&&dmWeekStart(ds)===wk&&dmIsWork(doc,ds)).forEach(ds=>{
-    const r=doc.days[ds]||(doc.days[ds]={}), tgt=r.staff=r.staff||[], n=dmSlots(doc,ds);
-    for(let j=0;j<n;j++){
-      const s=on[j]; if(!s||tgt[j]===s) continue;
-      if(isOnLeave(s,ds,ds)){ skipped.push(`${sName(s)} ${dmDM(ds)} (إجازة)`); continue; }
-      if(tgt.some((x,k)=>k!==j&&x===s)){ skipped.push(`${sName(s)} ${dmDM(ds)} (مناوب بخانة أخرى)`); continue; }
-      tgt[j]=s; set++;
-    }
-  });
-  dmQueueSave(); renderDammi();
-  toast(`تم نسخ ${set} مناوبة حتى نهاية الأسبوع`+(skipped.length?` — تُرك ${skipped.length}: ${skipped.join('، ')}`:''));
-}
 
 /* ---- الأحداث ---- */
 $('#dmBody').addEventListener('change',e=>{
@@ -3441,36 +3550,10 @@ $('#dmBody').addEventListener('change',e=>{
   if(el.dataset.slot!==undefined){
     const j=+el.dataset.slot; r.staff=r.staff||[];
     for(let k=r.staff.length;k<j;k++) r.staff[k]='';
-    r.staff[j]=el.value; if(!el.value&&r.comp) delete r.comp[j];
+    r.staff[j]=el.value;
     dmQueueSave(); renderDammi(); return;
   }
-  if(el.dataset.comp!==undefined){
-    r.comp=r.comp||{}; if(el.value) r.comp[el.dataset.comp]=el.value; else delete r.comp[el.dataset.comp];
-    dmQueueSave(); renderDmSummary(); renderDmStats(); return;
-  }
   if(el.dataset.f==='note'){ const v=el.value.trim(); if(v) r.note=v; else delete r.note; dmQueueSave(); }
-});
-$('#dmBody').addEventListener('click',e=>{
-  const b=e.target.closest('button'); if(!b) return;
-  const ds=b.closest('tr[data-d]').dataset.d, doc=dmDoc(curDm);
-  if(b.dataset.compadd!==undefined){ dmCompOpen.add(ds+'|'+b.dataset.compadd); renderDammi(); $(`tr[data-d="${ds}"] [data-comp="${b.dataset.compadd}"]`)?.focus(); return; }
-  if(b.dataset.compx!==undefined){ dmCompOpen.delete(ds+'|'+b.dataset.compx); const r=doc.days[ds]; if(r?.comp) delete r.comp[b.dataset.compx]; dmQueueSave(); renderDammi(); return; }
-  const act=b.dataset.act;
-  if(act==='week') return dmFillWeek(ds);
-  if(act==='clear'){
-    const r=doc.days[ds]; if(!dmHasData(r)) return;
-    if(!confirm(`مسح كل بيانات يوم ${dmDM(ds)} (المناوبين، التعويض، الملاحظات)؟`)) return;
-    const open=r.open; doc.days[ds]=open!==undefined?{open}:{}; dmQueueSave(); renderDammi(); return;
-  }
-  if(act==='close'){
-    if(dmHasData(doc.days[ds])&&!confirm(`إغلاق يوم ${dmDM(ds)} سيمسح مناوبيه وبياناته. متابعة؟`)) return;
-    const def=(doc.workDays||DM_DEFAULT_WORKDAYS).includes(dmDow(ds));
-    doc.days[ds]=def?{open:false}:{}; dmQueueSave(); renderDammi(); return;
-  }
-  if(act==='open'){
-    const def=(doc.workDays||DM_DEFAULT_WORKDAYS).includes(dmDow(ds)), r=doc.days[ds]||(doc.days[ds]={});
-    if(def) delete r.open; else r.open=true; dmQueueSave(); renderDammi(); return;
-  }
 });
 $('#dmWorkDays').addEventListener('change',e=>{
   const i=+e.target.dataset.wd, doc=dmDoc(curDm), wd=new Set(doc.workDays||DM_DEFAULT_WORKDAYS);
@@ -3478,9 +3561,9 @@ $('#dmWorkDays').addEventListener('change',e=>{
   dmQueueSave(); renderDammi();
 });
 $('#dmPerDay').onchange=e=>{ dmDoc(curDm).perDay=+e.target.value; dmQueueSave(); renderDammi(); };
-$('#dmMonth').onchange=e=>{ if(e.target.value){ curDm=e.target.value; dmCompOpen.clear(); renderDammi(); } };
-$('#dmPrev').onclick=()=>{ curDm=dmShiftMonth(curDm,-1); dmCompOpen.clear(); renderDammi(); };
-$('#dmNext').onclick=()=>{ curDm=dmShiftMonth(curDm,1); dmCompOpen.clear(); renderDammi(); };
+$('#dmMonth').onchange=e=>{ if(e.target.value){ curDm=e.target.value; renderDammi(); } };
+$('#dmPrev').onclick=()=>{ curDm=dmShiftMonth(curDm,-1); renderDammi(); };
+$('#dmNext').onclick=()=>{ curDm=dmShiftMonth(curDm,1); renderDammi(); };
 $('#dmRangeSel').onchange=renderDmStats; $('#dmFrom').onchange=renderDmStats; $('#dmTo').onchange=renderDmStats;
 $('#dmAuto').onclick=()=>{
   if(!confirm(`توزيع تلقائي للخانات الفارغة فقط في ${dmLabel(curDm)}؟\nالخانات المعبّأة يدوياً لا تُمس. يُراعي الإجازات، والاستمرارية الأسبوعية، ورصيد كل موظف (وأيام الجمعة) خلال السنة.`)) return;
