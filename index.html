@@ -416,6 +416,7 @@ table.rpt-rate .rratebar{display:inline-block;height:6px;background:var(--rblue2
 #dmSheet table.sh td{padding:4px 5px;vertical-align:middle}
 #dmSheet tr.dm-wk td{border-top:2px solid var(--navy)}
 #dmSheet tr.dm-off td:not(.num){background:#EEF1F5!important;color:var(--faint)}
+#dmSheet td.dm-na{color:var(--faint)}
 .dm-closed{font-family:'Cairo',Arial;font-weight:700}
 .dm-dt{font-family:Arial;direction:ltr;white-space:nowrap}
 .dm-dt small{display:block;font-family:'Cairo';font-size:9.5px;color:var(--teal);font-weight:600;direction:rtl}
@@ -431,7 +432,6 @@ table.rpt-rate .rratebar{display:inline-block;height:6px;background:var(--rblue2
 .dm-comp .dm-pv{display:none}
 .dm-comp-add{background:none;border:0;color:var(--teal);font-size:10.5px;font-weight:700;padding:2px 5px;border-radius:5px;font-family:'Cairo'}
 @media(hover:hover){.dm-comp-add:hover{background:#e6f6f4}}
-#dmSheet input.dm-num{width:58px;border:1px solid var(--line-strong);border-radius:6px;padding:4px;text-align:center;font-weight:700;font-family:Arial;background:#fff}
 #dmSheet input.dm-note{width:100%;min-width:110px;border:1px solid transparent;border-radius:6px;padding:4px;font-family:'Cairo';font-size:11.5px;background:transparent}
 #dmSheet input.dm-note:hover,#dmSheet input.dm-note:focus-visible{border-color:var(--teal);background:#fff}
 .dm-act{white-space:nowrap}
@@ -456,8 +456,7 @@ table.dm-heat td{font-variant-numeric:tabular-nums;font-weight:700}
   .dm-dt small{font-size:8px}
   .dm-comp input{display:none}
   .dm-comp .dm-pv{display:inline;color:var(--teal);font-family:Arial;font-size:8.5px}
-  #dmSheet input.dm-num,#dmSheet input.dm-note{border:0;background:transparent;font-size:9.5px;padding:0}
-  #dmSheet input.dm-num{-moz-appearance:textfield;appearance:textfield}
+  #dmSheet input.dm-note{border:0;background:transparent;font-size:9.5px;padding:0}
   #dmSummary{page-break-inside:avoid}
 }
 
@@ -648,7 +647,7 @@ table.dm-heat td{font-variant-numeric:tabular-nums;font-weight:700}
 <!-- ============ DAMMI CENTER ============ -->
 <section class="page" id="pg-dammi">
   <div class="pghead noprint">
-    <div><h2 tabindex="-1">جدول مركز دمي</h2><p>مناوبات مركز دمي الشهرية — الاستقبال، السحب، الطبيب · موزّعة على كل الفريق ومرتبطة بالإجازات والجدول الأسبوعي</p></div>
+    <div><h2 tabindex="-1">جدول مركز دمي</h2><p>مناوبات مركز دمي الشهرية — موزّعة على كل الفريق ومرتبطة بالإجازات والجدول الأسبوعي</p></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       <span id="dmSaveState" class="hint" style="margin:0" role="status" aria-live="polite"></span>
       <button class="btn ghost" id="dmAuto">🎲 توزيع تلقائي عادل</button>
@@ -661,22 +660,23 @@ table.dm-heat td{font-variant-numeric:tabular-nums;font-weight:700}
       <div class="field"><label for="dmMonth">الشهر</label>
         <div style="display:flex;gap:6px;align-items:center"><button class="btn sm ghost" id="dmPrev" aria-label="الشهر السابق">→</button><input type="month" class="inp" id="dmMonth"><button class="btn sm ghost" id="dmNext" aria-label="الشهر التالي">←</button></div></div>
       <div class="field"><span style="font-size:12px;font-weight:700;color:var(--muted)">أيام عمل المركز (لهذا الشهر)</span><div class="dm-wd" id="dmWorkDays"></div></div>
+      <div class="field"><label for="dmPerDay">عدد المناوبين يومياً</label><select class="inp" id="dmPerDay"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
     </div>
-    <div class="hint">كل خانة تختار من قائمة الموظفين نفسها (أي موظف جديد يُضاف في «قائمة الموظفين» يظهر هنا فوراً)، والتوزيع بين الجميع بلا تقييد بالفئة. الرقم بجانب كل اسم = عدد مناوباته هذا الشهر، و«· أسبوعي» = مكلَّف في الجدول الأسبوعي في ذلك اليوم. من في إجازة لا يظهر كخيار. «⇣ الأسبوع» ينسخ تكليفات اليوم لبقية أسبوعه، و«＋ تعويض» يسجّل تاريخ يوم التعويض. الحفظ تلقائي.</div>
+    <div class="hint">المناوبون يُختارون من قائمة الموظفين نفسها (أي موظف جديد يُضاف في «قائمة الموظفين» يظهر هنا فوراً)، والتوزيع بين الجميع بلا تقييد بالفئة. يوم الجمعة مناوب واحد فقط. الإنجاز الفعلي يُحسب من «إدخال النتائج». الرقم بجانب كل اسم = عدد مناوباته هذا الشهر، و«· أسبوعي» = مكلَّف في الجدول الأسبوعي في ذلك اليوم. من في إجازة لا يظهر كخيار. «⇣ الأسبوع» ينسخ مناوبي اليوم لبقية أسبوعه، و«＋ تعويض» يسجّل تاريخ يوم التعويض. الحفظ تلقائي.</div>
   </div>
   <div id="dmLeaveInfo"></div>
   <div id="dmSheet">
     <div class="sh-title">Central Blood Bank In Dammam</div>
     <div class="sh-title" style="background:var(--teal);font-size:13px">Dammi Center Schedule · جدول مركز دمي</div>
     <div class="sh-sub" id="dmSub">—</div>
-    <div style="overflow-x:auto"><table class="sh" id="dmTable"><thead><tr><th>#</th><th>DATE</th><th>DAY</th><th>RECEPTION<br>الاستقبال</th><th>BLEEDING<br>السحب</th><th>DOCTOR<br>الطبيب</th><th>DONORS<br>المتبرعون</th><th>NOTES<br>ملاحظات</th><th class="noprint">إجراء</th></tr></thead><tbody id="dmBody"></tbody></table></div>
+    <div style="overflow-x:auto"><table class="sh" id="dmTable"><thead><tr id="dmHead"></tr></thead><tbody id="dmBody"></tbody></table></div>
     <div id="dmSummary"></div>
     <div class="sh-foot">DONE BY : HASAN ALAGOUL</div>
   </div>
   <div class="noprint" style="margin-top:16px">
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;margin-bottom:12px">
-        <h3 style="margin:0">📈 إحصائيات مركز دمي — الأيام والمنجز والعدالة</h3>
+        <h3 style="margin:0">📈 إحصائيات مركز دمي — أيام المناوبة وعدالة التوزيع</h3>
         <div class="row">
           <div class="field"><label for="dmRangeSel">المدى</label><select class="inp" id="dmRangeSel"><option value="month">الشهر المعروض</option><option value="q">آخر ٣ أشهر</option><option value="year">السنة كاملة</option><option value="custom">مخصص…</option></select></div>
           <div class="row" id="dmCustom" style="display:none"><div class="field"><label for="dmFrom">من</label><input type="date" class="inp" id="dmFrom"></div><div class="field"><label for="dmTo">إلى</label><input type="date" class="inp" id="dmTo"></div></div>
@@ -3006,10 +3006,10 @@ lv$('lvCpTitle').addEventListener('change',e=>{
 });
 
 /* ============ جدول مركز دمي (Dammi Center) ============ */
-// مستند شهري dammi/{YYYY-MM}: { month, workDays:[0..6], days:{ 'YYYY-MM-DD': {reception,draw,doctor, comp:{role:date}, donors, note, open} } }
-// الخانات تُختار من نفس قائمة الموظفين (STAFF) — أي موظف جديد يُضاف هناك يظهر هنا تلقائياً، والتوزيع بين الجميع بلا تقييد بالفئة.
-const DM_ROLES=[{k:'reception',ar:'الاستقبال',en:'RECEPTION'},{k:'draw',ar:'السحب',en:'BLEEDING'},{k:'doctor',ar:'الطبيب',en:'DOCTOR'}];
+// مستند شهري dammi/{YYYY-MM}: { month, workDays:[0..6], perDay, days:{ 'YYYY-MM-DD': {staff:[id,...], comp:{slot:date}, note, open} } }
+// مناوبون فقط بلا تحديد مهمة (الإنجاز الفعلي يُحسب من «إدخال النتائج»). الخانات من نفس قائمة STAFF — التوزيع بين الجميع بلا تقييد بالفئة.
 const DM_DEFAULT_WORKDAYS=[0,1,2,3,4,5]; // الأحد–الجمعة، السبت مغلق (نفس نمط ملف الإكسل الأصلي)
+const DM_DEFAULT_PER_DAY=2;             // مناوبان في أيام الأسبوع، والجمعة مناوب واحد فقط
 let DAMMI={}, curDm=new Date().toISOString().slice(0,7), dmSaveT=null;
 const dmCompOpen=new Set(); // خانات تعويض فُتحت للإدخال ولم تُعبّأ بعد
 
@@ -3022,13 +3022,29 @@ const dmShiftMonth=(mk,n)=>{const [y,m]=mk.split('-').map(Number);return new Dat
 const dmLabel=mk=>{const [y,m]=mk.split('-');return `${MON[+m-1]} ${y}`};
 const dmDM=ds=>`${ds.slice(8)}/${ds.slice(5,7)}`;
 const dmEsc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const dmHasData=r=>!!r&&(DM_ROLES.some(R=>r[R.k])||r.donors!==undefined&&r.donors!==''||!!r.note||Object.values(r.comp||{}).some(Boolean));
-function dmDoc(mk){ return DAMMI[mk]||(DAMMI[mk]={month:mk,workDays:[...DM_DEFAULT_WORKDAYS],days:{}}); }
+const dmOn=r=>(r?.staff||[]).filter(Boolean);
+const dmHasData=r=>!!r&&(dmOn(r).length>0||!!r.note||Object.values(r.comp||{}).some(Boolean));
+function dmDoc(mk){ return DAMMI[mk]||(DAMMI[mk]={month:mk,workDays:[...DM_DEFAULT_WORKDAYS],perDay:DM_DEFAULT_PER_DAY,days:{}}); }
+const dmSlots=(doc,ds)=>dmDow(ds)===5?1:(doc?.perDay||DM_DEFAULT_PER_DAY);
 function dmIsWork(doc,ds){
   const r=doc?.days?.[ds];
   if(r&&r.open===true) return true;
   if(r&&r.open===false) return false;
   return (doc?.workDays||DM_DEFAULT_WORKDAYS).includes(dmDow(ds));
+}
+// ترحيل نسخة سابقة (خانات reception/draw/doctor) إلى قائمة مناوبين واحدة
+function dmNormalize(doc){
+  Object.values(doc.days||{}).forEach(r=>{
+    if(r.staff) return;
+    const old=['reception','draw','doctor'].map(k=>r[k]).filter(Boolean);
+    const oc=r.comp||{}, comp={};
+    ['reception','draw','doctor'].forEach(k=>{ const i=old.indexOf(r[k]); if(r[k]&&oc[k]) comp[i]=oc[k]; delete r[k]; });
+    if(old.length) r.staff=old;
+    if(Object.keys(comp).length) r.comp=comp; else delete r.comp;
+    delete r.donors;
+    if(old.length>(doc.perDay||DM_DEFAULT_PER_DAY)) doc.perDay=old.length; // لا يُخفى أي مناوب مُرحَّل
+  });
+  return doc;
 }
 function dmHolidays(y){ const m={}; lvSaudiHolidays(+y).filter(h=>!h.name.includes('صيفية')).forEach(h=>m[h.date]=h.name); return m; }
 // مهام الموظف في الجدول الأسبوعي الأساسي في هذا اليوم (ربط بين الجدولين — لا يمكن التواجد في المقر ومركز دمي معاً)
@@ -3038,23 +3054,26 @@ function dmWeeklyTasks(sid,ds){
 }
 function dmMonthCounts(mk){
   const doc=DAMMI[mk], c={}; if(!doc) return c;
-  Object.entries(doc.days||{}).forEach(([ds,r])=>{ if(dmIsWork(doc,ds)) DM_ROLES.forEach(R=>{ if(r[R.k]) c[r[R.k]]=(c[r[R.k]]||0)+1; }); });
+  Object.entries(doc.days||{}).forEach(([ds,r])=>{ if(dmIsWork(doc,ds)) dmOn(r).forEach(s=>c[s]=(c[s]||0)+1); });
   return c;
 }
 function dmQueueSave(){
   const mk=curDm; clearTimeout(dmSaveT); $('#dmSaveState').textContent='… جارٍ الحفظ';
   dmSaveT=setTimeout(async()=>{
     const d=DAMMI[mk]; if(!d) return;
-    Object.keys(d.days).forEach(ds=>{ const r=d.days[ds]; if(r.comp&&!Object.values(r.comp).some(Boolean)) delete r.comp; if(!Object.keys(r).length) delete d.days[ds]; });
+    Object.keys(d.days).forEach(ds=>{ const r=d.days[ds];
+      if(r.staff){ r.staff=r.staff.map(x=>x||''); while(r.staff.length&&!r.staff[r.staff.length-1]) r.staff.pop(); if(!r.staff.length) delete r.staff; }
+      if(r.comp&&!Object.values(r.comp).some(Boolean)) delete r.comp;
+      if(!Object.keys(r).length) delete d.days[ds]; });
     d.updatedAt=new Date().toISOString();
     try{ await cloudSet('dammi',mk,JSON.parse(JSON.stringify(d))); $('#dmSaveState').textContent='تم الحفظ ✓'; }
     catch(e){ console.warn(e); $('#dmSaveState').textContent='⚠️ تعذّر الحفظ — أعد المحاولة'; }
   },500);
 }
 
-function dmRoleCell(ds,R,rec,counts){
-  const cur=rec[R.k]||'';
-  const used=DM_ROLES.filter(x=>x.k!==R.k).map(x=>rec[x.k]).filter(Boolean);
+function dmSlotCell(ds,j,rec,counts){
+  const on=rec.staff||[], cur=on[j]||'';
+  const used=on.filter((s,k)=>k!==j&&s);
   const list=activeStaff().filter(s=>s.id===cur||(!used.includes(s.id)&&!isOnLeave(s.id,ds,ds)));
   if(cur&&!list.some(s=>s.id===cur)&&STAFF[cur]) list.unshift({id:cur,...STAFF[cur]});
   const opts='<option value="">—</option>'+list.map(s=>{
@@ -3070,29 +3089,31 @@ function dmRoleCell(ds,R,rec,counts){
     const wt=dmWeeklyTasks(cur,ds);
     if(wt.length) flags+=`<span class="dm-badge wk noprint" title="مكلَّف بالجدول الأسبوعي: ${dmEsc(wt.join('، '))}">📅 أسبوعي</span>`;
   }
-  const cv=rec.comp?.[R.k]||'', key=ds+'|'+R.k;
+  const cv=rec.comp?.[j]||'', key=ds+'|'+j;
   const comp=(cv||dmCompOpen.has(key))
-    ? `<div class="dm-comp"><span class="noprint">تعويض</span><input type="date" data-comp="${R.k}" value="${cv}" aria-label="تاريخ التعويض — ${R.ar}"><span class="dm-pv">COMP ${cv?dmDM(cv):''}</span><button class="dm-comp-add noprint" data-compx="${R.k}" title="إزالة التعويض">✕</button></div>`
-    : (cur?`<div class="dm-comp noprint"><button class="dm-comp-add" data-compadd="${R.k}">＋ تعويض</button></div>`:'');
-  return `<td class="dm-role"><select data-role="${R.k}" aria-label="${R.ar} — ${ds}">${opts}</select>${flags?`<div>${flags}</div>`:''}${comp}</td>`;
+    ? `<div class="dm-comp"><span class="noprint">تعويض</span><input type="date" data-comp="${j}" value="${cv}" aria-label="تاريخ التعويض — المناوب ${j+1}"><span class="dm-pv">COMP ${cv?dmDM(cv):''}</span><button class="dm-comp-add noprint" data-compx="${j}" title="إزالة التعويض">✕</button></div>`
+    : (cur?`<div class="dm-comp noprint"><button class="dm-comp-add" data-compadd="${j}">＋ تعويض</button></div>`:'');
+  return `<td class="dm-role"><select data-slot="${j}" aria-label="المناوب ${j+1} — ${ds}">${opts}</select>${flags?`<div>${flags}</div>`:''}${comp}</td>`;
 }
 
 function renderDammi(){
   if(!$('#dmBody')) return;
-  const doc=dmDoc(curDm), counts=dmMonthCounts(curDm), hol=dmHolidays(curDm.slice(0,4));
-  $('#dmMonth').value=curDm;
-  $('#dmSub').textContent=`Monthly Schedule — ${dmLabel(curDm)}`;
+  const doc=dmNormalize(dmDoc(curDm)), counts=dmMonthCounts(curDm), hol=dmHolidays(curDm.slice(0,4));
+  const maxSlots=doc.perDay||DM_DEFAULT_PER_DAY;
+  $('#dmMonth').value=curDm; $('#dmPerDay').value=String(maxSlots);
+  $('#dmSub').textContent=`Monthly On-Duty Schedule — ${dmLabel(curDm)}`;
+  $('#dmHead').innerHTML=`<th>#</th><th>DATE</th><th>DAY</th>${Array.from({length:maxSlots},(_,j)=>`<th>ON DUTY ${j+1}<br>المناوب ${j+1}</th>`).join('')}<th>NOTES<br>ملاحظات</th><th class="noprint">إجراء</th>`;
   $('#dmWorkDays').innerHTML=LV_DAYS.map((d,i)=>`<label><input type="checkbox" data-wd="${i}" ${(doc.workDays||DM_DEFAULT_WORKDAYS).includes(i)?'checked':''}> ${d}</label>`).join('');
   $('#dmBody').innerHTML=dmMonthDays(curDm).map((ds,i)=>{
-    const rec=doc.days[ds]||{}, dow=dmDow(ds), work=dmIsWork(doc,ds), h=lvHijriParts(dmDate(ds));
+    const rec=doc.days[ds]||{}, dow=dmDow(ds), work=dmIsWork(doc,ds), h=lvHijriParts(dmDate(ds)), n=dmSlots(doc,ds);
     const holTag=hol[ds]?`<span class="dm-hol">${hol[ds]}</span>`:'';
     const head=`<td class="num">${i+1}</td><td class="dm-dt">${dmDM(ds)}<small>${h.day} ${LV_HIJRI_MONTHS[h.month-1]||''}</small></td><td class="dm-day">${LV_DAYS[dow]}${holTag}</td>`;
-    if(!work) return `<tr class="dm-off ${dow===0?'dm-wk':''}" data-d="${ds}">${head}<td colspan="5" class="dm-closed">مغلق</td>
+    if(!work) return `<tr class="dm-off ${dow===0?'dm-wk':''}" data-d="${ds}">${head}<td colspan="${maxSlots+1}" class="dm-closed">مغلق</td>
       <td class="dm-act noprint"><button data-act="open" title="فتح هذا اليوم للعمل">⏻ فتح</button></td></tr>`;
-    return `<tr class="${dow===0?'dm-wk':''}" data-d="${ds}">${head}${DM_ROLES.map(R=>dmRoleCell(ds,R,rec,counts)).join('')}
-      <td><input type="number" min="0" class="dm-num" data-f="donors" value="${rec.donors??''}" aria-label="عدد المتبرعين ${ds}"></td>
+    const cells=Array.from({length:maxSlots},(_,j)=>j<n?dmSlotCell(ds,j,rec,counts):'<td class="dm-na">—</td>').join('');
+    return `<tr class="${dow===0?'dm-wk':''} ${dow===5?'dm-fri':''}" data-d="${ds}">${head}${cells}
       <td><input class="dm-note" data-f="note" value="${dmEsc(rec.note||'')}" aria-label="ملاحظات ${ds}"></td>
-      <td class="dm-act noprint"><button data-act="week" title="نسخ تكليفات هذا اليوم لبقية أيام العمل في نفس الأسبوع">⇣ الأسبوع</button><button data-act="clear" title="مسح هذا اليوم">✕</button><button data-act="close" title="إغلاق هذا اليوم (لا دوام)">⏻</button></td></tr>`;
+      <td class="dm-act noprint"><button data-act="week" title="نسخ مناوبي هذا اليوم لبقية أيام العمل في نفس الأسبوع">⇣ الأسبوع</button><button data-act="clear" title="مسح هذا اليوم">✕</button><button data-act="close" title="إغلاق هذا اليوم (لا دوام)">⏻</button></td></tr>`;
   }).join('');
   renderDmLeaveInfo(); renderDmSummary(); renderDmStats(); renderDmAnnual();
 }
@@ -3100,14 +3121,14 @@ function renderDammi(){
 function renderDmLeaveInfo(){
   const days=dmMonthDays(curDm), f=days[0], t=days[days.length-1], doc=dmDoc(curDm);
   const ls=Object.values(LEAVES).filter(l=>STAFF[l.staffId]&&l.start<=t&&l.end>=f).sort((a,b)=>a.start.localeCompare(b.start));
-  let conflicts=0;
-  days.forEach(ds=>{ const r=doc.days[ds]; if(r&&dmIsWork(doc,ds)) DM_ROLES.forEach(R=>{ if(r[R.k]&&isOnLeave(r[R.k],ds,ds)) conflicts++; }); });
-  const unfilled=days.filter(ds=>dmIsWork(doc,ds)).reduce((n,ds)=>n+DM_ROLES.filter(R=>!doc.days[ds]?.[R.k]).length,0);
+  let conflicts=0, unfilled=0;
+  days.filter(ds=>dmIsWork(doc,ds)).forEach(ds=>{ const on=doc.days[ds]?.staff||[];
+    for(let j=0;j<dmSlots(doc,ds);j++){ if(!on[j]) unfilled++; else if(isOnLeave(on[j],ds,ds)) conflicts++; } });
   $('#dmLeaveInfo').innerHTML=`<div class="card noprint dm-info">
     <h3>🏖️ الإجازات خلال ${dmLabel(curDm)} <span class="hint" style="font-weight:600">— من في إجازة لا يظهر كخيار في الأيام المتداخلة</span></h3>
     ${ls.length?`<div class="dm-chips">${ls.map(l=>`<span class="dm-chip"><b class="bidi-ltr">${dmEsc(STAFF[l.staffId].name)}</b> · ${LV_TYPES[l.type]||l.type} · <span class="bidi-ltr">${dmDM(l.start<f?f:l.start)} → ${dmDM(l.end>t?t:l.end)}</span></span>`).join('')}</div>`:'<div class="hint">لا توجد إجازات مسجّلة في هذا الشهر.</div>'}
     <div class="dm-chips" style="margin-top:10px">
-      ${conflicts?`<span class="dm-chip bad">⚠️ ${conflicts} تكليف يتعارض مع إجازة — صحّحه من الخانات المعلَّمة</span>`:'<span class="dm-chip ok">✓ لا تعارض مع الإجازات</span>'}
+      ${conflicts?`<span class="dm-chip bad">⚠️ ${conflicts} مناوبة تتعارض مع إجازة — صحّحها من الخانات المعلَّمة</span>`:'<span class="dm-chip ok">✓ لا تعارض مع الإجازات</span>'}
       ${unfilled?`<span class="dm-chip warn">${unfilled} خانة فارغة في أيام العمل</span>`:'<span class="dm-chip ok">✓ كل خانات أيام العمل مكتملة</span>'}
     </div></div>`;
 }
@@ -3115,11 +3136,11 @@ function renderDmLeaveInfo(){
 // ملخص الشهر — يُطبع مع الجدول في PDF
 function renderDmSummary(){
   const doc=dmDoc(curDm), per={};
-  Object.entries(doc.days).forEach(([ds,r])=>{ if(!dmIsWork(doc,ds)) return; DM_ROLES.forEach(R=>{ const s=r[R.k]; if(!s) return;
-    const p=per[s]||(per[s]={r:{},t:0,c:0}); p.r[R.k]=(p.r[R.k]||0)+1; p.t++; if(r.comp?.[R.k]) p.c++; }); });
+  Object.entries(doc.days).forEach(([ds,r])=>{ if(!dmIsWork(doc,ds)) return; (r.staff||[]).forEach((s,j)=>{ if(!s) return;
+    const p=per[s]||(per[s]={t:0,f:0,c:0}); p.t++; if(dmDow(ds)===5) p.f++; if(r.comp?.[j]) p.c++; }); });
   const rows=Object.entries(per).sort((a,b)=>b[1].t-a[1].t);
-  $('#dmSummary').innerHTML=rows.length?`<div class="dm-sumttl">Monthly Summary · ملخص الشهر</div><div style="overflow-x:auto"><table class="sh"><thead><tr><th>#</th><th>STAFF</th>${DM_ROLES.map(R=>`<th>${R.en}</th>`).join('')}<th>TOTAL DAYS</th><th>COMP</th></tr></thead><tbody>
-    ${rows.map(([s,p],i)=>`<tr><td class="num">${i+1}</td><td>${dmEsc(sName(s)||s)}</td>${DM_ROLES.map(R=>`<td>${p.r[R.k]||0}</td>`).join('')}<td>${p.t}</td><td>${p.c}</td></tr>`).join('')}
+  $('#dmSummary').innerHTML=rows.length?`<div class="dm-sumttl">Monthly Summary · ملخص الشهر</div><div style="overflow-x:auto"><table class="sh"><thead><tr><th>#</th><th>STAFF</th><th>DUTY DAYS</th><th>FRIDAYS</th><th>COMP</th></tr></thead><tbody>
+    ${rows.map(([s,p],i)=>`<tr><td class="num">${i+1}</td><td>${dmEsc(sName(s)||s)}</td><td>${p.t}</td><td>${p.f}</td><td>${p.c}</td></tr>`).join('')}
     </tbody></table></div>`:'';
 }
 
@@ -3134,39 +3155,36 @@ function dmRange(){
 // يحسب فقط الأشهر التي لها جدول فعلي (أشهر بلا جدول لا تُحتسب أيام عمل فارغة)
 function dmCollect(f,t){
   const days=[];
-  Object.keys(DAMMI).sort().forEach(mk=>{ const doc=DAMMI[mk];
+  Object.keys(DAMMI).sort().forEach(mk=>{ const doc=dmNormalize(DAMMI[mk]);
     if(mk!==curDm&&!Object.keys(doc.days||{}).length) return;
-    dmMonthDays(mk).forEach(ds=>{ if(ds>=f&&ds<=t&&dmIsWork(doc,ds)) days.push({ds,r:doc.days[ds]||{}}); }); });
+    dmMonthDays(mk).forEach(ds=>{ if(ds>=f&&ds<=t&&dmIsWork(doc,ds)) days.push({ds,r:doc.days[ds]||{},n:dmSlots(doc,ds)}); }); });
   return days;
 }
 function dmComputeStats(f,t){
   const days=dmCollect(f,t), ids=new Set(activeStaff().map(s=>s.id));
-  days.forEach(({r})=>DM_ROLES.forEach(R=>{ if(r[R.k]) ids.add(r[R.k]); }));
+  days.forEach(({r})=>dmOn(r).forEach(s=>ids.add(s)));
   const per={};
-  ids.forEach(id=>per[id]={id,name:sName(id)||id,r:{},total:0,fri:0,comp:0,donors:0,donorDays:0,leave:0,conflicts:0,streak:0,_run:0});
-  let filled=0, donors=0, donorDays=0, compAll=0;
-  days.forEach(({ds,r})=>{
-    const dow=dmDow(ds), present=new Set();
-    if(r.donors!==undefined&&r.donors!==''){ donors+=+r.donors; donorDays++; }
-    DM_ROLES.forEach(R=>{ const s=r[R.k]; if(!s) return; const p=per[s]; filled++; present.add(s);
-      p.r[R.k]=(p.r[R.k]||0)+1; p.total++; if(dow===5) p.fri++;
-      if(r.comp?.[R.k]){ p.comp++; compAll++; }
+  ids.forEach(id=>per[id]={id,name:sName(id)||id,total:0,fri:0,comp:0,leave:0,conflicts:0,streak:0,_run:0});
+  let filled=0, slots=0, compAll=0;
+  days.forEach(({ds,r,n})=>{
+    const dow=dmDow(ds), present=new Set(); slots+=n;
+    (r.staff||[]).forEach((s,j)=>{ if(!s||j>=n) return; const p=per[s]; filled++; present.add(s);
+      p.total++; if(dow===5) p.fri++;
+      if(r.comp?.[j]){ p.comp++; compAll++; }
       if(isOnLeave(s,ds,ds)) p.conflicts++; });
     Object.values(per).forEach(p=>{
-      if(present.has(p.id)){ p._run++; p.streak=Math.max(p.streak,p._run);
-        if(r.donors!==undefined&&r.donors!==''){ p.donors+=+r.donors; p.donorDays++; } }
-      else p._run=0;
+      if(present.has(p.id)){ p._run++; p.streak=Math.max(p.streak,p._run); } else p._run=0;
       if(isOnLeave(p.id,ds,ds)) p.leave++;
     });
   });
   const list=Object.values(per).filter(p=>STAFF[p.id]?.active||p.total);
   list.forEach(p=>p.avail=Math.max(0,days.length-p.leave));
   const sumAvail=list.reduce((a,p)=>a+p.avail,0)||1;
-  // الحصة العادلة: الخانات المعبّأة موزّعة بحسب الأيام المتاحة فعلياً لكل موظف (بعد خصم إجازاته)
+  // الحصة العادلة: المناوبات المعبّأة موزّعة بحسب الأيام المتاحة فعلياً لكل موظف (بعد خصم إجازاته)
   list.forEach(p=>{ p.expected=filled*p.avail/sumAvail; p.dev=p.total-p.expected; });
   const absDev=list.reduce((a,p)=>a+Math.abs(p.dev),0);
   const fairness=filled?Math.max(0,100-absDev/(2*filled)*100):null;
-  return {days,list,filled,slots:days.length*DM_ROLES.length,donors,donorDays,compAll,fairness,
+  return {days,list,filled,slots,compAll,fairness,
     conflicts:list.reduce((a,p)=>a+p.conflicts,0),fridays:days.filter(d=>dmDow(d.ds)===5).length};
 }
 function renderDmStats(){
@@ -3180,34 +3198,32 @@ function renderDmStats(){
     const thr=Math.max(2,p.expected*.25);
     if(p.total&&p.dev>=thr) alerts.push(`🔺 <b class="bidi-ltr">${dmEsc(p.name)}</b> أعلى من حصته العادلة بـ ${p.dev.toFixed(1)} يوم (${p.total} مقابل ${p.expected.toFixed(1)})`);
     else if(p.avail&&-p.dev>=thr) alerts.push(`🔻 <b class="bidi-ltr">${dmEsc(p.name)}</b> أقل من حصته العادلة بـ ${(-p.dev).toFixed(1)} يوم — مرشّح للمناوبات القادمة`);
-    if(p.streak>6) alerts.push(`⏱️ <b class="bidi-ltr">${dmEsc(p.name)}</b> عمل ${p.streak} أيام عمل متتالية بالمركز — خطر إرهاق`);
-    if(p.conflicts) alerts.push(`⚠️ <b class="bidi-ltr">${dmEsc(p.name)}</b> مكلَّف ${p.conflicts} يوم أثناء إجازة مسجّلة`);
+    if(p.streak>6) alerts.push(`⏱️ <b class="bidi-ltr">${dmEsc(p.name)}</b> ناوب ${p.streak} أيام عمل متتالية بالمركز — خطر إرهاق`);
+    if(p.conflicts) alerts.push(`⚠️ <b class="bidi-ltr">${dmEsc(p.name)}</b> مناوب ${p.conflicts} يوم أثناء إجازة مسجّلة`);
     if(S.fridays>=3&&p.fri/S.fridays>.5) alerts.push(`📆 <b class="bidi-ltr">${dmEsc(p.name)}</b> غطّى ${p.fri} من ${S.fridays} أيام جمعة — وزّع أيام الجمعة بشكل أعدل`);
   });
   const kpi=(cls,lb,vl,dt)=>`<div class="kpi ${cls}"><div class="lb">${lb}</div><div class="vl">${vl}</div><div class="dt flat">${dt}</div></div>`;
   $('#dmStats').innerHTML=`<div class="kpis">
     ${kpi('n','أيام العمل في المدى',S.days.length,`${S.fridays} يوم جمعة`)}
-    ${kpi('','تغطية الخانات',cov+'%',`${S.filled} من ${S.slots} خانة`)}
-    ${kpi('a','المتبرعون في مركز دمي',S.donors,S.donorDays?`متوسط ${(S.donors/S.donorDays).toFixed(1)} يومياً (${S.donorDays} يوم مُدخَل)`:'لم تُدخل أعداد بعد')}
+    ${kpi('','تغطية المناوبات',cov+'%',`${S.filled} من ${S.slots} خانة`)}
     ${kpi('g','مؤشر عدالة التوزيع',S.fairness===null?'—':Math.round(S.fairness)+'%','100% = توزيع مطابق للأيام المتاحة لكل موظف')}
     ${kpi('','تعارضات مع الإجازات',S.conflicts,S.conflicts?'تحتاج تصحيحاً':'لا يوجد')}
-    ${kpi('n','تعويضات مسجّلة',S.compAll,'تاريخ تعويض مُدخل')}
+    ${kpi('a','تعويضات مسجّلة',S.compAll,'تاريخ تعويض مُدخل')}
   </div>
   ${alerts.length?`<div class="dm-alerts">${alerts.map(a=>`<div>${a}</div>`).join('')}</div>`:'<div class="dm-alerts ok"><div>✓ التوزيع متوازن — لا تنبيهات في هذا المدى</div></div>'}
-  <div style="overflow-x:auto"><table class="rk"><thead><tr><th>#</th><th style="text-align:right">الموظف</th>${DM_ROLES.map(R=>`<th>${R.ar}</th>`).join('')}<th>الإجمالي</th><th>الحصة العادلة</th><th>الفرق</th><th>نسبة المشاركة</th><th>الجمعة</th><th>أطول تتابع</th><th>أيام إجازة</th><th>تعويضات</th><th>متبرعون بمناوباته</th><th>متوسط/يوم</th><th style="min-width:110px">الحصة</th></tr></thead><tbody>
+  <div style="overflow-x:auto"><table class="rk"><thead><tr><th>#</th><th style="text-align:right">الموظف</th><th>أيام المناوبة</th><th>الحصة العادلة</th><th>الفرق</th><th>نسبة المشاركة</th><th>الجمعة</th><th>أطول تتابع</th><th>أيام إجازة</th><th>تعويضات</th><th style="min-width:110px">الحصة</th></tr></thead><tbody>
   ${list.map((p,i)=>{ const dv=p.dev, cls=Math.abs(dv)<Math.max(2,p.expected*.25)?'flat':dv>0?'down':'up';
-    return `<tr><td>${i+1}</td><td class="nm">${dmEsc(p.name)}</td>${DM_ROLES.map(R=>`<td>${p.r[R.k]||0}</td>`).join('')}
+    return `<tr><td>${i+1}</td><td class="nm">${dmEsc(p.name)}</td>
     <td><b>${p.total}</b></td><td>${p.expected.toFixed(1)}</td><td class="${cls}" style="font-weight:800;direction:ltr">${dv>0?'+':''}${dv.toFixed(1)}</td>
     <td>${p.avail?Math.round(p.total/p.avail*100)+'%':'—'}</td><td>${p.fri}</td><td>${p.streak}</td><td>${p.leave||'—'}</td><td>${p.comp||'—'}</td>
-    <td>${p.donors||'—'}</td><td>${p.donorDays?(p.donors/p.donorDays).toFixed(1):'—'}</td>
     <td><div class="bar"><i style="width:${p.total/mx*100}%"></i></div></td></tr>`; }).join('')}
   </tbody></table></div>
-  <div class="hint">«الحصة العادلة» = الخانات المعبّأة في المدى موزّعة على الموظفين النشطين بنسبة أيامهم المتاحة (أيام العمل ناقص أيام الإجازة) — فلا يُحاسَب موظف على أيام كان فيها مجازاً. «نسبة المشاركة» = أيام مناوبته ÷ أيامه المتاحة. «متبرعون بمناوباته» = مجموع متبرعي الأيام التي كان فيها بأي مهمة.</div>`;
+  <div class="hint">«الحصة العادلة» = المناوبات المعبّأة في المدى موزّعة على الموظفين النشطين بنسبة أيامهم المتاحة (أيام العمل ناقص أيام الإجازة) — فلا يُحاسَب موظف على أيام كان فيها مجازاً. «نسبة المشاركة» = أيام مناوبته ÷ أيامه المتاحة. الإنجاز الفعلي (الأعداد والمهام المنجزة) يُحسب من صفحة «إدخال النتائج» والإحصائيات.</div>`;
 }
 function renderDmAnnual(){
   const y=curDm.slice(0,4), months=Array.from({length:12},(_,i)=>`${y}-${String(i+1).padStart(2,'0')}`), per={};
-  months.forEach((mk,mi)=>{ const doc=DAMMI[mk]; if(!doc) return; Object.entries(doc.days||{}).forEach(([ds,r])=>{ if(!dmIsWork(doc,ds)) return;
-    DM_ROLES.forEach(R=>{ const s=r[R.k]; if(!s) return; (per[s]=per[s]||Array(12).fill(0))[mi]++; }); }); });
+  months.forEach((mk,mi)=>{ const doc=DAMMI[mk]; if(!doc) return; dmNormalize(doc); Object.entries(doc.days||{}).forEach(([ds,r])=>{ if(!dmIsWork(doc,ds)) return;
+    dmOn(r).forEach(s=>{ (per[s]=per[s]||Array(12).fill(0))[mi]++; }); }); });
   const rows=Object.entries(per).map(([s,a])=>({s,a,t:a.reduce((x,y)=>x+y,0)})).sort((a,b)=>b.t-a.t);
   if(!rows.length){ $('#dmAnnual').innerHTML=`<div class="hint">لا توجد مناوبات مسجّلة في ${y} بعد.</div>`; return; }
   const mx=Math.max(1,...rows.flatMap(r=>r.a));
@@ -3223,78 +3239,75 @@ function dmAutoFill(){
   const doc=dmDoc(curDm), staff=activeStaff(), y=curDm.slice(0,4);
   const days=dmMonthDays(curDm).filter(ds=>dmIsWork(doc,ds));
   // الرصيد التراكمي للسنة كلها (كل الأشهر المحفوظة) — حتى تتوازن المناوبات عبر الأشهر وليس داخل الشهر فقط
-  const tot={}, byRole={};
+  const tot={}, fri={};
   Object.entries(DAMMI).filter(([k])=>k.startsWith(y)).forEach(([,d])=>Object.entries(d.days||{}).forEach(([ds,r])=>{
-    if(!dmIsWork(d,ds)) return; DM_ROLES.forEach(R=>{ const s=r[R.k]; if(s){ tot[s]=(tot[s]||0)+1; byRole[R.k+s]=(byRole[R.k+s]||0)+1; } }); }));
+    if(!dmIsWork(d,ds)) return; dmOn(r).forEach(s=>{ tot[s]=(tot[s]||0)+1; if(dmDow(ds)===5) fri[s]=(fri[s]||0)+1; }); }));
   let filled=0, gaps=0;
   days.forEach((ds,idx)=>{
-    const rec=doc.days[ds]||(doc.days[ds]={});
-    DM_ROLES.forEach(R=>{
-      if(rec[R.k]) return;
-      const used=DM_ROLES.map(x=>rec[x.k]).filter(Boolean);
-      const cands=staff.filter(s=>!used.includes(s.id)&&!isOnLeave(s.id,ds,ds));
-      if(!cands.length){ gaps++; return; }
+    const rec=doc.days[ds]||(doc.days[ds]={}), n=dmSlots(doc,ds), isFri=dmDow(ds)===5;
+    const on=rec.staff=rec.staff||[];
+    for(let j=0;j<n;j++){
+      if(on[j]) continue;
+      const cands=staff.filter(s=>!on.includes(s.id)&&!isOnLeave(s.id,ds,ds));
+      if(!cands.length){ gaps++; continue; }
       let pick=null;
-      // استمرارية أسبوعية (كما في الإكسل): نفس الموظف يكمل أسبوعه في نفس المهمة ما لم يكن في إجازة
+      // استمرارية أسبوعية (كما في الإكسل): نفس المناوب يكمل أسبوعه في نفس الخانة، والجمعة يكملها مناوب الخانة الأولى
       const prev=days[idx-1];
-      if(prev&&dmWeekStart(prev)===dmWeekStart(ds)){ const p=doc.days[prev]?.[R.k]; if(p&&cands.some(c=>c.id===p)) pick=p; }
-      if(!pick) pick=cands.map(s=>({id:s.id,sc:(tot[s.id]||0)+.5*(byRole[R.k+s.id]||0)+(dmWeeklyTasks(s.id,ds).length?3:0)+Math.random()*.3}))
+      if(prev&&dmWeekStart(prev)===dmWeekStart(ds)){ const p=(doc.days[prev]?.staff||[])[j]; if(p&&cands.some(c=>c.id===p)) pick=p; }
+      if(!pick) pick=cands.map(s=>({id:s.id,sc:(tot[s.id]||0)+(isFri?2*(fri[s.id]||0):0)+(dmWeeklyTasks(s.id,ds).length?3:0)+Math.random()*.3}))
         .sort((a,b)=>a.sc-b.sc)[0].id;
-      rec[R.k]=pick; tot[pick]=(tot[pick]||0)+1; byRole[R.k+pick]=(byRole[R.k+pick]||0)+1; filled++;
-    });
-    if(!Object.keys(rec).length) delete doc.days[ds];
+      on[j]=pick; tot[pick]=(tot[pick]||0)+1; if(isFri) fri[pick]=(fri[pick]||0)+1; filled++;
+    }
   });
   return {filled,gaps};
 }
 function dmFillWeek(src){
-  const doc=dmDoc(curDm), rec=doc.days[src]||{}, wk=dmWeekStart(src);
-  const roles=DM_ROLES.filter(R=>rec[R.k]);
-  if(!roles.length){ toast('اختر الموظفين في هذا اليوم أولاً'); return; }
+  const doc=dmDoc(curDm), on=doc.days[src]?.staff||[], wk=dmWeekStart(src);
+  if(!on.some(Boolean)){ toast('اختر المناوبين في هذا اليوم أولاً'); return; }
   let set=0, skipped=[];
   dmMonthDays(curDm).filter(ds=>ds>src&&dmWeekStart(ds)===wk&&dmIsWork(doc,ds)).forEach(ds=>{
-    const r=doc.days[ds]||(doc.days[ds]={});
-    roles.forEach(R=>{
-      const s=rec[R.k]; if(r[R.k]===s) return;
-      if(isOnLeave(s,ds,ds)){ skipped.push(`${sName(s)} ${dmDM(ds)} (إجازة)`); return; }
-      if(DM_ROLES.some(x=>x.k!==R.k&&r[x.k]===s)){ skipped.push(`${sName(s)} ${dmDM(ds)} (مكلَّف بمهمة أخرى)`); return; }
-      r[R.k]=s; set++;
-    });
+    const r=doc.days[ds]||(doc.days[ds]={}), tgt=r.staff=r.staff||[], n=dmSlots(doc,ds);
+    for(let j=0;j<n;j++){
+      const s=on[j]; if(!s||tgt[j]===s) continue;
+      if(isOnLeave(s,ds,ds)){ skipped.push(`${sName(s)} ${dmDM(ds)} (إجازة)`); continue; }
+      if(tgt.some((x,k)=>k!==j&&x===s)){ skipped.push(`${sName(s)} ${dmDM(ds)} (مناوب بخانة أخرى)`); continue; }
+      tgt[j]=s; set++;
+    }
   });
   dmQueueSave(); renderDammi();
-  toast(`تم نسخ ${set} تكليف حتى نهاية الأسبوع`+(skipped.length?` — تُرك ${skipped.length}: ${skipped.join('، ')}`:''));
+  toast(`تم نسخ ${set} مناوبة حتى نهاية الأسبوع`+(skipped.length?` — تُرك ${skipped.length}: ${skipped.join('، ')}`:''));
 }
 
 /* ---- الأحداث ---- */
 $('#dmBody').addEventListener('change',e=>{
   const tr=e.target.closest('tr[data-d]'); if(!tr) return;
   const ds=tr.dataset.d, doc=dmDoc(curDm), r=doc.days[ds]||(doc.days[ds]={}), el=e.target;
-  if(el.dataset.role){
-    if(el.value) r[el.dataset.role]=el.value;
-    else { delete r[el.dataset.role]; if(r.comp) delete r.comp[el.dataset.role]; }
+  if(el.dataset.slot!==undefined){
+    const j=+el.dataset.slot; r.staff=r.staff||[];
+    for(let k=r.staff.length;k<j;k++) r.staff[k]='';
+    r.staff[j]=el.value; if(!el.value&&r.comp) delete r.comp[j];
     dmQueueSave(); renderDammi(); return;
   }
-  if(el.dataset.comp){
+  if(el.dataset.comp!==undefined){
     r.comp=r.comp||{}; if(el.value) r.comp[el.dataset.comp]=el.value; else delete r.comp[el.dataset.comp];
     dmQueueSave(); renderDmSummary(); renderDmStats(); return;
   }
-  if(el.dataset.f==='donors'){ if(el.value==='') delete r.donors; else r.donors=Math.max(0,+el.value||0); }
-  if(el.dataset.f==='note'){ const v=el.value.trim(); if(v) r.note=v; else delete r.note; }
-  dmQueueSave(); renderDmStats();
+  if(el.dataset.f==='note'){ const v=el.value.trim(); if(v) r.note=v; else delete r.note; dmQueueSave(); }
 });
 $('#dmBody').addEventListener('click',e=>{
   const b=e.target.closest('button'); if(!b) return;
   const ds=b.closest('tr[data-d]').dataset.d, doc=dmDoc(curDm);
-  if(b.dataset.compadd){ dmCompOpen.add(ds+'|'+b.dataset.compadd); renderDammi(); $(`tr[data-d="${ds}"] [data-comp="${b.dataset.compadd}"]`)?.focus(); return; }
-  if(b.dataset.compx){ dmCompOpen.delete(ds+'|'+b.dataset.compx); const r=doc.days[ds]; if(r?.comp) delete r.comp[b.dataset.compx]; dmQueueSave(); renderDammi(); return; }
+  if(b.dataset.compadd!==undefined){ dmCompOpen.add(ds+'|'+b.dataset.compadd); renderDammi(); $(`tr[data-d="${ds}"] [data-comp="${b.dataset.compadd}"]`)?.focus(); return; }
+  if(b.dataset.compx!==undefined){ dmCompOpen.delete(ds+'|'+b.dataset.compx); const r=doc.days[ds]; if(r?.comp) delete r.comp[b.dataset.compx]; dmQueueSave(); renderDammi(); return; }
   const act=b.dataset.act;
   if(act==='week') return dmFillWeek(ds);
   if(act==='clear'){
     const r=doc.days[ds]; if(!dmHasData(r)) return;
-    if(!confirm(`مسح كل بيانات يوم ${dmDM(ds)} (التكليفات، التعويض، المتبرعين، الملاحظات)؟`)) return;
+    if(!confirm(`مسح كل بيانات يوم ${dmDM(ds)} (المناوبين، التعويض، الملاحظات)؟`)) return;
     const open=r.open; doc.days[ds]=open!==undefined?{open}:{}; dmQueueSave(); renderDammi(); return;
   }
   if(act==='close'){
-    if(dmHasData(doc.days[ds])&&!confirm(`إغلاق يوم ${dmDM(ds)} سيمسح تكليفاته وبياناته. متابعة؟`)) return;
+    if(dmHasData(doc.days[ds])&&!confirm(`إغلاق يوم ${dmDM(ds)} سيمسح مناوبيه وبياناته. متابعة؟`)) return;
     const def=(doc.workDays||DM_DEFAULT_WORKDAYS).includes(dmDow(ds));
     doc.days[ds]=def?{open:false}:{}; dmQueueSave(); renderDammi(); return;
   }
@@ -3308,19 +3321,20 @@ $('#dmWorkDays').addEventListener('change',e=>{
   e.target.checked?wd.add(i):wd.delete(i); doc.workDays=[...wd].sort();
   dmQueueSave(); renderDammi();
 });
+$('#dmPerDay').onchange=e=>{ dmDoc(curDm).perDay=+e.target.value; dmQueueSave(); renderDammi(); };
 $('#dmMonth').onchange=e=>{ if(e.target.value){ curDm=e.target.value; dmCompOpen.clear(); renderDammi(); } };
 $('#dmPrev').onclick=()=>{ curDm=dmShiftMonth(curDm,-1); dmCompOpen.clear(); renderDammi(); };
 $('#dmNext').onclick=()=>{ curDm=dmShiftMonth(curDm,1); dmCompOpen.clear(); renderDammi(); };
 $('#dmRangeSel').onchange=renderDmStats; $('#dmFrom').onchange=renderDmStats; $('#dmTo').onchange=renderDmStats;
 $('#dmAuto').onclick=()=>{
-  if(!confirm(`توزيع تلقائي للخانات الفارغة فقط في ${dmLabel(curDm)}؟\nالخانات المعبّأة يدوياً لا تُمس. يُراعي الإجازات، والاستمرارية الأسبوعية، ورصيد كل موظف خلال السنة.`)) return;
+  if(!confirm(`توزيع تلقائي للخانات الفارغة فقط في ${dmLabel(curDm)}؟\nالخانات المعبّأة يدوياً لا تُمس. يُراعي الإجازات، والاستمرارية الأسبوعية، ورصيد كل موظف (وأيام الجمعة) خلال السنة.`)) return;
   const {filled,gaps}=dmAutoFill(); dmQueueSave(); renderDammi();
-  toast(filled?`تم توزيع ${filled} خانة ✓`+(gaps?` — ${gaps} خانة بلا موظف متاح`:''):'لا توجد خانات فارغة');
+  toast(filled?`تم توزيع ${filled} مناوبة ✓`+(gaps?` — ${gaps} خانة بلا موظف متاح`:''):'لا توجد خانات فارغة');
 };
 $('#dmClear').onclick=()=>{
   const doc=dmDoc(curDm);
   if(!Object.values(doc.days).some(dmHasData)){ toast('الشهر فارغ أصلاً'); return; }
-  if(!confirm(`مسح كل تكليفات وبيانات ${dmLabel(curDm)}؟ لا يمكن التراجع.`)) return;
+  if(!confirm(`مسح كل مناوبات وبيانات ${dmLabel(curDm)}؟ لا يمكن التراجع.`)) return;
   Object.keys(doc.days).forEach(ds=>{ const o=doc.days[ds].open; if(o!==undefined) doc.days[ds]={open:o}; else delete doc.days[ds]; });
   dmQueueSave(); renderDammi(); toast('تم مسح الشهر');
 };
