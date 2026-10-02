@@ -448,17 +448,24 @@ table.rpt-rate .rratebar{display:inline-block;height:6px;background:var(--rblue2
 .dm-alerts.ok{background:#f0faf4;border-color:#bfe5cd;color:#15693f;font-weight:700}
 .dm-sumttl{background:var(--gold);color:#fff;font-family:Arial;font-weight:700;font-size:12px;text-align:center;padding:6px}
 table.dm-heat td{font-variant-numeric:tabular-nums;font-weight:700}
-@media print{
-  #dmSheet{border:0}
-  #dmSheet table.sh th{padding:3px 4px;font-size:9.5px}
-  #dmSheet table.sh td{padding:1.5px 4px;font-size:9.5px}
-  #dmSheet table.sh select{font-size:9.5px;padding:0}
-  .dm-dt small{font-size:8px}
-  .dm-comp input{display:none}
-  .dm-comp .dm-pv{display:inline;color:var(--teal);font-family:Arial;font-size:8.5px}
-  #dmSheet input.dm-note{border:0;background:transparent;font-size:9.5px;padding:0}
-  #dmSummary{page-break-inside:avoid}
-}
+/* تصدير PDF الشهري: صفحة A4 طولية واحدة دائماً — يُفعَّل بالصنف dm-printing قبل الطباعة (dmFitPrint) ويُصغَّر الجدول تلقائياً ليتسع */
+body.dm-printing #dmSheet{width:733px;border:0;border-radius:0}
+body.dm-printing #dmSheet .noprint{display:none!important}
+body.dm-printing #dmSheet .sh-title{padding:5px;font-size:13px}
+body.dm-printing #dmSheet .sh-sub,body.dm-printing .dm-sumttl{padding:3px;font-size:10.5px}
+body.dm-printing #dmSheet table.sh th{padding:3px 4px;font-size:9px;line-height:1.2}
+body.dm-printing #dmSheet table.sh td{padding:1px 4px;font-size:9.5px;line-height:1.25}
+body.dm-printing #dmSheet table.sh select{-webkit-appearance:none;appearance:none;border:0;background:transparent;font-size:9.5px;padding:0;height:auto;width:auto;text-align:center}
+body.dm-printing .dm-role{min-width:0}
+body.dm-printing .dm-dt small{font-size:7.5px;line-height:1.1}
+body.dm-printing .dm-hol{font-size:7.5px;line-height:1.1}
+body.dm-printing .dm-comp{display:inline-flex;margin:0 4px 0 0}
+body.dm-printing .dm-comp input{display:none}
+body.dm-printing .dm-comp .dm-pv{display:inline;color:var(--teal);font-family:Arial;font-size:8.5px}
+body.dm-printing #dmSheet input.dm-note{border:0;background:transparent;font-size:9px;padding:0;min-width:0}
+body.dm-printing #dmSheet .sh-foot{padding:4px 8px;font-size:10px}
+body.dm-printing #dmSheet *{overflow:visible!important}
+@media print{ body.dm-printing #dmSheet{page-break-inside:avoid;break-inside:avoid} }
 
 /* ===== PRINT ===== */
 @media print{
@@ -3139,8 +3146,11 @@ function renderDmSummary(){
   Object.entries(doc.days).forEach(([ds,r])=>{ if(!dmIsWork(doc,ds)) return; (r.staff||[]).forEach((s,j)=>{ if(!s) return;
     const p=per[s]||(per[s]={t:0,f:0,c:0}); p.t++; if(dmDow(ds)===5) p.f++; if(r.comp?.[j]) p.c++; }); });
   const rows=Object.entries(per).sort((a,b)=>b[1].t-a[1].t);
-  $('#dmSummary').innerHTML=rows.length?`<div class="dm-sumttl">Monthly Summary · ملخص الشهر</div><div style="overflow-x:auto"><table class="sh"><thead><tr><th>#</th><th>STAFF</th><th>DUTY DAYS</th><th>FRIDAYS</th><th>COMP</th></tr></thead><tbody>
-    ${rows.map(([s,p],i)=>`<tr><td class="num">${i+1}</td><td>${dmEsc(sName(s)||s)}</td><td>${p.t}</td><td>${p.f}</td><td>${p.c}</td></tr>`).join('')}
+  // جدول أفقي (الموظفون أعمدة) — يبقى قصيراً حتى يتسع الشهر كاملاً مع الملخص في صفحة PDF واحدة
+  $('#dmSummary').innerHTML=rows.length?`<div class="dm-sumttl">Monthly Summary · ملخص الشهر</div><div style="overflow-x:auto"><table class="sh"><thead><tr><th>STAFF</th>${rows.map(([s])=>`<th>${dmEsc(sName(s)||s)}</th>`).join('')}</tr></thead><tbody>
+    <tr><td class="num" style="width:auto">DUTY DAYS</td>${rows.map(([,p])=>`<td>${p.t}</td>`).join('')}</tr>
+    <tr><td class="num" style="width:auto">FRIDAYS</td>${rows.map(([,p])=>`<td>${p.f}</td>`).join('')}</tr>
+    <tr><td class="num" style="width:auto">COMP</td>${rows.map(([,p])=>`<td>${p.c}</td>`).join('')}</tr>
     </tbody></table></div>`:'';
 }
 
@@ -3338,9 +3348,28 @@ $('#dmClear').onclick=()=>{
   Object.keys(doc.days).forEach(ds=>{ const o=doc.days[ds].open; if(o!==undefined) doc.days[ds]={open:o}; else delete doc.days[ds]; });
   dmQueueSave(); renderDammi(); toast('تم مسح الشهر');
 };
+// يجهّز الجدول لصفحة A4 طولية واحدة: تنسيق مضغوط، ثم قياس الارتفاع الفعلي وتصغيره (zoom) إن تجاوز الصفحة
+const DM_PAGE_W=733, DM_PAGE_H=1030; // ‎A4 طولي بهوامش 8mm ≈ 733×1062px عند 96dpi (مع هامش أمان)
+function dmFitPrint(){
+  if(!$('#pg-dammi').classList.contains('on')||document.body.classList.contains('dm-printing')) return;
+  document.body.classList.add('dm-printing');
+  const sh=$('#dmSheet'); sh.style.zoom='';
+  const h=sh.offsetHeight, w=sh.scrollWidth;
+  const z=Math.min(1,DM_PAGE_H/h,DM_PAGE_W/w);
+  if(z<1) sh.style.zoom=z.toFixed(3);
+  let st=$('#dmPageStyle'); if(!st){ st=document.createElement('style'); st.id='dmPageStyle'; document.head.appendChild(st); }
+  st.textContent='@page{size:A4 portrait;margin:8mm}';
+}
+function dmUnfitPrint(){
+  if(!document.body.classList.contains('dm-printing')) return;
+  document.body.classList.remove('dm-printing'); $('#dmSheet').style.zoom=''; $('#dmPageStyle')?.remove();
+}
+window.addEventListener('beforeprint',dmFitPrint); // يغطي أيضاً الطباعة من قائمة المتصفح (Ctrl+P)
+window.addEventListener('afterprint',dmUnfitPrint);
 $('#dmPrint').onclick=()=>{
   const o=document.title; document.title=`Dammi_Schedule_${dmLabel(curDm).replace(/ /g,'_')}`;
-  window.print(); setTimeout(()=>document.title=o,700);
+  dmFitPrint(); window.print();
+  setTimeout(()=>document.title=o,700); // الإرجاع من dm-printing يتم عبر afterprint (بعض متصفحات الجوال لا توقف التنفيذ أثناء الطباعة)
 };
 
 boot();
