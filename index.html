@@ -3550,11 +3550,11 @@ function renderDmStats(){
     ${kpi('','تعارضات مع الإجازات',S.conflicts,S.conflicts?'تحتاج تصحيحاً':'لا يوجد')}
   </div>
   ${alerts.length?`<div class="dm-alerts">${alerts.map(a=>`<div>${a}</div>`).join('')}</div>`:'<div class="dm-alerts ok"><div>✓ التوزيع متوازن — لا تنبيهات في هذا المدى</div></div>'}
-  <div style="overflow-x:auto"><table class="rk"><thead><tr><th>#</th><th style="text-align:right">الموظف</th><th>أيام المناوبة</th><th>الحصة العادلة</th><th>الفرق</th><th>نسبة المشاركة</th><th>الجمعة</th><th>أطول تتابع</th><th>أيام إجازة</th><th style="min-width:110px">الحصة</th></tr></thead><tbody>
+  <div style="overflow-x:auto"><table class="rk"><thead><tr><th>#</th><th style="text-align:right">الموظف</th><th>أيام المناوبة</th><th>الحصة العادلة</th><th>الفرق</th><th>نسبة المشاركة</th><th>الجمعة</th><th>أطول تتابع</th><th style="min-width:110px">الحصة</th></tr></thead><tbody>
   ${list.map((p,i)=>{ const dv=p.dev, cls=Math.abs(dv)<Math.max(2,p.expected*.25)?'flat':dv>0?'down':'up';
     return `<tr><td>${i+1}</td><td class="nm">${dmEsc(p.name)}</td>
     <td><b>${p.total}</b></td><td>${p.expected.toFixed(1)}</td><td class="${cls}" style="font-weight:800;direction:ltr">${dv>0?'+':''}${dv.toFixed(1)}</td>
-    <td>${p.avail?Math.round(p.total/p.avail*100)+'%':'—'}</td><td>${p.fri}</td><td>${p.streak}</td><td>${p.leave||'—'}</td>
+    <td>${p.avail?Math.round(p.total/p.avail*100)+'%':'—'}</td><td>${p.fri}</td><td>${p.streak}</td>
     <td><div class="bar"><i style="width:${p.total/mx*100}%"></i></div></td></tr>`; }).join('')}
   </tbody></table></div>
   <div class="hint">«الحصة العادلة» = المناوبات المعبّأة في المدى موزّعة على الموظفين النشطين بنسبة أيامهم المتاحة (أيام العمل ناقص أيام الإجازة) — فلا يُحاسَب موظف على أيام كان فيها مجازاً. «نسبة المشاركة» = أيام مناوبته ÷ أيامه المتاحة. الإنجاز الفعلي (الأعداد والمهام المنجزة) يُحسب من صفحة «إدخال النتائج» والإحصائيات.</div>`;
