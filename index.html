@@ -411,6 +411,15 @@ table.rpt-rate .rratebar{display:inline-block;height:6px;background:var(--rblue2
 .lv-empty .lv-ei{font-size:2rem;margin-bottom:8px}
 @media(max-width:820px){.lv-cal-day{min-height:70px}.lv-sgrid{grid-template-columns:1fr 1fr}.lv-pm-stats{grid-template-columns:repeat(2,1fr)}.lv-lc-actions{width:100%}.lv-lc-actions .btn{flex:1}}
 
+/* ===== Results: segmented view switch + import preview ===== */
+.seg{display:inline-flex;background:#EEF3F8;border-radius:9px;padding:3px;gap:2px}
+.seg button{border:0;background:none;padding:7px 14px;border-radius:7px;font-weight:700;font-size:12.5px;color:var(--muted);transition:background-color 150ms,color 150ms}
+.seg button.on{background:#fff;color:var(--navy);box-shadow:var(--shadow-card)}
+#impPreview table.rk td{font-variant-numeric:tabular-nums}
+.imp-actions{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-top:12px}
+table.rk.resmx th{font-size:10.5px;white-space:nowrap}
+table.rk.resmx td{font-variant-numeric:tabular-nums}
+
 /* ===== Dammi center (جدول مركز دمي) ===== */
 #dmSheet{background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}
 #dmSheet table.sh td{padding:4px 5px;vertical-align:middle}
@@ -546,35 +555,49 @@ body.dm-printing #dmSheet *{overflow:visible!important}
 <!-- ============ RESULTS ============ -->
 <section class="page" id="pg-results">
   <div class="pghead">
-    <div><h2 tabindex="-1">إدخال نتائج الأسبوع</h2><p>بعد نهاية الأسبوع: أدخل العدد المنجز لكل موظف، وحالة الإتمام للمهام الرقابية</p></div>
+    <div><h2 tabindex="-1">النتائج</h2><p>استيراد نتائج فترة كاملة من ملفات النظام واعتمادها مرة واحدة — ثم عرضها أسبوعياً أو لفترة محددة أو للسنة كاملة</p></div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn teal" id="genMsgBtn">💬 رسالة الجمعة</button>
-      <button class="btn" id="saveResBtn">💾 حفظ النتائج</button>
-    </div>
-  </div>
-  <div class="wkband noprint" id="wkBandRes"></div>
-  <div class="card">
-    <div class="row">
-      <div class="field"><label for="resWeekPick">الأسبوع</label><select class="inp" id="resWeekPick" style="min-width:240px"></select></div>
-      <div class="field"><label for="tDonors">إجمالي المتبرعين</label><input type="number" min="0" class="inp" id="tDonors" style="width:120px"></div>
-      <div class="field"><label for="tRh">Rh Negative</label><input type="number" min="0" class="inp" id="tRh" style="width:120px"></div>
-      <div class="field"><label for="tAph">متبرعو الصفائح</label><input type="number" min="0" class="inp" id="tAph" style="width:120px"></div>
-      <div class="field"><label for="tDays">أيام العمل</label><input type="number" min="1" max="7" class="inp" id="tDays" value="5" style="width:100px"></div>
     </div>
   </div>
   <div class="card noprint">
-    <h3>📥 استيراد النتائج من إكسل</h3>
-    <p class="hint">مفتوح التاريخ — تُقرأ تواريخ كل سجل من الملف نفسه، ويُطابَق تلقائياً مع أي أسبوع محفوظ يقع تاريخه ضمن مداه، ثم تُحدَّث نتائج ذلك الأسبوع وتُحفظ مباشرة (بلا حاجة لاختيار الأسبوع أولاً). ارفع أحدث ملف مصدَّر من النظام في كل مرة.</p>
+    <h3>📥 استيراد واعتماد نتائج فترة</h3>
+    <p class="hint">١) حدّد الفترة (اختياري — إن تُركت فارغة تُؤخذ من أقدم وأحدث تاريخ في الملفات) ٢) ارفع ملف List of donations و/أو Wateen report ٣) «🔍 قراءة الملفات» تعرض معاينة لكل أسبوع بلا أي حفظ ٤) «✅ اعتماد» يحفظ كل الأسابيع المحددة دفعة واحدة. نقاط السحب 2001F/2001D فقط. الملفات تُقرأ داخل المتصفح ولا تُرفع لأي خادم.</p>
     <div class="row">
-      <div class="field"><label for="impDonationsFile">List of donations</label><input type="file" class="inp" id="impDonationsFile" accept=".xls,.html,.htm"></div>
-      <button class="btn ghost" id="impDonationsBtn">استيراد الصفائح والمتبرعين</button>
+      <div class="field"><label for="impFrom">من تاريخ</label><input type="date" class="inp" id="impFrom"></div>
+      <div class="field"><label for="impTo">إلى تاريخ</label><input type="date" class="inp" id="impTo"></div>
+      <div class="field"><label for="impDonationsFile">List of donations</label><input type="file" class="inp" id="impDonationsFile" accept=".xls,.xlsx,.html,.htm"></div>
+      <div class="field"><label for="impWateenFile">Wateen report</label><input type="file" class="inp" id="impWateenFile" accept=".xls,.xlsx,.html,.htm"></div>
+      <button class="btn" id="impReadBtn">🔍 قراءة الملفات</button>
     </div>
-    <div class="row">
-      <div class="field"><label for="impWateenFile">Wateen report</label><input type="file" class="inp" id="impWateenFile" accept=".xls,.html,.htm"></div>
-      <button class="btn ghost" id="impWateenBtn">استيراد Rh Negative</button>
-    </div>
+    <label class="hint" style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="impCreate" checked> إنشاء أسبوع جديد (الأحد–السبت) تلقائياً لأي تاريخ في الملف لا يقع ضمن أسبوع محفوظ</label>
+    <div id="impPreview"></div>
     <div id="impLog" class="hint"></div>
   </div>
+  <div class="card noprint">
+    <div class="row" style="justify-content:space-between">
+      <div class="seg" id="resModeSeg" role="tablist" aria-label="طريقة عرض النتائج">
+        <button data-m="week" class="on">أسبوعي</button><button data-m="period">فترة محددة</button><button data-m="year">السنة كاملة</button>
+      </div>
+      <div class="row" id="resPeriodCtl" style="display:none">
+        <div class="field"><label for="resFrom">من</label><input type="date" class="inp" id="resFrom"></div>
+        <div class="field"><label for="resTo">إلى</label><input type="date" class="inp" id="resTo"></div>
+      </div>
+      <div class="field" id="resYearCtl" style="display:none"><label for="resYear">السنة</label><select class="inp" id="resYear" style="min-width:110px"></select></div>
+    </div>
+    <div id="resWeekCtl" style="margin-top:12px">
+      <div class="row">
+        <div class="field"><label for="resWeekPick">الأسبوع</label><select class="inp" id="resWeekPick" style="min-width:240px"></select></div>
+        <div class="field"><label for="tDonors">إجمالي المتبرعين</label><input type="number" min="0" class="inp" id="tDonors" style="width:120px"></div>
+        <div class="field"><label for="tRh">Rh Negative</label><input type="number" min="0" class="inp" id="tRh" style="width:120px"></div>
+        <div class="field"><label for="tAph">متبرعو الصفائح</label><input type="number" min="0" class="inp" id="tAph" style="width:120px"></div>
+        <div class="field"><label for="tDays">أيام العمل</label><input type="number" min="1" max="7" class="inp" id="tDays" value="5" style="width:100px"></div>
+        <button class="btn ghost" id="saveResBtn">💾 حفظ تعديلات الأسبوع</button>
+      </div>
+      <div class="hint">المهام غير الموجودة في ملفات النظام (Screening، DR، التقييمات…) تُدخَل يدوياً هنا ثم «💾 حفظ تعديلات الأسبوع».</div>
+    </div>
+  </div>
+  <div class="wkband noprint" id="wkBandRes"></div>
   <div class="card"><div id="resWrap"></div></div>
 </section>
 
@@ -1277,8 +1300,17 @@ function renderAlerts(){
   box.innerHTML = out.length? out.map(x=>`<div class="alert">${x}</div>`).join('') : '<div class="alert info">✅ التوزيع متوازن — لا ملاحظات.</div>';
 }
 
-/* ============ إدخال النتائج ============ */
+/* ============ النتائج: عرض أسبوعي / فترة / سنة ============ */
+let resMode='week';
 function renderResults(){
+  $$('#resModeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===resMode));
+  $('#resWeekCtl').style.display=resMode==='week'?'':'none';
+  $('#wkBandRes').style.display=resMode==='week'?'':'none';
+  $('#resPeriodCtl').style.display=resMode==='period'?'flex':'none';
+  $('#resYearCtl').style.display=resMode==='year'?'':'none';
+  if(resMode==='week') renderResultsWeek(); else renderResultsAgg();
+}
+function renderResultsWeek(){
   const w=WEEKS[curWeek]; if(!w)return;
   $('#resWeekPick').value=curWeek;
   renderWkBand('#wkBandRes');
@@ -1303,15 +1335,73 @@ function renderResults(){
     WEEKS[curWeek].results[t][s]= el.tagName==='SELECT'? (el.value||null) : (el.value===''?null:+el.value);
   });
 }
+const RES_SHORT={t2:'Reception (No Cleric)',t1:'Reception',t6:'Sched. Apheresis',t9:'QC Bag & Shaker',t10:'Registration',t12:'Cleaning'};
+const resStatusPill=st=>`<span class="pill ${st==='closed'?'pb':'dr'}">${st==='closed'?'معتمد':st==='published'?'جدول معتمد':'مسودة'}</span>`;
+// عرض تجميعي لفترة/سنة: كل أسبوع محفوظ يتقاطع مع المدى يُحتسب كاملاً (الأسبوع هو وحدة النتائج المخزنة)
+function renderResultsAgg(){
+  let f,t;
+  if(resMode==='year'){ const y=$('#resYear').value; f=`${y}-01-01`; t=`${y}-12-31`; }
+  else { f=$('#resFrom').value; t=$('#resTo').value;
+    if(!f||!t){ $('#resWrap').innerHTML='<div class="empty">اختر بداية ونهاية الفترة أعلاه.</div>'; return; }
+    if(f>t) [f,t]=[t,f]; }
+  const ks=Object.keys(WEEKS).filter(k=>WEEKS[k].dateFrom<=t&&WEEKS[k].dateTo>=f).sort();
+  if(!ks.length){ $('#resWrap').innerHTML='<div class="empty">لا توجد أسابيع محفوظة في هذا المدى.</div>'; return; }
+  let donors=0,rh=0,plt=0,days=0,closed=0; const per={};
+  ks.forEach(k=>{ const w=WEEKS[k], tt=w.totals||{};
+    donors+=tt.donors||0; rh+=tt.rhNegative||0; plt+=tt.apheresisDonors||0; days+=tt.workDays||5; if(w.status==='closed') closed++;
+    TASKS.forEach(task=>Object.entries(w.results?.[task.id]||{}).forEach(([sid,v])=>{
+      if(v===null||v===undefined||v==='') return;
+      const p=per[sid]||(per[sid]={tot:0});
+      if(task.type==='count'){ p[task.id]=(p[task.id]||0)+(+v||0); p.tot+=+v||0; }
+      else { const o=p[task.id]||(p[task.id]={}); o[v]=(o[v]||0)+1; }
+    })); });
+  const cTasks=TASKS.filter(x=>x.type==='count'), rTasks=TASKS.filter(x=>x.type==='rating');
+  const staffRows=Object.entries(per).sort((a,b)=>b[1].tot-a[1].tot);
+  const colSum=id=>staffRows.reduce((a,[,p])=>a+(p[id]||0),0);
+  const rate=o=>o?RATINGS.filter(r=>o[r.v]).map(r=>`${o[r.v]}${r.label[0]}`).join(' · '):'—';
+  const kpi=(cls,lb,vl,dt)=>`<div class="kpi ${cls}"><div class="lb">${lb}</div><div class="vl">${vl}</div><div class="dt flat">${dt}</div></div>`;
+  $('#resWrap').innerHTML=`<div class="kpis">
+      ${kpi('n','الأسابيع',ks.length,`${closed} معتمد · <span class="bidi-ltr">${fmtLbl(WEEKS[ks[0]].dateFrom,WEEKS[ks[ks.length-1]].dateTo)}</span>`)}
+      ${kpi('','إجمالي المتبرعين',donors,`متوسط ${days?(donors/days).toFixed(1):'—'} يومياً`)}
+      ${kpi('a','Rh Negative',rh,donors?`${(rh/donors*100).toFixed(1)}% من المتبرعين`:'—')}
+      ${kpi('g','متبرعو الصفائح',plt,`${ks.length?(plt/ks.length).toFixed(1):0} أسبوعياً`)}
+    </div>
+    <h3>📅 الأسابيع</h3>
+    <div style="overflow-x:auto;margin-bottom:16px"><table class="rk"><thead><tr><th style="text-align:right">الأسبوع</th><th>المتبرعون</th><th>Rh Negative</th><th>الصفائح</th><th>أيام العمل</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>
+      ${ks.map(k=>{const w=WEEKS[k],tt=w.totals||{};return `<tr><td class="nm">${w.label}</td><td>${tt.donors||0}</td><td>${tt.rhNegative||0}</td><td>${tt.apheresisDonors||0}</td><td>${tt.workDays||5}</td><td>${resStatusPill(w.status)}</td><td><button class="btn sm ghost" data-resopen="${k}">عرض الأسبوع</button></td></tr>`}).join('')}
+    </tbody></table></div>
+    <h3>👥 المنجز لكل موظف ومهمة</h3>
+    ${staffRows.length?`<div style="overflow-x:auto"><table class="rk resmx"><thead><tr><th style="text-align:right">الموظف</th>${cTasks.map(x=>`<th>${RES_SHORT[x.id]||x.name}</th>`).join('')}<th>الإجمالي</th>${rTasks.map(x=>`<th>${RES_SHORT[x.id]||x.name}</th>`).join('')}</tr></thead><tbody>
+      ${staffRows.map(([sid,p])=>`<tr><td class="nm">${sName(sid)||sid}</td>${cTasks.map(x=>`<td>${p[x.id]||'—'}</td>`).join('')}<td><b>${p.tot}</b></td>${rTasks.map(x=>`<td style="white-space:nowrap">${rate(p[x.id])}</td>`).join('')}</tr>`).join('')}
+      <tr><td class="nm">الإجمالي</td>${cTasks.map(x=>`<td><b>${colSum(x.id)||'—'}</b></td>`).join('')}<td><b>${staffRows.reduce((a,[,p])=>a+p.tot,0)}</b></td>${rTasks.map(()=>'<td></td>').join('')}</tr>
+    </tbody></table></div>
+    <div class="hint">التقييمات: E = Excellent، S = Satisfactory، U = Unsatisfactory (عدد المرات). كل أسبوع يتقاطع مع المدى يُحتسب كاملاً.</div>`:'<div class="empty">لا توجد نتائج مُدخلة في هذه الأسابيع.</div>'}`;
+  $$('[data-resopen]').forEach(b=>b.onclick=()=>{ curWeek=b.dataset.resopen; resMode='week'; fillWeekPicks(); renderResults(); renderSheet(); });
+}
+function fillResYears(){
+  const ys=new Set(Object.values(WEEKS).map(w=>w.dateFrom.slice(0,4))); ys.add(String(new Date().getFullYear()));
+  const cur=$('#resYear').value||String(new Date().getFullYear());
+  $('#resYear').innerHTML=[...ys].sort().reverse().map(y=>`<option ${y===cur?'selected':''}>${y}</option>`).join('');
+}
+$('#resModeSeg').onclick=e=>{
+  const b=e.target.closest('button'); if(!b) return; resMode=b.dataset.m;
+  if(resMode==='period'&&!$('#resFrom').value){ const n=new Date().toISOString().slice(0,10); $('#resFrom').value=n.slice(0,8)+'01'; $('#resTo').value=n; }
+  if(resMode==='year') fillResYears();
+  renderResults();
+};
+$('#resFrom').onchange=renderResults; $('#resTo').onchange=renderResults; $('#resYear').onchange=renderResults;
 $('#saveResBtn').onclick=async()=>{
   const w=WEEKS[curWeek];
   w.totals={donors:+$('#tDonors').value||0,rhNegative:+$('#tRh').value||0,apheresisDonors:+$('#tAph').value||0,workDays:+$('#tDays').value||5};
-  w.status='closed'; await cloudSet('weeks',curWeek,w); toast('تم حفظ نتائج الأسبوع ✓'); renderArchive();
+  w.status='closed'; await cloudSet('weeks',curWeek,w); toast('تم حفظ تعديلات الأسبوع ✓'); renderArchive();
 };
 
-/* ============ استيراد النتائج من إكسل (List of donations / Wateen report) ============ */
-function parseSlashDate(d){ const m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec((d||'').trim()); if(!m)return null; return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`; }
-function parseMonDate(d){ const m=/^(\d{1,2})-([A-Za-z]{3})-(\d{2})$/.exec((d||'').trim()); if(!m)return null; const mi=MON3.indexOf(m[2].toUpperCase())+1; if(!mi)return null; return `${2000+(+m[3])}-${String(mi).padStart(2,'0')}-${m[1].padStart(2,'0')}`; }
+/* ============ استيراد واعتماد نتائج فترة (List of donations / Wateen report) ============ */
+// قراءة → معاينة لكل أسبوع بلا حفظ → «اعتماد» واحد يحفظ كل الأسابيع المحددة. الملف مصدر نتائج W.B Donation (t8) وBleeder Apheresis (t7)
+// والإجماليات لكل أسبوع بالكامل؛ الأسابيع المغطاة جزئياً بالفترة تظهر غير محددة افتراضياً (أرقامها ناقصة).
+const isoDateRe=/^\d{4}-\d{2}-\d{2}$/; // خلايا تاريخ من ملف إكسل حقيقي (readTableFile) تصل بصيغة ISO
+function parseSlashDate(d){ if(isoDateRe.test(d||''))return d; const m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec((d||'').trim()); if(!m)return null; return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`; }
+function parseMonDate(d){ if(isoDateRe.test(d||''))return d; const m=/^(\d{1,2})-([A-Za-z]{3})-(\d{2})$/.exec((d||'').trim()); if(!m)return null; const mi=MON3.indexOf(m[2].toUpperCase())+1; if(!mi)return null; return `${2000+(+m[3])}-${String(mi).padStart(2,'0')}-${m[1].padStart(2,'0')}`; }
 function parseHtmlTable(text){
   const doc=new DOMParser().parseFromString(text,'text/html');
   const tables=[...doc.querySelectorAll('table')];
@@ -1323,74 +1413,128 @@ function parseHtmlTable(text){
   const rows=trs.slice(1).map(tr=>[...tr.querySelectorAll('td,th')].map(c=>c.textContent.trim()));
   return {header,rows};
 }
+// ملف النظام الأصلي = HTML بامتداد .xls؛ إن فُتح وأُعيد حفظه من إكسل يصبح .xls/.xlsx حقيقياً → يُقرأ عبر SheetJS
+// ويُبحث عن سطر الرأس الحقيقي (أول صف يحوي العمود المطلوب) متجاهلاً أي مقدّمة قبله
+async function readTableFile(file,headerMarker){
+  const buf=await file.arrayBuffer(), head=new TextDecoder().decode(buf.slice(0,600)).trimStart().toLowerCase();
+  if(head.startsWith('<')) return parseHtmlTable(new TextDecoder().decode(buf));
+  const wb=XLSX.read(buf,{type:'array',cellDates:true});
+  const p2=n=>String(n).padStart(2,'0');
+  for(const name of wb.SheetNames){
+    const aoa=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,raw:true,defval:''})
+      .map(r=>r.map(v=>v instanceof Date?`${v.getFullYear()}-${p2(v.getMonth()+1)}-${p2(v.getDate())}`:String(v).trim()));
+    const hi=aoa.findIndex(r=>r.some(c=>c.toLowerCase().replace(/\s+/g,' ').startsWith(headerMarker)));
+    if(hi>=0) return {header:aoa[hi],rows:aoa.slice(hi+1)};
+  }
+  return {header:[],rows:[]};
+}
 const colIdx=(header,marker)=>header.findIndex(h=>h.toLowerCase().replace(/\s+/g,' ').trim().startsWith(marker));
 const weekKeyForDate=iso=>Object.keys(WEEKS).find(k=>iso>=WEEKS[k].dateFrom&&iso<=WEEKS[k].dateTo);
-$('#impDonationsBtn').onclick=async()=>{
-  const f=$('#impDonationsFile').files[0]; if(!f){toast('اختر ملف List of donations أولاً');return}
-  const {header,rows}=parseHtmlTable(await f.text());
-  const iDate=colIdx(header,'donation date'), iCP=colIdx(header,'collection point'), iType=colIdx(header,'donation type'), iStaff=colIdx(header,'staffid');
-  if([iDate,iCP,iType,iStaff].some(i=>i<0)){ toast('تنسيق ملف List of donations غير معروف'); return; }
+let IMP_STAGE=null;
+$('#impReadBtn').onclick=async()=>{
+  const fD=$('#impDonationsFile').files[0], fW=$('#impWateenFile').files[0];
+  if(!fD&&!fW){ toast('اختر ملفاً واحداً على الأقل'); return; }
+  let from=$('#impFrom').value, to=$('#impTo').value; if(from&&to&&from>to) [from,to]=[to,from];
+  const inRange=iso=>(!from||iso>=from)&&(!to||iso<=to);
+  const don=[], wat=[], dates=[];
+  if(fD){
+    const {header,rows}=await readTableFile(fD,'donation date');
+    const iDate=colIdx(header,'donation date'), iCP=colIdx(header,'collection point'), iType=colIdx(header,'donation type'), iStaff=colIdx(header,'staffid');
+    if([iDate,iCP,iType,iStaff].some(i=>i<0)){ toast('تنسيق ملف List of donations غير معروف'); return; }
+    rows.forEach(r=>{ const iso=parseSlashDate(r[iDate]); if(!iso||!inRange(iso)) return; dates.push(iso);
+      if(!IMPORT_SITES.includes(r[iCP])) return;
+      if(r[iType]!=='Whole blood'&&r[iType]!=='Plateletpheresis') return;
+      don.push({iso,plt:r[iType]==='Plateletpheresis',sid:r[iStaff]}); });
+  }
+  if(fW){
+    const {header,rows}=await readTableFile(fW,'donation date');
+    const iDate=colIdx(header,'donation date'), iCP=colIdx(header,'collection point'), iBG=colIdx(header,'blood group');
+    if([iDate,iCP,iBG].some(i=>i<0)){ toast('تنسيق ملف Wateen report غير معروف'); return; }
+    rows.forEach(r=>{ const iso=parseMonDate(r[iDate]); if(!iso||!inRange(iso)) return; dates.push(iso);
+      if(!IMPORT_SITES.includes(r[iCP])) return; wat.push({iso,neg:/neg/i.test(r[iBG])}); });
+  }
+  if(!dates.length){ toast('لا توجد سجلات ضمن الفترة المحددة'); IMP_STAGE=null; $('#impPreview').innerHTML=''; return; }
+  dates.sort(); const covFrom=from||dates[0], covTo=to||dates[dates.length-1];
+  const created={}, canCreate=$('#impCreate').checked;
+  const keyFor=iso=>{
+    const k=weekKeyForDate(iso); if(k) return k;
+    const c=Object.keys(created).find(s=>iso>=s&&iso<=created[s]); if(c) return c;
+    if(!canCreate) return null;
+    const s=dmWeekStart(iso), e=addDays(s,6);
+    if(Object.values(WEEKS).some(w=>w.dateFrom<=e&&w.dateTo>=s)) return null; // يتداخل مع أسبوع محفوظ بتاريخ بداية مختلف
+    created[s]=e; return s;
+  };
   const staffIdx={}; Object.entries(STAFF).forEach(([k,v])=>{ if(v.staffId) staffIdx[v.staffId]=k; });
-  const byWeek={}, unmatched=new Set(); let unmapped=0;
-  rows.forEach(r=>{
-    const dt=r[iDate], cp=r[iCP], type=r[iType], sid=r[iStaff];
-    if(!IMPORT_SITES.includes(cp)) return;
-    if(type!=='Whole blood'&&type!=='Plateletpheresis') return;
-    const iso=parseSlashDate(dt); if(!iso) return;
-    const wk=weekKeyForDate(iso); if(!wk){ unmapped++; return; }
-    byWeek[wk]=byWeek[wk]||{totalWB:0,totalPLT:0,perStaff:{}};
-    const b=byWeek[wk];
-    if(type==='Whole blood') b.totalWB++; else b.totalPLT++;
-    const localId=staffIdx[sid];
-    if(!localId){ if(sid) unmatched.add(sid); return; }
-    b.perStaff[localId]=b.perStaff[localId]||{wb:0,plt:0};
-    b.perStaff[localId][type==='Whole blood'?'wb':'plt']++;
-  });
+  const weeks={}, unmatched={}; let unmapped=0;
+  const wk=k=>weeks[k]||(weeks[k]={key:k,isNew:!WEEKS[k],dateFrom:WEEKS[k]?.dateFrom||k,dateTo:WEEKS[k]?.dateTo||created[k],hasDon:false,hasWat:false,wb:0,plt:0,rh:0,watTotal:0,perStaff:{},unknown:0});
+  don.forEach(d=>{ const k=keyFor(d.iso); if(!k){ unmapped++; return; } const b=wk(k); b.hasDon=true;
+    d.plt?b.plt++:b.wb++;
+    const id=staffIdx[d.sid];
+    if(!id){ b.unknown++; if(d.sid) unmatched[d.sid]=(unmatched[d.sid]||0)+1; return; }
+    const p=b.perStaff[id]||(b.perStaff[id]={wb:0,plt:0}); d.plt?p.plt++:p.wb++; });
+  wat.forEach(d=>{ const k=keyFor(d.iso); if(!k){ unmapped++; return; } const b=wk(k); b.hasWat=true; b.watTotal++; if(d.neg) b.rh++; });
+  Object.values(weeks).forEach(b=>b.full=b.dateFrom>=covFrom&&b.dateTo<=covTo);
+  IMP_STAGE={weeks,covFrom,covTo,unmapped,unmatched,files:[fD&&'List of donations',fW&&'Wateen report'].filter(Boolean)};
+  renderImpPreview();
+};
+function renderImpPreview(){
+  const S=IMP_STAGE; if(!S){ $('#impPreview').innerHTML=''; return; }
+  const ws=Object.values(S.weeks).sort((a,b)=>a.dateFrom.localeCompare(b.dateFrom));
+  const um=Object.entries(S.unmatched);
+  $('#impPreview').innerHTML=`<div style="margin-top:14px"><h3>🔍 معاينة — ${S.files.join(' + ')} · الفترة <span class="bidi-ltr">${fmtLbl(S.covFrom,S.covTo)}</span> <span class="hint">(لم يُحفظ شيء بعد)</span></h3>
+    <div style="overflow-x:auto"><table class="rk"><thead><tr><th><input type="checkbox" id="impAll" aria-label="تحديد الكل" checked></th><th style="text-align:right">الأسبوع</th><th>الحالة</th><th>Whole blood</th><th>الصفائح</th><th>إجمالي المتبرعين</th><th>Rh Negative</th><th>موظفون مطابَقون</th><th>ملاحظة</th></tr></thead><tbody>
+    ${ws.map(b=>`<tr><td><input type="checkbox" data-wk="${b.key}" ${b.full?'checked':''} aria-label="اعتماد ${fmtLbl(b.dateFrom,b.dateTo)}"></td>
+      <td class="nm">${fmtLbl(b.dateFrom,b.dateTo)}</td>
+      <td>${b.isNew?'<span class="pill pb">أسبوع جديد</span>':resStatusPill(WEEKS[b.key].status)}</td>
+      <td>${b.hasDon?b.wb:'—'}</td><td>${b.hasDon?b.plt:'—'}</td><td><b>${b.hasDon?b.wb+b.plt:'—'}</b></td>
+      <td>${b.hasWat?`${b.rh} <small class="hint">من ${b.watTotal}</small>`:'—'}</td>
+      <td>${b.hasDon?Object.keys(b.perStaff).length:'—'}${b.unknown?` <small style="color:var(--bad)">(+${b.unknown} سجل بلا موظف)</small>`:''}</td>
+      <td style="font-size:11.5px">${b.full?'':'<span style="color:#8a6100;font-weight:700">⚠️ تغطية جزئية — أرقامه ناقصة</span>'}</td></tr>`).join('')}
+    </tbody></table></div>
+    ${S.unmapped?`<div class="hint">⚠️ ${S.unmapped} سجل لا يقع ضمن أي أسبوع ويتداخل مع أسبوع محفوظ بتاريخ بداية مختلف — تُرك.</div>`:''}
+    ${um.length?`<div class="hint" style="color:var(--bad)">أرقام وظيفية غير معروفة (تُحسب في إجمالي القسم فقط): ${um.map(([id,n])=>`${id} (${n})`).join('، ')} — أضِفها من «قائمة الموظفين».</div>`:''}
+    <div class="imp-actions"><span class="hint" id="impCount"></span>
+      <div style="display:flex;gap:8px"><button class="btn ghost" id="impCancel">إلغاء</button><button class="btn" id="impApprove">✅ اعتماد</button></div></div></div>`;
+  const upd=()=>{ const n=$$('#impPreview [data-wk]:checked').length; $('#impApprove').textContent=`✅ اعتماد ${n} أسبوع`; $('#impApprove').disabled=!n;
+    $('#impCount').textContent=n?`سيُحفظ ${n} أسبوع دفعة واحدة ويُعلَّم «معتمد».`:'حدّد أسبوعاً واحداً على الأقل.'; };
+  $$('#impPreview [data-wk]').forEach(c=>c.onchange=upd);
+  $('#impAll').onchange=e=>{ $$('#impPreview [data-wk]').forEach(c=>c.checked=e.target.checked); upd(); };
+  $('#impCancel').onclick=()=>{ IMP_STAGE=null; renderImpPreview(); };
+  $('#impApprove').onclick=impApprove; upd();
+}
+async function impApprove(){
+  const S=IMP_STAGE, keys=$$('#impPreview [data-wk]:checked').map(c=>c.dataset.wk); if(!S||!keys.length) return;
+  if(!confirm(`اعتماد نتائج ${keys.length} أسبوع دفعة واحدة؟\n\nلكل أسبوع: نتائج W.B Donation وBleeder Apheresis وإجماليات المتبرعين/الصفائح${S.files.includes('Wateen report')?'/Rh Negative':''} تُستبدل بما في الملف. النتائج اليدوية لباقي المهام لا تُمس.`)) return;
+  $('#impApprove').disabled=true;
   const lines=[];
-  for(const [wk,b] of Object.entries(byWeek)){
-    const w=WEEKS[wk];
-    w.results.t8=w.results.t8||{}; w.results.t7=w.results.t7||{};
-    w.assignments.t8=w.assignments.t8||[]; w.assignments.t7=w.assignments.t7||[];
+  for(const k of keys){
+    const b=S.weeks[k];
+    let w=WEEKS[k];
+    if(!w) w=WEEKS[k]={dateFrom:b.dateFrom,dateTo:b.dateTo,label:fmtLbl(b.dateFrom,b.dateTo),assignments:{},results:{},totals:{donors:0,rhNegative:0,apheresisDonors:0,workDays:5},status:'draft'};
+    w.results=w.results||{}; w.assignments=w.assignments||{}; w.totals=w.totals||{donors:0,rhNegative:0,apheresisDonors:0,workDays:5};
     let added=0;
-    Object.entries(b.perStaff).forEach(([id,c])=>{
-      w.results.t8[id]=c.wb; w.results.t7[id]=c.plt;
-      if(c.wb>0 && !w.assignments.t8.includes(id)){ w.assignments.t8.push(id); added++; }
-      if(c.plt>0 && !w.assignments.t7.includes(id)){ w.assignments.t7.push(id); added++; }
-    });
-    w.totals.donors=b.totalWB+b.totalPLT; w.totals.apheresisDonors=b.totalPLT;
-    await cloudSet('weeks',wk,w); await syncApxFromWeek(w);
-    lines.push(`${w.label}: ${b.totalWB} Whole blood، ${b.totalPLT} Plateletpheresis`+(added?` (أُضيف ${added} تكليف تلقائياً لمن نفّذ ولم يكن مكلَّفاً)`:''));
+    if(b.hasDon){
+      w.assignments.t8=w.assignments.t8||[]; w.assignments.t7=w.assignments.t7||[];
+      // إعادة حساب كاملة من الملف: المكلَّف بلا سجلات = 0، ومن نفّذ دون تكليف يُضاف تكليفه تلقائياً
+      w.results.t8={}; w.results.t7={};
+      w.assignments.t8.forEach(id=>w.results.t8[id]=0); w.assignments.t7.forEach(id=>w.results.t7[id]=0);
+      Object.entries(b.perStaff).forEach(([id,c])=>{
+        w.results.t8[id]=c.wb; w.results.t7[id]=c.plt;
+        if(c.wb>0&&!w.assignments.t8.includes(id)){ w.assignments.t8.push(id); added++; }
+        if(c.plt>0&&!w.assignments.t7.includes(id)){ w.assignments.t7.push(id); added++; }
+      });
+      w.totals.donors=b.wb+b.plt; w.totals.apheresisDonors=b.plt;
+    }
+    if(b.hasWat) w.totals.rhNegative=b.rh;
+    w.status='closed';
+    await cloudSet('weeks',k,w); if(b.hasDon) await syncApxFromWeek(w);
+    lines.push(`${w.label}${b.isNew?' (جديد)':''}: ${b.hasDon?`${b.wb+b.plt} متبرع، ${b.plt} صفائح`:''}${b.hasWat?`${b.hasDon?'، ':''}${b.rh} Rh Negative`:''}${added?` — أُضيف ${added} تكليف لمن نفّذ دون تكليف`:''}`);
   }
-  renderResults(); renderArchive(); renderApx();
-  $('#impLog').innerHTML=(lines.length?`تم تحديث ${lines.length} أسبوع (نقاط 2001F/2001D فقط):<br>`+lines.join('<br>'):'لا توجد سجلات ضمن نطاق أي أسبوع محفوظ.')
-    +(unmapped?`<br>سجلات خارج أي أسبوع محفوظ: ${unmapped}`:'')
-    +(unmatched.size?`<br>أرقام وظيفية غير معروفة: ${[...unmatched].join('، ')} — أضِفها من صفحة «قائمة الموظفين».`:'');
-  toast(lines.length?`تم تحديث نتائج ${lines.length} أسبوع ✓`:'لا توجد بيانات مطابقة');
-};
-$('#impWateenBtn').onclick=async()=>{
-  const f=$('#impWateenFile').files[0]; if(!f){toast('اختر ملف Wateen report أولاً');return}
-  const {header,rows}=parseHtmlTable(await f.text());
-  const iDate=colIdx(header,'donation date'), iCP=colIdx(header,'collection point'), iBG=colIdx(header,'blood group');
-  if([iDate,iCP,iBG].some(i=>i<0)){ toast('تنسيق ملف Wateen report غير معروف'); return; }
-  const byWeek={}; let unmapped=0;
-  rows.forEach(r=>{
-    const dt=r[iDate], cp=r[iCP], bg=r[iBG];
-    if(!IMPORT_SITES.includes(cp)) return;
-    const iso=parseMonDate(dt); if(!iso) return;
-    const wk=weekKeyForDate(iso); if(!wk){ unmapped++; return; }
-    byWeek[wk]=byWeek[wk]||{rhNeg:0,total:0};
-    byWeek[wk].total++; if(/neg/i.test(bg)) byWeek[wk].rhNeg++;
-  });
-  const lines=[];
-  for(const [wk,b] of Object.entries(byWeek)){
-    const w=WEEKS[wk]; w.totals.rhNegative=b.rhNeg; await cloudSet('weeks',wk,w);
-    lines.push(`${w.label}: ${b.rhNeg} Rh Negative من أصل ${b.total}`);
-  }
-  renderResults(); renderArchive();
-  $('#impLog').innerHTML=(lines.length?`تم تحديث ${lines.length} أسبوع (نقاط 2001F/2001D فقط):<br>`+lines.join('<br>'):'لا توجد سجلات ضمن نطاق أي أسبوع محفوظ.')
-    +(unmapped?`<br>سجلات خارج أي أسبوع محفوظ: ${unmapped}`:'');
-  toast(lines.length?`تم تحديث Rh Negative لـ${lines.length} أسبوع ✓`:'لا توجد بيانات مطابقة');
-};
+  IMP_STAGE=null; renderImpPreview();
+  fillWeekPicks(); fillResYears(); renderResults(); renderArchive(); renderApx(); renderSheet();
+  $('#impLog').innerHTML=`✅ تم اعتماد ${lines.length} أسبوع:<br>`+lines.join('<br>');
+  toast(`تم اعتماد نتائج ${lines.length} أسبوع ✓`);
+}
 
 /* ============ رسالة الجمعة ============ */
 $('#genMsgBtn').onclick=()=>{
