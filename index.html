@@ -675,7 +675,7 @@ body.dm-printing #dmSheet *{overflow:visible!important}
   <div id="dmSheet">
     <div class="sh-title">Central Blood Bank In Dammam</div>
     <div class="sh-title" style="background:var(--teal);font-size:13px">Dammi Center Schedule · جدول مركز دمي</div>
-    <div class="sh-sub" id="dmSub">—</div>
+    <div class="sh-sub" id="dmSub" style="direction:rtl;font-family:'Cairo',Arial;font-size:14px">—</div>
     <div style="overflow-x:auto"><table class="sh" id="dmTable"><thead><tr id="dmHead"></tr></thead><tbody id="dmBody"></tbody></table></div>
     <div id="dmSummary"></div>
     <div class="sh-foot">DONE BY : HASAN ALAGOUL</div>
@@ -3027,6 +3027,7 @@ const dmWeekStart=s=>{const d=dmDate(s);d.setUTCDate(d.getUTCDate()-d.getUTCDay(
 const dmMonthDays=mk=>{const [y,m]=mk.split('-').map(Number),n=new Date(Date.UTC(y,m,0)).getUTCDate();return Array.from({length:n},(_,i)=>`${mk}-${String(i+1).padStart(2,'0')}`)};
 const dmShiftMonth=(mk,n)=>{const [y,m]=mk.split('-').map(Number);return new Date(Date.UTC(y,m-1+n,1)).toISOString().slice(0,7)};
 const dmLabel=mk=>{const [y,m]=mk.split('-');return `${MON[+m-1]} ${y}`};
+const dmTitle=mk=>{const [y,m]=mk.split('-');return `جدول دمي - ${LV_MONTHS[+m-1]} ${y}`}; // اسم الجدول وملف PDF: «جدول دمي - أكتوبر 2026»
 const dmDM=ds=>`${ds.slice(8)}/${ds.slice(5,7)}`;
 const dmEsc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const dmOn=r=>(r?.staff||[]).filter(Boolean);
@@ -3108,7 +3109,7 @@ function renderDammi(){
   const doc=dmNormalize(dmDoc(curDm)), counts=dmMonthCounts(curDm), hol=dmHolidays(curDm.slice(0,4));
   const maxSlots=doc.perDay||DM_DEFAULT_PER_DAY;
   $('#dmMonth').value=curDm; $('#dmPerDay').value=String(maxSlots);
-  $('#dmSub').textContent=`Monthly On-Duty Schedule — ${dmLabel(curDm)}`;
+  $('#dmSub').textContent=dmTitle(curDm);
   $('#dmHead').innerHTML=`<th>#</th><th>DATE</th><th>DAY</th>${Array.from({length:maxSlots},(_,j)=>`<th>ON DUTY ${j+1}<br>المناوب ${j+1}</th>`).join('')}<th>NOTES<br>ملاحظات</th><th class="noprint">إجراء</th>`;
   $('#dmWorkDays').innerHTML=LV_DAYS.map((d,i)=>`<label><input type="checkbox" data-wd="${i}" ${(doc.workDays||DM_DEFAULT_WORKDAYS).includes(i)?'checked':''}> ${d}</label>`).join('');
   $('#dmBody').innerHTML=dmMonthDays(curDm).map((ds,i)=>{
@@ -3367,7 +3368,7 @@ function dmUnfitPrint(){
 window.addEventListener('beforeprint',dmFitPrint); // يغطي أيضاً الطباعة من قائمة المتصفح (Ctrl+P)
 window.addEventListener('afterprint',dmUnfitPrint);
 $('#dmPrint').onclick=()=>{
-  const o=document.title; document.title=`Dammi_Schedule_${dmLabel(curDm).replace(/ /g,'_')}`;
+  const o=document.title; document.title=dmTitle(curDm);
   dmFitPrint(); window.print();
   setTimeout(()=>document.title=o,700); // الإرجاع من dm-printing يتم عبر afterprint (بعض متصفحات الجوال لا توقف التنفيذ أثناء الطباعة)
 };
