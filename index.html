@@ -1648,7 +1648,7 @@ function renderImpPreview(){
 }
 async function impApprove(){
   const S=IMP_STAGE, keys=$$('#impPreview [data-wk]:checked').map(c=>c.dataset.wk); if(!S||!keys.length) return;
-  if(!confirm(`اعتماد نتائج ${keys.length} أسبوع دفعة واحدة؟\n\nلكل أسبوع: نتائج W.B Donation وBleeder Apheresis وإجماليات المتبرعين/الصفائح${S.files.includes('Wateen report')?'/Rh Negative':''} تُستبدل بما في الملف.${S.files.includes('Staff productivity')?'\nStaff productivity: B.B Reception = إجمالي Screened مقسوماً بالتساوي على المكلَّفين، وScreening وDR وDR Cover وSchedule Apheresis Donor = رقم كل مكلَّف الشخصي.':''} النتائج اليدوية لباقي المهام لا تُمس.`)) return;
+  if(!confirm(`اعتماد نتائج ${keys.length} أسبوع دفعة واحدة؟\n\nلكل أسبوع: نتائج W.B Donation وBleeder Apheresis وإجماليات المتبرعين/الصفائح${S.files.includes('Wateen report')?'/Rh Negative':''} تُستبدل بما في الملف.${S.files.includes('Staff productivity')?'\nStaff productivity: B.B Reception = مجموع Screened لموظفي الجدول المكلَّفين بمهام ذلك الأسبوع فقط، مقسوماً بالتساوي على المكلَّفين بالاستقبال، وScreening وDR وDR Cover وSchedule Apheresis Donor = رقم كل مكلَّف الشخصي.':''} النتائج اليدوية لباقي المهام لا تُمس.`)) return;
   $('#impApprove').disabled=true;
   const lines=[];
   for(const k of keys){
@@ -1671,16 +1671,19 @@ async function impApprove(){
     }
     if(b.hasWat) w.totals.rhNegative=b.rh;
     if(b.prod){
-      // B.B Reception (t1): إجمالي Screened للأسبوع مناصفةً بين المكلَّفين (الباقي للأول)؛
+      // B.B Reception (t1): مجموع Screened لموظفي الجدول المكلَّفين بأي مهمة في هذا الأسبوع فقط (لا الأطباء/غير الفريق)،
+      // مناصفةً بين المكلَّفين بالاستقبال (الباقي للأول)؛
       // Screening (t3) وDR (t4) وDR Cover (t5) وSchedule Apheresis Donor (t6): كل مكلَّف يأخذ رقمه الشخصي من «Total number of screened per user»
       const a1=(w.assignments.t1||[]).filter(Boolean);
-      if(a1.length){ const base=Math.floor(b.prod.total/a1.length), rem=b.prod.total%a1.length; w.results.t1={}; a1.forEach((id,i)=>w.results.t1[id]=base+(i<rem?1:0)); }
+      const team=new Set(Object.values(w.assignments).flat().filter(Boolean));
+      const recv=[...team].reduce((n,id)=>n+(b.prod.per[id]||0),0); b.prod.recv=recv;
+      if(a1.length){ const base=Math.floor(recv/a1.length), rem=recv%a1.length; w.results.t1={}; a1.forEach((id,i)=>w.results.t1[id]=base+(i<rem?1:0)); }
       ['t3','t4','t5','t6'].forEach(t=>{ const a=(w.assignments[t]||[]).filter(Boolean); if(a.length){ w.results[t]={}; a.forEach(id=>w.results[t][id]=b.prod.per[id]||0); } });
       w.totals.screened=b.prod.total;
     }
     w.status='closed';
     await cloudSet('weeks',k,w); if(b.hasDon) await syncApxFromWeek(w);
-    lines.push(`${w.label}${b.isNew?' (جديد)':''}: ${b.hasDon?`${b.wb+b.plt} متبرع، ${b.plt} صفائح`:''}${b.hasWat?`${b.hasDon?'، ':''}${b.rh} Rh Negative`:''}${b.prod?`${b.hasDon||b.hasWat?'، ':''}${b.prod.total} Screened`:''}${added?` — أُضيف ${added} تكليف لمن نفّذ دون تكليف`:''}`);
+    lines.push(`${w.label}${b.isNew?' (جديد)':''}: ${b.hasDon?`${b.wb+b.plt} متبرع، ${b.plt} صفائح`:''}${b.hasWat?`${b.hasDon?'، ':''}${b.rh} Rh Negative`:''}${b.prod?`${b.hasDon||b.hasWat?'، ':''}${b.prod.total} Screened (استقبال: ${b.prod.recv})`:''}${added?` — أُضيف ${added} تكليف لمن نفّذ دون تكليف`:''}`);
   }
   IMP_STAGE=null; renderImpPreview();
   fillWeekPicks(); fillResYears(); renderResults(); renderArchive(); renderApx(); renderSheet();
