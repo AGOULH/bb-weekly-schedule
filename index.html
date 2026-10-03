@@ -1578,9 +1578,9 @@ $('#impReadBtn').onclick=async()=>{
     const iDate=colIdx(header,'donation date'), iCP=colIdx(header,'collection point'), iType=colIdx(header,'donation type'), iStaff=colIdx(header,'staffid');
     if([iDate,iCP,iType,iStaff].some(i=>i<0)){ toast('تنسيق ملف List of donations غير معروف'); return; }
     rows.forEach(r=>{ const iso=parseSlashDate(r[iDate]); if(!iso||!inRange(iso)) return; dates.push(iso);
-      if(!IMPORT_SITES.includes(r[iCP])) return;
       if(r[iType]!=='Whole blood'&&r[iType]!=='Plateletpheresis') return;
-      don.push({iso,plt:r[iType]==='Plateletpheresis',sid:r[iStaff],dept:r[iCP]===DEPT_SITE}); });
+      // كل نقاط السحب (القسم، مركز دمي، الحملات) تُحتسب لرقم الموظف؛ إجماليات القسم من 2001F/2001D فقط (site)
+      don.push({iso,plt:r[iType]==='Plateletpheresis',sid:r[iStaff],site:IMPORT_SITES.includes(r[iCP]),dept:r[iCP]===DEPT_SITE}); });
   }
   if(fW){
     const {header,rows}=await readTableFile(fW,'donation date');
@@ -1611,9 +1611,9 @@ $('#impReadBtn').onclick=async()=>{
   const weeks={}, unmatched={}; let unmapped=0;
   const wk=k=>weeks[k]||(weeks[k]={key:k,isNew:!WEEKS[k],dateFrom:WEEKS[k]?.dateFrom||k,dateTo:WEEKS[k]?.dateTo||created[k],hasDon:false,hasWat:false,wb:0,plt:0,dept:0,rh:0,watTotal:0,perStaff:{},unknown:0,prod:null});
   don.forEach(d=>{ const k=keyFor(d.iso); if(!k){ unmapped++; return; } const b=wk(k); b.hasDon=true;
-    d.plt?b.plt++:b.wb++; if(d.dept) b.dept++;
+    if(d.site){ d.plt?b.plt++:b.wb++; if(d.dept) b.dept++; }
     const id=staffIdx[d.sid];
-    if(!id){ b.unknown++; if(d.sid) unmatched[d.sid]=(unmatched[d.sid]||0)+1; return; }
+    if(!id){ if(!d.site) return; b.unknown++; if(d.sid) unmatched[d.sid]=(unmatched[d.sid]||0)+1; return; }
     const p=b.perStaff[id]||(b.perStaff[id]={wb:0,plt:0}); d.plt?p.plt++:p.wb++; });
   wat.forEach(d=>{ const k=keyFor(d.iso); if(!k){ unmapped++; return; } const b=wk(k); b.hasWat=true; b.watTotal++; if(d.neg) b.rh++; });
   // Staff productivity: الملف بلا تواريخ يومية → يُنسب كاملاً لأسبوع واحد فقط إن وقعت فترته (Start–End) كلها داخله
