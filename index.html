@@ -1613,6 +1613,7 @@ $('#impReadBtn').onclick=async()=>{
     b.prod={total,per,unk,full:p.from<=b.dateFrom&&p.to>=b.dateTo};
   });
   Object.values(weeks).forEach(b=>b.full=b.dateFrom>=covFrom&&b.dateTo<=covTo&&(!b.prod||b.prod.full));
+  if(prodSkip.length) toast('⚠️ ملف Staff productivity يغطي أكثر من أسبوع — لم يُعتمد');
   IMP_STAGE={weeks,covFrom,covTo,unmapped,unmatched,prodSkip,files:[fD&&'List of donations',fW&&'Wateen report',prods.length&&'Staff productivity'].filter(Boolean)};
   renderImpPreview();
 };
@@ -1620,7 +1621,9 @@ function renderImpPreview(){
   const S=IMP_STAGE; if(!S){ $('#impPreview').innerHTML=''; return; }
   const ws=Object.values(S.weeks).sort((a,b)=>a.dateFrom.localeCompare(b.dateFrom));
   const um=Object.entries(S.unmatched);
-  $('#impPreview').innerHTML=`<div style="margin-top:14px"><h3>🔍 معاينة — ${S.files.join(' + ')} · الفترة <span class="bidi-ltr">${fmtLbl(S.covFrom,S.covTo)}</span> <span class="hint">(لم يُحفظ شيء بعد)</span></h3>
+  $('#impPreview').innerHTML=(S.prodSkip.length?`<div style="margin-top:14px;padding:12px 14px;border-radius:10px;background:#FFF4D6;border:1px solid var(--amber);color:#6b4a00;font-size:13px;line-height:1.8">
+      <b>⚠️ ملف Staff productivity لم يُعتمد لأي أسبوع — أرقام B.B Reception وScreening وDR Cover وSchedule Apheresis Donor لن تُحدَّث:</b><br>${S.prodSkip.join('<br>')}<br>
+      الملف مجمّع بلا تواريخ يومية، لذا يجب أن تكون فترته (Start Date–End Date) أسبوعاً واحداً. صدّره من النظام لكل أسبوع على حدة ثم اختر كل الملفات معاً في الخانة.</div>`:'')+`<div style="margin-top:14px"><h3>🔍 معاينة — ${S.files.join(' + ')} · الفترة <span class="bidi-ltr">${fmtLbl(S.covFrom,S.covTo)}</span> <span class="hint">(لم يُحفظ شيء بعد)</span></h3>
     <div style="overflow-x:auto"><table class="rk"><thead><tr><th><input type="checkbox" id="impAll" aria-label="تحديد الكل" checked></th><th style="text-align:right">الأسبوع</th><th>الحالة</th><th>Whole blood</th><th>الصفائح</th><th>إجمالي المتبرعين</th><th>Rh Negative</th><th>موظفون مطابَقون</th><th>Screened</th><th>ملاحظة</th></tr></thead><tbody>
     ${ws.map(b=>`<tr><td><input type="checkbox" data-wk="${b.key}" ${b.full?'checked':''} aria-label="اعتماد ${fmtLbl(b.dateFrom,b.dateTo)}"></td>
       <td class="nm">${fmtLbl(b.dateFrom,b.dateTo)}</td>
@@ -1631,7 +1634,6 @@ function renderImpPreview(){
       <td>${b.prod?`<b>${b.prod.total}</b> <small class="hint">${Object.keys(b.prod.per).length} موظف مطابَق</small>`:'—'}</td>
       <td style="font-size:11.5px">${b.full?'':'<span style="color:#8a6100;font-weight:700">⚠️ تغطية جزئية — أرقامه ناقصة</span>'}</td></tr>`).join('')}
     </tbody></table></div>
-    ${S.prodSkip.length?`<div class="hint" style="color:var(--bad)">⚠️ ملفات Staff productivity لم تُنسب لأي أسبوع:<br>${S.prodSkip.join('<br>')}</div>`:''}
     ${S.unmapped?`<div class="hint">⚠️ ${S.unmapped} سجل لا يقع ضمن أي أسبوع ويتداخل مع أسبوع محفوظ بتاريخ بداية مختلف — تُرك.</div>`:''}
     ${um.length?`<div class="hint" style="color:var(--bad)">أرقام وظيفية غير معروفة (تُحسب في إجمالي القسم فقط): ${um.map(([id,n])=>`${id} (${n})`).join('، ')} — أضِفها من «قائمة الموظفين».</div>`:''}
     <div class="imp-actions"><span class="hint" id="impCount"></span>
@@ -1645,7 +1647,7 @@ function renderImpPreview(){
 }
 async function impApprove(){
   const S=IMP_STAGE, keys=$$('#impPreview [data-wk]:checked').map(c=>c.dataset.wk); if(!S||!keys.length) return;
-  if(!confirm(`اعتماد نتائج ${keys.length} أسبوع دفعة واحدة؟\n\nلكل أسبوع: نتائج W.B Donation وBleeder Apheresis وإجماليات المتبرعين/الصفائح${S.files.includes('Wateen report')?'/Rh Negative':''} تُستبدل بما في الملف.${S.files.includes('Staff productivity')?'\nStaff productivity: B.B Reception = إجمالي Screened مقسوماً بالتساوي على المكلَّفين، وScreening وDR Cover = رقم كل مكلَّف الشخصي.':''} النتائج اليدوية لباقي المهام لا تُمس.`)) return;
+  if(!confirm(`اعتماد نتائج ${keys.length} أسبوع دفعة واحدة؟\n\nلكل أسبوع: نتائج W.B Donation وBleeder Apheresis وإجماليات المتبرعين/الصفائح${S.files.includes('Wateen report')?'/Rh Negative':''} تُستبدل بما في الملف.${S.files.includes('Staff productivity')?'\nStaff productivity: B.B Reception = إجمالي Screened مقسوماً بالتساوي على المكلَّفين، وScreening وDR Cover وSchedule Apheresis Donor = رقم كل مكلَّف الشخصي.':''} النتائج اليدوية لباقي المهام لا تُمس.`)) return;
   $('#impApprove').disabled=true;
   const lines=[];
   for(const k of keys){
@@ -1669,10 +1671,10 @@ async function impApprove(){
     if(b.hasWat) w.totals.rhNegative=b.rh;
     if(b.prod){
       // B.B Reception (t1): إجمالي Screened للأسبوع مناصفةً بين المكلَّفين (الباقي للأول)؛
-      // Screening (t3) وDR Cover (t5): كل مكلَّف يأخذ رقمه الشخصي من «Total number of screened per user»
+      // Screening (t3) وDR Cover (t5) وSchedule Apheresis Donor (t6): كل مكلَّف يأخذ رقمه الشخصي من «Total number of screened per user»
       const a1=(w.assignments.t1||[]).filter(Boolean);
       if(a1.length){ const base=Math.floor(b.prod.total/a1.length), rem=b.prod.total%a1.length; w.results.t1={}; a1.forEach((id,i)=>w.results.t1[id]=base+(i<rem?1:0)); }
-      ['t3','t5'].forEach(t=>{ const a=(w.assignments[t]||[]).filter(Boolean); if(a.length){ w.results[t]={}; a.forEach(id=>w.results[t][id]=b.prod.per[id]||0); } });
+      ['t3','t5','t6'].forEach(t=>{ const a=(w.assignments[t]||[]).filter(Boolean); if(a.length){ w.results[t]={}; a.forEach(id=>w.results[t][id]=b.prod.per[id]||0); } });
       w.totals.screened=b.prod.total;
     }
     w.status='closed';
