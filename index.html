@@ -1113,6 +1113,14 @@ async function boot(){
   for(const [k,v] of Object.entries(STAFF)){
     if(!v.staffId && STAFF_JOB_IDS[v.name]){ v.staffId=STAFF_JOB_IDS[v.name]; await cloudSet('staff',k,v); }
   }
+  // ترحيل لمرة واحدة (2026-10-03): أسبوع «29 أغسطس–4 سبتمبر» كان يتداخل مع 23–29 أغسطس في يوم 29 (يُحسب مرتين)
+  // → يُنقل إلى الأحد–السبت 30 أغسطس–5 سبتمبر بنفس التكليفات والنتائج اليدوية؛ أرقام الملفات تُعاد باعتماد List of donations
+  if(WEEKS['2026-08-29']?.dateTo==='2026-09-04' && !WEEKS['2026-08-30']){
+    const w=WEEKS['2026-08-29'], nw={...w,dateFrom:'2026-08-30',dateTo:'2026-09-05',label:fmtLbl('2026-08-30','2026-09-05')};
+    WEEKS['2026-08-30']=nw; await cloudSet('weeks','2026-08-30',nw);
+    delete WEEKS['2026-08-29']; await cloudDel('weeks','2026-08-29');
+    for(const [ak,a] of Object.entries(APX)){ const n=(a.rows||[]).length; a.rows=(a.rows||[]).filter(r=>r.weekId!=='2026-08-29'); if(a.rows.length!==n) await cloudSet('apheresis',ak,a); } // صف الصفائح يُعاد عند اعتماد List of donations
+  }
   // ترحيل: كل مكلَّف بمهمة تقييمية بلا تقييم في الأسابيع المحفوظة = Excellent
   // وترحيل: B.B Reception/Screening/Schedule Apheresis Donor من إجماليات الأسبوع (donorSplit)
   for(const [k,w] of Object.entries(WEEKS)) if(fillRatings(w)|donorSplit(w)) await cloudSet('weeks',k,w);
@@ -1821,7 +1829,7 @@ function renderCompare(){
   h+=`<div class="card"><h3>🏅 الأعلى في كل قسم ${isRate?'(المعدّل لكل تكليف)':'(المجموع)'}</h3><div class="cmp-leaders">${selT.map(t=>{
     const top=selS.map(p=>({p,v:val(p,t)})).filter(x=>x.v!==null&&(t.type==='rating'||x.v>0)).sort((a,b)=>b.v-a.v).slice(0,3);
     const sumRaw=selS.reduce((s,p)=>s+(p.tasks[t.id]||0),0);
-    const sub=t.type==='rating'?`مؤشر الجودة · ${colVals[t.id].length} موظف مُقيَّم`:`إجمالي القسم: <b>${sumRaw}</b> · ${colVals[t.id].length} موظف`;
+    const sub=t.type==='rating'?`مؤشر الجودة · ${colVals[t.id].length} موظف مُقيَّم`:`إجمالي القسم: <b>${sumRaw}</b> · ${colVals[t.id].length} موظف${t.id==='t8'||t.id==='t7'?'<br><small>يشمل سحب الموظفين في القسم ومركز دمي والحملات — لذا قد يزيد عن إجمالي متبرعي القسم</small>':''}`;
     return `<div class="cmp-lead"><h4>${cmpTaskLabel(t)}</h4><div class="sub">${sub}</div>${top.length?top.map((x,i)=>`<div class="ln"><span>${medal(i)}</span><span class="nm">${x.p.name}</span><b>${fmt(x.v,t)}</b><div class="bar"><i style="width:${colMax[t.id]?Math.round(x.v/colMax[t.id]*100):0}%"></i></div></div>`).join(''):'<div class="hint">لا توجد أرقام في هذا المدى.</div>'}</div>`;
   }).join('')}</div></div>`;
 
