@@ -1537,7 +1537,7 @@ async function readProdFile(file){
     const tb=b&&b.parentElement.querySelector('table');
     if(!tb) return null;
     const per={};
-    tb.querySelectorAll('tbody tr').forEach(tr=>{ const c=[...tr.children].map(x=>x.textContent.trim()); const id=normSid(c[0]); if(id) per[id]=(per[id]||0)+(+c[2]||0); });
+    tb.querySelectorAll('tbody tr').forEach(tr=>{ const c=[...tr.children].map(x=>x.textContent.trim()); const id=normSid(c[0]); if(/^\d+$/.test(id)) per[id]=(per[id]||0)+(+c[2]||0); });
     return {from:d(/Start Date\s*:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i),to:d(/End date\s*:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i),per};
   }
   const wb=XLSX.read(buf,{type:'array',cellDates:true}), p2=n=>String(n).padStart(2,'0');
@@ -1605,8 +1605,9 @@ $('#impReadBtn').onclick=async()=>{
   const prodSkip=[];
   prods.forEach(p=>{
     if(!inRange(p.from)||!inRange(p.to)){ prodSkip.push(`${p.name}: فترته خارج الفترة المحددة`); return; }
-    const k=keyFor(p.from);
-    if(!k||k!==keyFor(p.to)){ prodSkip.push(`${p.name} (${p.from} → ${p.to}): فترته تمتد على أكثر من أسبوع — صدّر الملف من النظام أسبوعاً أسبوعاً`); return; }
+    // أسبوع محفوظ يحوي فترة الملف كلها أولاً (أسابيع متداخلة مثل 23–29 و29 أغسطس–4 سبتمبر)، وإلا نفس أسبوع البداية والنهاية
+    const k=Object.keys(WEEKS).find(x=>WEEKS[x].dateFrom<=p.from&&WEEKS[x].dateTo>=p.to)||(keyFor(p.from)===keyFor(p.to)?keyFor(p.from):null);
+    if(!k){ prodSkip.push(`${p.name} (${p.from} → ${p.to}): فترته تمتد على أكثر من أسبوع — صدّر الملف من النظام أسبوعاً أسبوعاً`); return; }
     const b=wk(k); if(b.prod){ prodSkip.push(`${p.name}: أسبوع ${fmtLbl(b.dateFrom,b.dateTo)} له ملف آخر — تُرك`); return; }
     const per={}; let total=0, unk=0;
     Object.entries(p.per).forEach(([sid,n])=>{ total+=n; const id=staffIdx[sid]||Object.entries(staffIdx).find(([x])=>normSid(x)===sid)?.[1]; if(id) per[id]=(per[id]||0)+n; else unk+=n; });
