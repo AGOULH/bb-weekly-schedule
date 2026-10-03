@@ -1030,10 +1030,10 @@ function fillRatings(w){
     const r=w.results[t.id]||(w.results[t.id]={}); if(!r[sid]){ r[sid]='excellent'; n++; } }));
   return n;
 }
-// (طلب حسن 2026-10-03) B.B Reception (t1) وScreening (t3) = إجمالي متبرعي الأسبوع (W.B Donation + Bleeder Apheresis = totals.donors)،
+// (طلب حسن 2026-10-03) B.B Reception (t1) وScreening (t3) = متبرعو القسم فقط بلا مركز دمي (W.B + Bleeder Apheresis في 2001F = totals.deptDonors)،
 // وSchedule Apheresis Donor (t6) = متبرعو الصفائح (totals.apheresisDonors) — مقسوماً بالتساوي على المكلَّفين (الباقي للأول).
 // تُحسب تلقائياً عند كل حفظ للأسبوع، وفقط إن كان الإجمالي > 0
-const DONOR_SPLIT={t1:'donors',t3:'donors',t6:'apheresisDonors'};
+const DONOR_SPLIT={t1:'deptDonors',t3:'deptDonors',t6:'apheresisDonors'};
 function donorSplit(w){
   let ch=false; w.results=w.results||{};
   Object.entries(DONOR_SPLIT).forEach(([t,f])=>{
@@ -1061,6 +1061,7 @@ const LV_AR_MONTHS=LV_MONTHS, LV_EN_MONTHS=['January','February','March','April'
 const LV_AR_DAYS=['أح','إث','ثل','أر','خم','جم','سب'], LV_EN_DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MON=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const MON3=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+const DEPT_SITE='2001F'; // القسم نفسه — 2001D = مركز دمي (يعمل الجمعة/السبت)؛ أرقام الاستقبال/الفحص تُحسب من القسم فقط
 const IMPORT_SITES=['2001F','2001D']; // نقاط التبرع بمقر بنك الدم — الأساس لاستيراد النتائج من إكسل
 const REPORT_SITE_LABEL={'2001F':'٢٠٠١F (المقر)','2001D':'٢٠٠١D (المقر)',OTHER:'ميدانية / خارجية'};
 // أسباب الاستبعاد المنسوبة لأسلوب السحب (تقنية الموظف) — تُستثنى منها أسباب طبية/تتعلق بالمتبرع نفسه (DMH,DLFL,R06,R08,QUES)،
@@ -1435,7 +1436,7 @@ function renderResultsWeek(){
         ? `<input type="number" min="0" value="${v??''}" data-t="${t.id}" data-s="${sid}"${auto?` placeholder="${auto[sid]}" title="تلقائي من Rh Negative للأسبوع (${auto[sid]}) — أدخل رقماً لتجاوزه"`:''}>`
         : `<select class="inp rate" data-t="${t.id}" data-s="${sid}"><option value="">—</option>${RATINGS.map(r2=>`<option value="${r2.v}" ${v===r2.v?'selected':''}>${r2.label}</option>`).join('')}</select>`)+`</div>`;
     }).join('');
-    return `<tr><td class="num">${i+1}</td><td class="task">${t.name} <small style="color:var(--teal)">${t.type==='count'?'عدد':'تقييم'}</small>${auto?'<div style="font-size:10.5px;color:var(--muted)">تلقائي من Rh Negative للأسبوع</div>':''}${DONOR_SPLIT[t.id]?`<div style="font-size:10.5px;color:var(--muted)">تلقائي: ${DONOR_SPLIT[t.id]==='donors'?'إجمالي المتبرعين (W.B + الصفائح)':'متبرعو الصفائح'} مقسوماً على المكلَّفين</div>`:''}</td><td class="assignees"><div class="reswrap">${cells}</div></td></tr>`;
+    return `<tr><td class="num">${i+1}</td><td class="task">${t.name} <small style="color:var(--teal)">${t.type==='count'?'عدد':'تقييم'}</small>${auto?'<div style="font-size:10.5px;color:var(--muted)">تلقائي من Rh Negative للأسبوع</div>':''}${DONOR_SPLIT[t.id]?`<div style="font-size:10.5px;color:var(--muted)">تلقائي: ${DONOR_SPLIT[t.id]==='deptDonors'?'متبرعو القسم (W.B + الصفائح، بلا مركز دمي)':'متبرعو الصفائح'} مقسوماً على المكلَّفين</div>`:''}</td><td class="assignees"><div class="reswrap">${cells}</div></td></tr>`;
   }).join('');
   $('#resWrap').innerHTML=`<div style="overflow-x:auto"><table class="res"><thead><tr><th>#</th><th>المهمة</th><th>الموظفون المكلّفون</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   $$('#resWrap input,#resWrap select').forEach(el=>el.onchange=()=>{
@@ -1579,7 +1580,7 @@ $('#impReadBtn').onclick=async()=>{
     rows.forEach(r=>{ const iso=parseSlashDate(r[iDate]); if(!iso||!inRange(iso)) return; dates.push(iso);
       if(!IMPORT_SITES.includes(r[iCP])) return;
       if(r[iType]!=='Whole blood'&&r[iType]!=='Plateletpheresis') return;
-      don.push({iso,plt:r[iType]==='Plateletpheresis',sid:r[iStaff]}); });
+      don.push({iso,plt:r[iType]==='Plateletpheresis',sid:r[iStaff],dept:r[iCP]===DEPT_SITE}); });
   }
   if(fW){
     const {header,rows}=await readTableFile(fW,'donation date');
@@ -1608,9 +1609,9 @@ $('#impReadBtn').onclick=async()=>{
   };
   const staffIdx={}; Object.entries(STAFF).forEach(([k,v])=>{ if(v.staffId) staffIdx[v.staffId]=k; });
   const weeks={}, unmatched={}; let unmapped=0;
-  const wk=k=>weeks[k]||(weeks[k]={key:k,isNew:!WEEKS[k],dateFrom:WEEKS[k]?.dateFrom||k,dateTo:WEEKS[k]?.dateTo||created[k],hasDon:false,hasWat:false,wb:0,plt:0,rh:0,watTotal:0,perStaff:{},unknown:0,prod:null});
+  const wk=k=>weeks[k]||(weeks[k]={key:k,isNew:!WEEKS[k],dateFrom:WEEKS[k]?.dateFrom||k,dateTo:WEEKS[k]?.dateTo||created[k],hasDon:false,hasWat:false,wb:0,plt:0,dept:0,rh:0,watTotal:0,perStaff:{},unknown:0,prod:null});
   don.forEach(d=>{ const k=keyFor(d.iso); if(!k){ unmapped++; return; } const b=wk(k); b.hasDon=true;
-    d.plt?b.plt++:b.wb++;
+    d.plt?b.plt++:b.wb++; if(d.dept) b.dept++;
     const id=staffIdx[d.sid];
     if(!id){ b.unknown++; if(d.sid) unmatched[d.sid]=(unmatched[d.sid]||0)+1; return; }
     const p=b.perStaff[id]||(b.perStaff[id]={wb:0,plt:0}); d.plt?p.plt++:p.wb++; });
@@ -1681,7 +1682,7 @@ async function impApprove(){
         if(c.wb>0&&!w.assignments.t8.includes(id)){ w.assignments.t8.push(id); added++; }
         if(c.plt>0&&!w.assignments.t7.includes(id)){ w.assignments.t7.push(id); added++; }
       });
-      w.totals.donors=b.wb+b.plt; w.totals.apheresisDonors=b.plt;
+      w.totals.donors=b.wb+b.plt; w.totals.apheresisDonors=b.plt; w.totals.deptDonors=b.dept;
     }
     if(b.hasWat) w.totals.rhNegative=b.rh;
     if(b.prod){
