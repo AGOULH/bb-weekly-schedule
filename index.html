@@ -983,7 +983,7 @@ const LS={
   set(k,v){ try{localStorage.setItem(k,JSON.stringify(v))}catch(e){} }
 };
 async function cloudSet(col,id,data){
-  if(col==='weeks') fillRatings(data);
+  if(col==='weeks'){ fillRatings(data); donorSplit(data); }
   if(CLOUD){ await db.fs.setDoc(db.fs.doc(db.d,col,id),data); }
   const all=LS.get('bb_'+col,{}); all[id]=data; LS.set('bb_'+col,all);
 }
@@ -1029,6 +1029,19 @@ function fillRatings(w){
   TASKS.filter(t=>t.type==='rating').forEach(t=>(w.assignments?.[t.id]||[]).filter(Boolean).forEach(sid=>{
     const r=w.results[t.id]||(w.results[t.id]={}); if(!r[sid]){ r[sid]='excellent'; n++; } }));
   return n;
+}
+// (طلب حسن 2026-10-03) B.B Reception (t1) وScreening (t3) = إجمالي متبرعي الأسبوع (W.B Donation + Bleeder Apheresis = totals.donors)،
+// وSchedule Apheresis Donor (t6) = متبرعو الصفائح (totals.apheresisDonors) — مقسوماً بالتساوي على المكلَّفين (الباقي للأول).
+// تُحسب تلقائياً عند كل حفظ للأسبوع، وفقط إن كان الإجمالي > 0
+const DONOR_SPLIT={t1:'donors',t3:'donors',t6:'apheresisDonors'};
+function donorSplit(w){
+  let ch=false; w.results=w.results||{};
+  Object.entries(DONOR_SPLIT).forEach(([t,f])=>{
+    const a=(w.assignments?.[t]||[]).filter(Boolean), N=+w.totals?.[f]||0; if(!a.length||!N) return;
+    const base=Math.floor(N/a.length), rem=N%a.length, o={}; a.forEach((id,i)=>o[id]=base+(i<rem?1:0));
+    if(JSON.stringify(o)!==JSON.stringify(w.results[t]||{})){ w.results[t]=o; ch=true; }
+  });
+  return ch;
 }
 const HEAVY=['t7','t8','t3'];                 // مهام ثقيلة لمراقبة عدالة التوزيع
 const SEED=['FAHED','AQEELHA','DOHA','AFNAN','ALASEED','IBRIH','MARDEEF','SULTAN','ABDJALIL','REDA','MATWHA','AWTIF','HAMED'];
@@ -1101,7 +1114,8 @@ async function boot(){
     if(!v.staffId && STAFF_JOB_IDS[v.name]){ v.staffId=STAFF_JOB_IDS[v.name]; await cloudSet('staff',k,v); }
   }
   // ترحيل: كل مكلَّف بمهمة تقييمية بلا تقييم في الأسابيع المحفوظة = Excellent
-  for(const [k,w] of Object.entries(WEEKS)) if(fillRatings(w)) await cloudSet('weeks',k,w);
+  // وترحيل: B.B Reception/Screening/Schedule Apheresis Donor من إجماليات الأسبوع (donorSplit)
+  for(const [k,w] of Object.entries(WEEKS)) if(fillRatings(w)|donorSplit(w)) await cloudSet('weeks',k,w);
   if(!Object.keys(WEEKS).length){
     const w={dateFrom:'2026-08-09',dateTo:'2026-08-15',label:'9 August To 15 August',
       assignments:{t1:[idOf('REDA')],t3:[idOf('SULTAN')],t4:[idOf('AFNAN')],t5:[idOf('MARDEEF')],
@@ -1421,7 +1435,7 @@ function renderResultsWeek(){
         ? `<input type="number" min="0" value="${v??''}" data-t="${t.id}" data-s="${sid}"${auto?` placeholder="${auto[sid]}" title="تلقائي من Rh Negative للأسبوع (${auto[sid]}) — أدخل رقماً لتجاوزه"`:''}>`
         : `<select class="inp rate" data-t="${t.id}" data-s="${sid}"><option value="">—</option>${RATINGS.map(r2=>`<option value="${r2.v}" ${v===r2.v?'selected':''}>${r2.label}</option>`).join('')}</select>`)+`</div>`;
     }).join('');
-    return `<tr><td class="num">${i+1}</td><td class="task">${t.name} <small style="color:var(--teal)">${t.type==='count'?'عدد':'تقييم'}</small>${auto?'<div style="font-size:10.5px;color:var(--muted)">تلقائي من Rh Negative للأسبوع</div>':''}</td><td class="assignees"><div class="reswrap">${cells}</div></td></tr>`;
+    return `<tr><td class="num">${i+1}</td><td class="task">${t.name} <small style="color:var(--teal)">${t.type==='count'?'عدد':'تقييم'}</small>${auto?'<div style="font-size:10.5px;color:var(--muted)">تلقائي من Rh Negative للأسبوع</div>':''}${DONOR_SPLIT[t.id]?`<div style="font-size:10.5px;color:var(--muted)">تلقائي: ${DONOR_SPLIT[t.id]==='donors'?'إجمالي المتبرعين (W.B + الصفائح)':'متبرعو الصفائح'} مقسوماً على المكلَّفين</div>`:''}</td><td class="assignees"><div class="reswrap">${cells}</div></td></tr>`;
   }).join('');
   $('#resWrap').innerHTML=`<div style="overflow-x:auto"><table class="res"><thead><tr><th>#</th><th>المهمة</th><th>الموظفون المكلّفون</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   $$('#resWrap input,#resWrap select').forEach(el=>el.onchange=()=>{
@@ -1623,7 +1637,7 @@ function renderImpPreview(){
   const ws=Object.values(S.weeks).sort((a,b)=>a.dateFrom.localeCompare(b.dateFrom));
   const um=Object.entries(S.unmatched);
   $('#impPreview').innerHTML=(S.prodSkip.length?`<div style="margin-top:14px;padding:12px 14px;border-radius:10px;background:#FFF4D6;border:1px solid var(--amber);color:#6b4a00;font-size:13px;line-height:1.8">
-      <b>⚠️ ملف Staff productivity لم يُعتمد لأي أسبوع — أرقام B.B Reception وScreening وDR وDR Cover وSchedule Apheresis Donor لن تُحدَّث:</b><br>${S.prodSkip.join('<br>')}<br>
+      <b>⚠️ ملف Staff productivity لم يُعتمد لأي أسبوع — أرقام DR وDR Cover لن تُحدَّث:</b><br>${S.prodSkip.join('<br>')}<br>
       الملف مجمّع بلا تواريخ يومية، لذا يجب أن تكون فترته (Start Date–End Date) أسبوعاً واحداً. صدّره من النظام لكل أسبوع على حدة ثم اختر كل الملفات معاً في الخانة.</div>`:'')+`<div style="margin-top:14px"><h3>🔍 معاينة — ${S.files.join(' + ')} · الفترة <span class="bidi-ltr">${fmtLbl(S.covFrom,S.covTo)}</span> <span class="hint">(لم يُحفظ شيء بعد)</span></h3>
     <div style="overflow-x:auto"><table class="rk"><thead><tr><th><input type="checkbox" id="impAll" aria-label="تحديد الكل" checked></th><th style="text-align:right">الأسبوع</th><th>الحالة</th><th>Whole blood</th><th>الصفائح</th><th>إجمالي المتبرعين</th><th>Rh Negative</th><th>موظفون مطابَقون</th><th>Screened</th><th>ملاحظة</th></tr></thead><tbody>
     ${ws.map(b=>`<tr><td><input type="checkbox" data-wk="${b.key}" ${b.full?'checked':''} aria-label="اعتماد ${fmtLbl(b.dateFrom,b.dateTo)}"></td>
@@ -1648,7 +1662,7 @@ function renderImpPreview(){
 }
 async function impApprove(){
   const S=IMP_STAGE, keys=$$('#impPreview [data-wk]:checked').map(c=>c.dataset.wk); if(!S||!keys.length) return;
-  if(!confirm(`اعتماد نتائج ${keys.length} أسبوع دفعة واحدة؟\n\nلكل أسبوع: نتائج W.B Donation وBleeder Apheresis وإجماليات المتبرعين/الصفائح${S.files.includes('Wateen report')?'/Rh Negative':''} تُستبدل بما في الملف.${S.files.includes('Staff productivity')?'\nStaff productivity: B.B Reception = مجموع Screened لموظفي الجدول المكلَّفين بمهام ذلك الأسبوع فقط، مقسوماً بالتساوي على المكلَّفين بالاستقبال، وScreening وDR وDR Cover وSchedule Apheresis Donor = رقم كل مكلَّف الشخصي.':''} النتائج اليدوية لباقي المهام لا تُمس.`)) return;
+  if(!confirm(`اعتماد نتائج ${keys.length} أسبوع دفعة واحدة؟\n\nلكل أسبوع: نتائج W.B Donation وBleeder Apheresis وإجماليات المتبرعين/الصفائح${S.files.includes('Wateen report')?'/Rh Negative':''} تُستبدل بما في الملف.${S.files.includes('Staff productivity')?'\nStaff productivity: DR وDR Cover = رقم كل مكلَّف الشخصي.':''} النتائج اليدوية لباقي المهام لا تُمس.`)) return;
   $('#impApprove').disabled=true;
   const lines=[];
   for(const k of keys){
@@ -1671,19 +1685,14 @@ async function impApprove(){
     }
     if(b.hasWat) w.totals.rhNegative=b.rh;
     if(b.prod){
-      // B.B Reception (t1): مجموع Screened لموظفي الجدول المكلَّفين بأي مهمة في هذا الأسبوع فقط (لا الأطباء/غير الفريق)،
-      // مناصفةً بين المكلَّفين بالاستقبال (الباقي للأول)؛
-      // Screening (t3) وDR (t4) وDR Cover (t5) وSchedule Apheresis Donor (t6): كل مكلَّف يأخذ رقمه الشخصي من «Total number of screened per user»
-      const a1=(w.assignments.t1||[]).filter(Boolean);
-      const team=new Set(Object.values(w.assignments).flat().filter(Boolean));
-      const recv=[...team].reduce((n,id)=>n+(b.prod.per[id]||0),0); b.prod.recv=recv;
-      if(a1.length){ const base=Math.floor(recv/a1.length), rem=recv%a1.length; w.results.t1={}; a1.forEach((id,i)=>w.results.t1[id]=base+(i<rem?1:0)); }
-      ['t3','t4','t5','t6'].forEach(t=>{ const a=(w.assignments[t]||[]).filter(Boolean); if(a.length){ w.results[t]={}; a.forEach(id=>w.results[t][id]=b.prod.per[id]||0); } });
+      // DR (t4) وDR Cover (t5): كل مكلَّف يأخذ رقمه الشخصي من «Total number of screened per user»
+      // (B.B Reception وScreening وSchedule Apheresis Donor تُحسب من إجماليات الأسبوع — donorSplit)
+      ['t4','t5'].forEach(t=>{ const a=(w.assignments[t]||[]).filter(Boolean); if(a.length){ w.results[t]={}; a.forEach(id=>w.results[t][id]=b.prod.per[id]||0); } });
       w.totals.screened=b.prod.total;
     }
     w.status='closed';
     await cloudSet('weeks',k,w); if(b.hasDon) await syncApxFromWeek(w);
-    lines.push(`${w.label}${b.isNew?' (جديد)':''}: ${b.hasDon?`${b.wb+b.plt} متبرع، ${b.plt} صفائح`:''}${b.hasWat?`${b.hasDon?'، ':''}${b.rh} Rh Negative`:''}${b.prod?`${b.hasDon||b.hasWat?'، ':''}${b.prod.total} Screened (استقبال: ${b.prod.recv})`:''}${added?` — أُضيف ${added} تكليف لمن نفّذ دون تكليف`:''}`);
+    lines.push(`${w.label}${b.isNew?' (جديد)':''}: ${b.hasDon?`${b.wb+b.plt} متبرع، ${b.plt} صفائح`:''}${b.hasWat?`${b.hasDon?'، ':''}${b.rh} Rh Negative`:''}${b.prod?`${b.hasDon||b.hasWat?'، ':''}${b.prod.total} Screened`:''}${added?` — أُضيف ${added} تكليف لمن نفّذ دون تكليف`:''}`);
   }
   IMP_STAGE=null; renderImpPreview();
   fillWeekPicks(); fillResYears(); renderResults(); renderArchive(); renderApx(); renderSheet();
