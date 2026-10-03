@@ -578,12 +578,13 @@ body.dm-printing #dmSheet *{overflow:visible!important}
   </div>
   <div class="card noprint">
     <h3>📥 استيراد واعتماد نتائج فترة</h3>
-    <p class="hint">١) حدّد الفترة (اختياري — إن تُركت فارغة تُؤخذ من أقدم وأحدث تاريخ في الملفات) ٢) ارفع ملف List of donations و/أو Wateen report ٣) «🔍 قراءة الملفات» تعرض معاينة لكل أسبوع بلا أي حفظ ٤) «✅ اعتماد» يحفظ كل الأسابيع المحددة دفعة واحدة. نقاط السحب 2001F/2001D فقط. الملفات تُقرأ داخل المتصفح ولا تُرفع لأي خادم.</p>
+    <p class="hint">١) حدّد الفترة (اختياري — إن تُركت فارغة تُؤخذ من أقدم وأحدث تاريخ في الملفات) ٢) ارفع ملف List of donations و/أو Wateen report و/أو Staff productivity (ملف لكل أسبوع — الملف مجمّع بلا تواريخ يومية، فيُنسب للأسبوع الذي تقع فيه فترته؛ يمكن اختيار عدة ملفات معاً) ٣) «🔍 قراءة الملفات» تعرض معاينة لكل أسبوع بلا أي حفظ ٤) «✅ اعتماد» يحفظ كل الأسابيع المحددة دفعة واحدة. نقاط السحب 2001F/2001D فقط. الملفات تُقرأ داخل المتصفح ولا تُرفع لأي خادم.</p>
     <div class="row">
       <div class="field"><label for="impFrom">من تاريخ</label><input type="date" class="inp" id="impFrom"></div>
       <div class="field"><label for="impTo">إلى تاريخ</label><input type="date" class="inp" id="impTo"></div>
       <div class="field"><label for="impDonationsFile">List of donations</label><input type="file" class="inp" id="impDonationsFile" accept=".xls,.xlsx,.html,.htm"></div>
       <div class="field"><label for="impWateenFile">Wateen report</label><input type="file" class="inp" id="impWateenFile" accept=".xls,.xlsx,.html,.htm"></div>
+      <div class="field"><label for="impProdFile">Staff productivity</label><input type="file" class="inp" id="impProdFile" accept=".xls,.xlsx,.csv,.html,.htm" multiple title="ملف لكل أسبوع (Start/End Date = الأسبوع) — يمكن اختيار عدة ملفات"></div>
       <button class="btn" id="impReadBtn">🔍 قراءة الملفات</button>
     </div>
     <label class="hint" style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="impCreate" checked> إنشاء أسبوع جديد (الأحد–السبت) تلقائياً لأي تاريخ في الملف لا يقع ضمن أسبوع محفوظ</label>
@@ -982,6 +983,7 @@ const LS={
   set(k,v){ try{localStorage.setItem(k,JSON.stringify(v))}catch(e){} }
 };
 async function cloudSet(col,id,data){
+  if(col==='weeks') fillRatings(data);
   if(CLOUD){ await db.fs.setDoc(db.fs.doc(db.d,col,id),data); }
   const all=LS.get('bb_'+col,{}); all[id]=data; LS.set('bb_'+col,all);
 }
@@ -1021,6 +1023,13 @@ const RATINGS=[
  {v:'satisfactory',  label:'Satisfactory',  score:60},
  {v:'unsatisfactory',label:'Unsatisfactory',score:20}
 ];
+// المهام التقييمية: أي مكلَّف بلا تقييم = Excellent افتراضياً (طلب حسن 2026-10-03)، ويُغيَّر يدوياً عند الحاجة
+function fillRatings(w){
+  let n=0; w.results=w.results||{};
+  TASKS.filter(t=>t.type==='rating').forEach(t=>(w.assignments?.[t.id]||[]).filter(Boolean).forEach(sid=>{
+    const r=w.results[t.id]||(w.results[t.id]={}); if(!r[sid]){ r[sid]='excellent'; n++; } }));
+  return n;
+}
 const HEAVY=['t7','t8','t3'];                 // مهام ثقيلة لمراقبة عدالة التوزيع
 const SEED=['FAHED','AQEELHA','DOHA','AFNAN','ALASEED','IBRIH','MARDEEF','SULTAN','ABDJALIL','REDA','MATWHA','AWTIF','HAMED'];
 const RECEPTION_NAMES=['AWTIF','REDA','ABDJALIL']; // موظفو استقبال — ليسوا ضمن الفريق الفني، للترتيب المنفصل في الإحصائيات
@@ -1091,6 +1100,8 @@ async function boot(){
   for(const [k,v] of Object.entries(STAFF)){
     if(!v.staffId && STAFF_JOB_IDS[v.name]){ v.staffId=STAFF_JOB_IDS[v.name]; await cloudSet('staff',k,v); }
   }
+  // ترحيل: كل مكلَّف بمهمة تقييمية بلا تقييم في الأسابيع المحفوظة = Excellent
+  for(const [k,w] of Object.entries(WEEKS)) if(fillRatings(w)) await cloudSet('weeks',k,w);
   if(!Object.keys(WEEKS).length){
     const w={dateFrom:'2026-08-09',dateTo:'2026-08-15',label:'9 August To 15 August',
       assignments:{t1:[idOf('REDA')],t3:[idOf('SULTAN')],t4:[idOf('AFNAN')],t5:[idOf('MARDEEF')],
@@ -1512,12 +1523,38 @@ async function readTableFile(file,headerMarker){
   }
   return {header:[],rows:[]};
 }
+// Staff productivity : donation — ملف مجمّع لفترته (Start/End Date) بلا تواريخ يومية، فيه جدولان متجاوران؛
+// نأخذ «Total number of screened per user» فقط: {from,to,per:{رقم وظيفي بلا أصفار بادئة: عدد}}
+const normSid=x=>String(x||'').trim().replace(/^0+/,'');
+async function readProdFile(file){
+  const buf=await file.arrayBuffer(), head=new TextDecoder().decode(buf.slice(0,600)).trimStart().toLowerCase();
+  let aoa;
+  if(head.startsWith('<')){
+    const doc=new DOMParser().parseFromString(new TextDecoder().decode(buf),'text/html');
+    const txt=doc.body.textContent.replace(/\s+/g,' ');
+    const d=re=>parseSlashDate((re.exec(txt)||[])[1]||'');
+    const b=[...doc.querySelectorAll('b')].find(x=>/screened per user/i.test(x.textContent));
+    const tb=b&&b.parentElement.querySelector('table');
+    if(!tb) return null;
+    const per={};
+    tb.querySelectorAll('tbody tr').forEach(tr=>{ const c=[...tr.children].map(x=>x.textContent.trim()); const id=normSid(c[0]); if(id) per[id]=(per[id]||0)+(+c[2]||0); });
+    return {from:d(/Start Date\s*:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i),to:d(/End date\s*:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i),per};
+  }
+  const wb=XLSX.read(buf,{type:'array',cellDates:true}), p2=n=>String(n).padStart(2,'0');
+  aoa=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:''})
+    .map(r=>r.map(v=>v instanceof Date?`${v.getFullYear()}-${p2(v.getMonth()+1)}-${p2(v.getDate())}`:String(v).trim()));
+  const val=lbl=>{ for(const r of aoa){ const i=r.findIndex(c=>c.toLowerCase().startsWith(lbl)); if(i>=0) return parseSlashDate(String(r[i+1]).replace(/^:\s*/,'')); } return null; };
+  const hr=aoa.findIndex(r=>r.some(c=>/screened per user/i.test(c))); if(hr<0) return null;
+  const c0=aoa[hr].findIndex(c=>/screened per user/i.test(c)), per={};
+  aoa.slice(hr+2).forEach(r=>{ const id=normSid(r[c0]); if(id&&/^\d+$/.test(id)) per[id]=(per[id]||0)+(+r[c0+2]||0); });
+  return {from:val('start date'),to:val('end date'),per};
+}
 const colIdx=(header,marker)=>header.findIndex(h=>h.toLowerCase().replace(/\s+/g,' ').trim().startsWith(marker));
 const weekKeyForDate=iso=>Object.keys(WEEKS).find(k=>iso>=WEEKS[k].dateFrom&&iso<=WEEKS[k].dateTo);
 let IMP_STAGE=null;
 $('#impReadBtn').onclick=async()=>{
-  const fD=$('#impDonationsFile').files[0], fW=$('#impWateenFile').files[0];
-  if(!fD&&!fW){ toast('اختر ملفاً واحداً على الأقل'); return; }
+  const fD=$('#impDonationsFile').files[0], fW=$('#impWateenFile').files[0], fP=[...$('#impProdFile').files];
+  if(!fD&&!fW&&!fP.length){ toast('اختر ملفاً واحداً على الأقل'); return; }
   let from=$('#impFrom').value, to=$('#impTo').value; if(from&&to&&from>to) [from,to]=[to,from];
   const inRange=iso=>(!from||iso>=from)&&(!to||iso<=to);
   const don=[], wat=[], dates=[];
@@ -1537,6 +1574,13 @@ $('#impReadBtn').onclick=async()=>{
     rows.forEach(r=>{ const iso=parseMonDate(r[iDate]); if(!iso||!inRange(iso)) return; dates.push(iso);
       if(!IMPORT_SITES.includes(r[iCP])) return; wat.push({iso,neg:/neg/i.test(r[iBG])}); });
   }
+  const prods=[];
+  for(const f of fP){
+    const r=await readProdFile(f);
+    if(!r||!r.from||!r.to){ toast(`تنسيق ملف Staff productivity غير معروف: ${f.name}`); return; }
+    prods.push({...r,name:f.name});
+  }
+  prods.forEach(p=>{ if(inRange(p.from)&&inRange(p.to)&&p.to<=addDays(p.from,6)) dates.push(p.from,p.to); }); // ملف يمتد لأكثر من أسبوع يُترك ولا يوسّع الفترة
   if(!dates.length){ toast('لا توجد سجلات ضمن الفترة المحددة'); IMP_STAGE=null; $('#impPreview').innerHTML=''; return; }
   dates.sort(); const covFrom=from||dates[0], covTo=to||dates[dates.length-1];
   const created={}, canCreate=$('#impCreate').checked;
@@ -1550,15 +1594,26 @@ $('#impReadBtn').onclick=async()=>{
   };
   const staffIdx={}; Object.entries(STAFF).forEach(([k,v])=>{ if(v.staffId) staffIdx[v.staffId]=k; });
   const weeks={}, unmatched={}; let unmapped=0;
-  const wk=k=>weeks[k]||(weeks[k]={key:k,isNew:!WEEKS[k],dateFrom:WEEKS[k]?.dateFrom||k,dateTo:WEEKS[k]?.dateTo||created[k],hasDon:false,hasWat:false,wb:0,plt:0,rh:0,watTotal:0,perStaff:{},unknown:0});
+  const wk=k=>weeks[k]||(weeks[k]={key:k,isNew:!WEEKS[k],dateFrom:WEEKS[k]?.dateFrom||k,dateTo:WEEKS[k]?.dateTo||created[k],hasDon:false,hasWat:false,wb:0,plt:0,rh:0,watTotal:0,perStaff:{},unknown:0,prod:null});
   don.forEach(d=>{ const k=keyFor(d.iso); if(!k){ unmapped++; return; } const b=wk(k); b.hasDon=true;
     d.plt?b.plt++:b.wb++;
     const id=staffIdx[d.sid];
     if(!id){ b.unknown++; if(d.sid) unmatched[d.sid]=(unmatched[d.sid]||0)+1; return; }
     const p=b.perStaff[id]||(b.perStaff[id]={wb:0,plt:0}); d.plt?p.plt++:p.wb++; });
   wat.forEach(d=>{ const k=keyFor(d.iso); if(!k){ unmapped++; return; } const b=wk(k); b.hasWat=true; b.watTotal++; if(d.neg) b.rh++; });
-  Object.values(weeks).forEach(b=>b.full=b.dateFrom>=covFrom&&b.dateTo<=covTo);
-  IMP_STAGE={weeks,covFrom,covTo,unmapped,unmatched,files:[fD&&'List of donations',fW&&'Wateen report'].filter(Boolean)};
+  // Staff productivity: الملف بلا تواريخ يومية → يُنسب كاملاً لأسبوع واحد فقط إن وقعت فترته (Start–End) كلها داخله
+  const prodSkip=[];
+  prods.forEach(p=>{
+    if(!inRange(p.from)||!inRange(p.to)){ prodSkip.push(`${p.name}: فترته خارج الفترة المحددة`); return; }
+    const k=keyFor(p.from);
+    if(!k||k!==keyFor(p.to)){ prodSkip.push(`${p.name} (${p.from} → ${p.to}): فترته تمتد على أكثر من أسبوع — صدّر الملف من النظام أسبوعاً أسبوعاً`); return; }
+    const b=wk(k); if(b.prod){ prodSkip.push(`${p.name}: أسبوع ${fmtLbl(b.dateFrom,b.dateTo)} له ملف آخر — تُرك`); return; }
+    const per={}; let total=0, unk=0;
+    Object.entries(p.per).forEach(([sid,n])=>{ total+=n; const id=staffIdx[sid]||Object.entries(staffIdx).find(([x])=>normSid(x)===sid)?.[1]; if(id) per[id]=(per[id]||0)+n; else unk+=n; });
+    b.prod={total,per,unk,full:p.from<=b.dateFrom&&p.to>=b.dateTo};
+  });
+  Object.values(weeks).forEach(b=>b.full=b.dateFrom>=covFrom&&b.dateTo<=covTo&&(!b.prod||b.prod.full));
+  IMP_STAGE={weeks,covFrom,covTo,unmapped,unmatched,prodSkip,files:[fD&&'List of donations',fW&&'Wateen report',prods.length&&'Staff productivity'].filter(Boolean)};
   renderImpPreview();
 };
 function renderImpPreview(){
@@ -1566,15 +1621,17 @@ function renderImpPreview(){
   const ws=Object.values(S.weeks).sort((a,b)=>a.dateFrom.localeCompare(b.dateFrom));
   const um=Object.entries(S.unmatched);
   $('#impPreview').innerHTML=`<div style="margin-top:14px"><h3>🔍 معاينة — ${S.files.join(' + ')} · الفترة <span class="bidi-ltr">${fmtLbl(S.covFrom,S.covTo)}</span> <span class="hint">(لم يُحفظ شيء بعد)</span></h3>
-    <div style="overflow-x:auto"><table class="rk"><thead><tr><th><input type="checkbox" id="impAll" aria-label="تحديد الكل" checked></th><th style="text-align:right">الأسبوع</th><th>الحالة</th><th>Whole blood</th><th>الصفائح</th><th>إجمالي المتبرعين</th><th>Rh Negative</th><th>موظفون مطابَقون</th><th>ملاحظة</th></tr></thead><tbody>
+    <div style="overflow-x:auto"><table class="rk"><thead><tr><th><input type="checkbox" id="impAll" aria-label="تحديد الكل" checked></th><th style="text-align:right">الأسبوع</th><th>الحالة</th><th>Whole blood</th><th>الصفائح</th><th>إجمالي المتبرعين</th><th>Rh Negative</th><th>موظفون مطابَقون</th><th>Screened</th><th>ملاحظة</th></tr></thead><tbody>
     ${ws.map(b=>`<tr><td><input type="checkbox" data-wk="${b.key}" ${b.full?'checked':''} aria-label="اعتماد ${fmtLbl(b.dateFrom,b.dateTo)}"></td>
       <td class="nm">${fmtLbl(b.dateFrom,b.dateTo)}</td>
       <td>${b.isNew?'<span class="pill pb">أسبوع جديد</span>':resStatusPill(WEEKS[b.key].status)}</td>
       <td>${b.hasDon?b.wb:'—'}</td><td>${b.hasDon?b.plt:'—'}</td><td><b>${b.hasDon?b.wb+b.plt:'—'}</b></td>
       <td>${b.hasWat?`${b.rh} <small class="hint">من ${b.watTotal}</small>`:'—'}</td>
       <td>${b.hasDon?Object.keys(b.perStaff).length:'—'}${b.unknown?` <small style="color:var(--bad)">(+${b.unknown} سجل بلا موظف)</small>`:''}</td>
+      <td>${b.prod?`<b>${b.prod.total}</b> <small class="hint">${Object.keys(b.prod.per).length} موظف مطابَق</small>`:'—'}</td>
       <td style="font-size:11.5px">${b.full?'':'<span style="color:#8a6100;font-weight:700">⚠️ تغطية جزئية — أرقامه ناقصة</span>'}</td></tr>`).join('')}
     </tbody></table></div>
+    ${S.prodSkip.length?`<div class="hint" style="color:var(--bad)">⚠️ ملفات Staff productivity لم تُنسب لأي أسبوع:<br>${S.prodSkip.join('<br>')}</div>`:''}
     ${S.unmapped?`<div class="hint">⚠️ ${S.unmapped} سجل لا يقع ضمن أي أسبوع ويتداخل مع أسبوع محفوظ بتاريخ بداية مختلف — تُرك.</div>`:''}
     ${um.length?`<div class="hint" style="color:var(--bad)">أرقام وظيفية غير معروفة (تُحسب في إجمالي القسم فقط): ${um.map(([id,n])=>`${id} (${n})`).join('، ')} — أضِفها من «قائمة الموظفين».</div>`:''}
     <div class="imp-actions"><span class="hint" id="impCount"></span>
@@ -1588,7 +1645,7 @@ function renderImpPreview(){
 }
 async function impApprove(){
   const S=IMP_STAGE, keys=$$('#impPreview [data-wk]:checked').map(c=>c.dataset.wk); if(!S||!keys.length) return;
-  if(!confirm(`اعتماد نتائج ${keys.length} أسبوع دفعة واحدة؟\n\nلكل أسبوع: نتائج W.B Donation وBleeder Apheresis وإجماليات المتبرعين/الصفائح${S.files.includes('Wateen report')?'/Rh Negative':''} تُستبدل بما في الملف. النتائج اليدوية لباقي المهام لا تُمس.`)) return;
+  if(!confirm(`اعتماد نتائج ${keys.length} أسبوع دفعة واحدة؟\n\nلكل أسبوع: نتائج W.B Donation وBleeder Apheresis وإجماليات المتبرعين/الصفائح${S.files.includes('Wateen report')?'/Rh Negative':''} تُستبدل بما في الملف.${S.files.includes('Staff productivity')?'\nStaff productivity: B.B Reception = إجمالي Screened مقسوماً بالتساوي على المكلَّفين، وScreening وDR Cover = رقم كل مكلَّف الشخصي.':''} النتائج اليدوية لباقي المهام لا تُمس.`)) return;
   $('#impApprove').disabled=true;
   const lines=[];
   for(const k of keys){
@@ -1610,9 +1667,17 @@ async function impApprove(){
       w.totals.donors=b.wb+b.plt; w.totals.apheresisDonors=b.plt;
     }
     if(b.hasWat) w.totals.rhNegative=b.rh;
+    if(b.prod){
+      // B.B Reception (t1): إجمالي Screened للأسبوع مناصفةً بين المكلَّفين (الباقي للأول)؛
+      // Screening (t3) وDR Cover (t5): كل مكلَّف يأخذ رقمه الشخصي من «Total number of screened per user»
+      const a1=(w.assignments.t1||[]).filter(Boolean);
+      if(a1.length){ const base=Math.floor(b.prod.total/a1.length), rem=b.prod.total%a1.length; w.results.t1={}; a1.forEach((id,i)=>w.results.t1[id]=base+(i<rem?1:0)); }
+      ['t3','t5'].forEach(t=>{ const a=(w.assignments[t]||[]).filter(Boolean); if(a.length){ w.results[t]={}; a.forEach(id=>w.results[t][id]=b.prod.per[id]||0); } });
+      w.totals.screened=b.prod.total;
+    }
     w.status='closed';
     await cloudSet('weeks',k,w); if(b.hasDon) await syncApxFromWeek(w);
-    lines.push(`${w.label}${b.isNew?' (جديد)':''}: ${b.hasDon?`${b.wb+b.plt} متبرع، ${b.plt} صفائح`:''}${b.hasWat?`${b.hasDon?'، ':''}${b.rh} Rh Negative`:''}${added?` — أُضيف ${added} تكليف لمن نفّذ دون تكليف`:''}`);
+    lines.push(`${w.label}${b.isNew?' (جديد)':''}: ${b.hasDon?`${b.wb+b.plt} متبرع، ${b.plt} صفائح`:''}${b.hasWat?`${b.hasDon?'، ':''}${b.rh} Rh Negative`:''}${b.prod?`${b.hasDon||b.hasWat?'، ':''}${b.prod.total} Screened`:''}${added?` — أُضيف ${added} تكليف لمن نفّذ دون تكليف`:''}`);
   }
   IMP_STAGE=null; renderImpPreview();
   fillWeekPicks(); fillResYears(); renderResults(); renderArchive(); renderApx(); renderSheet();
