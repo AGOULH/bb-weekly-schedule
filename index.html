@@ -1594,6 +1594,14 @@ $('#impReadBtn').onclick=async()=>{
   IMP_STAGE={weeks,covFrom,covTo,unmapped,unmatched,files:[fD&&'List of donations',fW&&'Wateen report'].filter(Boolean)};
   renderImpPreview();
 };
+// أسبوع محفوظ يغطيه الملف جزئياً: اعتماده يستبدل أرقامه بأرقام أقل (حادثة 27/09–03/10: 216 ← 58)
+function partialDrop(b){
+  const T=WEEKS[b.key]?.totals; if(b.full||b.isNew||!T) return [];
+  const out=[];
+  if(b.hasDon&&(T.donors||0)>b.wb+b.plt) out.push(`المتبرعون ${T.donors} ← ${b.wb+b.plt}`);
+  if(b.hasWat&&(T.rhNegative||0)>b.rh) out.push(`Rh Negative ${T.rhNegative} ← ${b.rh}`);
+  return out;
+}
 function renderImpPreview(){
   const S=IMP_STAGE; if(!S){ $('#impPreview').innerHTML=''; return; }
   const ws=Object.values(S.weeks).sort((a,b)=>a.dateFrom.localeCompare(b.dateFrom));
@@ -1606,7 +1614,7 @@ function renderImpPreview(){
       <td>${b.hasDon?b.wb:'—'}</td><td>${b.hasDon?b.plt:'—'}</td><td><b>${b.hasDon?b.wb+b.plt:'—'}</b></td>
       <td>${b.hasWat?`${b.rh} <small class="hint">من ${b.watTotal}</small>`:'—'}</td>
       <td>${b.hasDon?Object.keys(b.perStaff).length:'—'}${b.unknown?` <small style="color:var(--bad)">(+${b.unknown} سجل بلا موظف)</small>`:''}</td>
-      <td style="font-size:11.5px">${b.full?'':'<span style="color:#8a6100;font-weight:700">⚠️ تغطية جزئية — أرقامه ناقصة</span>'}</td></tr>`).join('')}
+      <td style="font-size:11.5px">${b.full?'':'<span style="color:#8a6100;font-weight:700">⚠️ تغطية جزئية — أرقامه ناقصة</span>'}${partialDrop(b).map(s=>`<div style="color:var(--bad);font-weight:700">سيستبدل المحفوظ: ${s}</div>`).join('')}</td></tr>`).join('')}
     </tbody></table></div>
     ${S.unmapped?`<div class="hint">⚠️ ${S.unmapped} سجل لا يقع ضمن أي أسبوع ويتداخل مع أسبوع محفوظ بتاريخ بداية مختلف — تُرك.</div>`:''}
     ${um.length?`<div class="hint" style="color:var(--bad)">أرقام وظيفية غير معروفة (تُحسب في إجمالي القسم فقط): ${um.map(([id,n])=>`${id} (${n})`).join('، ')} — أضِفها من «قائمة الموظفين».</div>`:''}
@@ -1622,6 +1630,8 @@ function renderImpPreview(){
 async function impApprove(){
   const S=IMP_STAGE, keys=$$('#impPreview [data-wk]:checked').map(c=>c.dataset.wk); if(!S||!keys.length) return;
   if(!confirm(`اعتماد نتائج ${keys.length} أسبوع دفعة واحدة؟\n\nلكل أسبوع: نتائج W.B Donation وBleeder Apheresis وإجماليات المتبرعين/الصفائح${S.files.includes('Wateen report')?'/Rh Negative':''} تُستبدل بما في الملف. النتائج اليدوية لباقي المهام لا تُمس.`)) return;
+  const drops=keys.map(k=>S.weeks[k]).filter(b=>partialDrop(b).length);
+  if(drops.length&&!confirm(`⚠️ تنبيه: ${drops.length} أسبوع محفوظ يغطيه الملف جزئياً، واعتماده سيستبدل أرقامه بأرقام أقل:\n\n${drops.map(b=>`${fmtLbl(b.dateFrom,b.dateTo)}: ${partialDrop(b).join('، ')}`).join('\n')}\n\nالأفضل إلغاء تحديده أو رفع ملف يغطي الأسبوع كاملاً. متابعة الاعتماد رغم ذلك؟`)) return;
   $('#impApprove').disabled=true;
   const lines=[];
   for(const k of keys){
