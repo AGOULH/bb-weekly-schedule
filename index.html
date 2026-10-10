@@ -1217,10 +1217,12 @@ function renderLeaveInfo(w){
     +onDm.map(x=>`<b>${x.s.name}</b> <span dir="ltr">(${x.d.map(d=>d.slice(8)+'/'+d.slice(5,7)).join(', ')})</span>`).join('، '):'');
 }
 $('#refreshLeaveBtn').onclick=async()=>{ await loadLeaves(); renderSheet(); toast('🏖️ تم تحديث بيانات الإجازات'); };
+// (طلب حسن 2026-10-10) DR وDR Cover لا يجتمعان لنفس الموظف في نفس الأسبوع — المكلَّف بإحداهما لا يظهر خياراً في الأخرى
+const EXCL_PAIR={t4:'t5',t5:'t4'};
 function taskOpts(tid,a,j){
   const wantRole=RECEPTION_TASKS.includes(tid)?'reception':'technical';
-  const id=a[j], used=new Set(a.filter((v,k)=>k!==j&&v));
   const w=WEEKS[curWeek];
+  const id=a[j], used=new Set([...a.filter((v,k)=>k!==j&&v),...(EXCL_PAIR[tid]?(w.assignments[EXCL_PAIR[tid]]||[]).filter(Boolean):[])]);
   const onLeave=s=>isOnLeave(s.id,w.dateFrom,w.dateTo);
   const onDammi=s=>dammiDutyDays(s.id,w.dateFrom,w.dateTo).length>0;
   // موظف مجاز أو مناوب في مركز دمي خلال هذا الأسبوع يُستبعد من الخيارات المتاحة؛ إن كان مكلَّفاً بها أصلاً يبقى ظاهراً في خانته مع تنبيه بدل اختفائه فجأة
@@ -1243,6 +1245,8 @@ function bindRow(tr,t){
     arr[j]=s.value; WEEKS[curWeek].assignments[t.id]=arr.filter(Boolean);
     tr.innerHTML=`<td class="num">${TASKS.findIndex(x=>x.id===t.id)+1}</td><td class="task">${t.name}</td>${rowCells(t)}`;
     bindRow(tr,t);
+    const pt=EXCL_PAIR[t.id], ptr=pt&&$(`#shBody tr[data-tid="${pt}"]`);
+    if(ptr){ const t2=TASKS.find(x=>x.id===pt); ptr.innerHTML=`<td class="num">${TASKS.findIndex(x=>x.id===pt)+1}</td><td class="task">${t2.name}</td>${rowCells(t2)}`; bindRow(ptr,t2); }
   });
 }
 function confirmOverwriteIfPublished(w){
