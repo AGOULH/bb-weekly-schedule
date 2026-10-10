@@ -3495,10 +3495,11 @@ function dmSlotCell(ds,j,rec,counts){
   return `<td class="dm-role"><select data-slot="${j}" aria-label="المناوب ${j+1} — ${ds}">${opts}</select>${flags?`<div>${flags}</div>`:''}</td>`;
 }
 
-// إدخال أسبوعي سريع: أيام عمل الأسبوع (داخل الشهر المعروض) التي تحتوي الخانة j (الجمعة خانة واحدة فقط)
-const dmWeekDays=(doc,wk,j)=>dmMonthDays(curDm).filter(ds=>dmWeekStart(ds)===wk&&dmIsWork(doc,ds)&&j<dmSlots(doc,ds));
+// إدخال أسبوعي سريع: أيام عمل الأحد–الخميس من الأسبوع (داخل الشهر المعروض) التي تحتوي الخانة j — الجمعة تُدخل يومياً
+const dmWeekDays=(doc,wk,j)=>dmMonthDays(curDm).filter(ds=>dmWeekStart(ds)===wk&&dmDow(ds)<=4&&dmIsWork(doc,ds)&&j<dmSlots(doc,ds));
 function dmWeekRow(doc,wk,maxSlots,counts){
-  const all=dmMonthDays(curDm).filter(ds=>dmWeekStart(ds)===wk);
+  const all=dmMonthDays(curDm).filter(ds=>dmWeekStart(ds)===wk&&dmDow(ds)<=4);
+  if(!all.length) return ''; // بداية شهر بجمعة/سبت فقط
   const cells=Array.from({length:maxSlots},(_,j)=>{
     const days=dmWeekDays(doc,wk,j); if(!days.length) return '<td class="dm-na">—</td>';
     const vals=[...new Set(days.map(ds=>doc.days[ds]?.staff?.[j]||''))], cur=vals.length===1?vals[0]:'';
@@ -3508,7 +3509,7 @@ function dmWeekRow(doc,wk,maxSlots,counts){
     }).join('');
     return `<td class="dm-role"><select data-wslot="${j}" aria-label="المناوب ${j+1} لكل أيام الأسبوع ${wk}">${opts}</select></td>`;
   }).join('');
-  return `<tr class="dm-wkrow noprint" data-w="${wk}"><td colspan="3">⚡ الأسبوع كاملاً <span class="bidi-ltr">${dmDM(all[0])} → ${dmDM(all[all.length-1])}</span></td>${cells}<td class="hint" style="font-weight:600">اختر مرة واحدة لتعبئة الأسبوع</td></tr>`;
+  return `<tr class="dm-wkrow noprint" data-w="${wk}"><td colspan="3">⚡ الأحد–الخميس <span class="bidi-ltr">${dmDM(all[0])} → ${dmDM(all[all.length-1])}</span></td>${cells}<td class="hint" style="font-weight:600">اختر مرة واحدة لتعبئة الأسبوع</td></tr>`;
 }
 
 function renderDammi(){
