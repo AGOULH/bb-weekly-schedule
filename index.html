@@ -647,13 +647,13 @@ body.dm-printing #dmSheet *{overflow:visible!important}
 <!-- ============ REPORTS (تحليل التبرعات/المستبعدات) ============ -->
 <section class="page" id="pg-reports">
   <div class="pghead noprint">
-    <div><h2 tabindex="-1">تقارير التبرعات</h2><p>ارفع ملفَي List of donations وDiscarded products (تصدير مباشر من النظام، CSV) لتحليل الفترة وإصدار تقرير Donations Analysis</p></div>
+    <div><h2 tabindex="-1">تقارير التبرعات</h2><p>ارفع ملفَي List of donations وDiscarded products (الملف كما يُنزَّل من النظام .xls، أو xlsx/CSV) لتحليل الفترة وإصدار تقرير Donations Analysis</p></div>
   </div>
   <div class="card noprint">
     <h3>📥 رفع الملفات وتحليلها</h3>
     <div class="row">
-      <div class="field"><label for="repDonFile">List of donations (CSV)</label><input type="file" class="inp" id="repDonFile" accept=".csv"></div>
-      <div class="field"><label for="repDisFile">Discarded products (CSV)</label><input type="file" class="inp" id="repDisFile" accept=".csv"></div>
+      <div class="field"><label for="repDonFile">List of donations</label><input type="file" class="inp" id="repDonFile" accept=".xls,.xlsx,.csv,.html,.htm"></div>
+      <div class="field"><label for="repDisFile">Discarded products</label><input type="file" class="inp" id="repDisFile" accept=".xls,.xlsx,.csv,.html,.htm"></div>
       <button class="btn teal" id="repAnalyzeBtn">🔍 تحليل</button>
     </div>
     <div class="hint">يمكن رفع أحد الملفين فقط إذا لم يتوفر الآخر مؤقتاً. تُستخرج الفترة (من–إلى) تلقائياً من تواريخ السجلات نفسها — لا حاجة لاختيارها يدوياً. الملفات تُقرأ بالكامل من المتصفح دون رفعها لأي خادم.</div>
@@ -2298,38 +2298,47 @@ function splitCsvLine(line){
   }
   out.push(cur); return out;
 }
-function findHeaderRow(lines,firstCellMatch){
-  for(let i=0;i<lines.length;i++){ if(lines[i].split(',')[0].trim().toLowerCase()===firstCellMatch.toLowerCase()) return i; }
-  return -1;
+// (2026-10-10، طلب حسن) يقبل تصدير النظام كما يُنزَّل (HTML بامتداد .xls)، أو xls/xlsx حقيقياً بعد حفظه من إكسل، أو CSV —
+// كلها تتحول لصفوف خلايا ثم يُبحث عن سطر الرأس بالاسم متجاهلاً جداول الملخّص قبله
+async function fileToRows(file){
+  const buf=await file.arrayBuffer(), text=()=>new TextDecoder().decode(buf), head=text().slice(0,600).replace(/^\uFEFF/,'').trimStart().toLowerCase();
+  if(head.startsWith('<')){
+    const doc=new DOMParser().parseFromString(text(),'text/html');
+    return [...doc.querySelectorAll('tr')].map(tr=>[...tr.children].map(c=>c.textContent.replace(/\s+/g,' ').trim()));
+  }
+  if(/\.csv$/i.test(file.name)) return csvLines(text()).map(splitCsvLine);
+  const wb=XLSX.read(buf,{type:'array',cellDates:true}), p2=n=>String(n).padStart(2,'0'), out=[];
+  wb.SheetNames.forEach(n=>XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:true,defval:''})
+    .forEach(r=>out.push(r.map(v=>v instanceof Date?`${v.getFullYear()}-${p2(v.getMonth()+1)}-${p2(v.getDate())}`:String(v).trim()))));
+  return out;
 }
+const findHeaderRow=(rows,name)=>rows.findIndex(r=>r.some(c=>String(c).trim().toLowerCase()===name.toLowerCase()));
 const hIdx=(header,name)=>header.findIndex(h=>h.trim().toLowerCase()===name.toLowerCase());
-function parseDonationsCsv(text){
-  const lines=csvLines(text), hi=findHeaderRow(lines,'HIIG Number');
+function parseDonationsRows(rows){
+  const hi=findHeaderRow(rows,'HIIG Number');
   if(hi<0) return null;
-  const header=splitCsvLine(lines[hi]).map(h=>h.trim());
+  const header=rows[hi].map(h=>String(h).trim());
   const iDate=hIdx(header,'Donation Date'), iCP=hIdx(header,'Collection Point'), iType=hIdx(header,'Donation Type'), iStaff=hIdx(header,'STAFFID'), iUnit=hIdx(header,'Donation Number');
   if([iDate,iCP,iType,iStaff,iUnit].some(i=>i<0)) return null;
-  const rows=[];
-  for(let i=hi+1;i<lines.length;i++){
-    if(!lines[i].trim()) continue;
-    const c=splitCsvLine(lines[i]), dt=parseSlashDate(c[iDate]); if(!dt) continue;
-    rows.push({date:dt, cp:(c[iCP]||'').trim(), type:(c[iType]||'').trim(), staffId:(c[iStaff]||'').trim(), unit:(c[iUnit]||'').trim()});
+  const out=[];
+  for(let i=hi+1;i<rows.length;i++){
+    const c=rows[i], dt=parseSlashDate(String(c[iDate]||'').trim()); if(!dt) continue;
+    out.push({date:dt, cp:String(c[iCP]||'').trim(), type:String(c[iType]||'').trim(), staffId:String(c[iStaff]||'').trim(), unit:String(c[iUnit]||'').trim()});
   }
-  return rows;
+  return out;
 }
-function parseDiscardedCsv(text){
-  const lines=csvLines(text), hi=findHeaderRow(lines,'Site Code');
+function parseDiscardedRows(rows){
+  const hi=findHeaderRow(rows,'Site Code');
   if(hi<0) return null;
-  const header=splitCsvLine(lines[hi]).map(h=>h.trim());
+  const header=rows[hi].map(h=>String(h).trim());
   const iDate=hIdx(header,'Discard Date'), iABO=hIdx(header,'ABORh'), iCode=hIdx(header,'Discard Code'), iDesc=hIdx(header,'Discard Description'), iUnit=hIdx(header,'Unit Number');
   if([iDate,iCode,iUnit].some(i=>i<0)) return null;
-  const rows=[];
-  for(let i=hi+1;i<lines.length;i++){
-    if(!lines[i].trim()) continue;
-    const c=splitCsvLine(lines[i]), dt=parseMonDate(c[iDate]); if(!dt) continue;
-    rows.push({date:dt, abo:(c[iABO]||'').trim(), code:(c[iCode]||'').trim(), desc:(c[iDesc]||'').trim(), unit:(c[iUnit]||'').trim()});
+  const out=[];
+  for(let i=hi+1;i<rows.length;i++){
+    const c=rows[i], dt=parseMonDate(String(c[iDate]||'').trim()); if(!dt) continue;
+    out.push({date:dt, abo:String(c[iABO]||'').trim(), code:String(c[iCode]||'').trim(), desc:String(c[iDesc]||'').trim(), unit:String(c[iUnit]||'').trim()});
   }
-  return rows;
+  return out;
 }
 let jobIdToLocalStaff={};
 function buildJobIdIndex(){ jobIdToLocalStaff={}; Object.values(STAFF).forEach(s=>{ if(s.staffId) jobIdToLocalStaff[s.staffId]=s.name; }); }
@@ -2371,8 +2380,8 @@ $('#repAnalyzeBtn').onclick=async()=>{
   const fDon=$('#repDonFile').files[0], fDis=$('#repDisFile').files[0];
   if(!fDon&&!fDis){ toast('اختر ملفاً واحداً على الأقل'); return; }
   let donRows=[], disRows=[], errs=[];
-  if(fDon){ const r=parseDonationsCsv(await fDon.text()); if(r) donRows=r; else errs.push('تنسيق ملف List of donations غير معروف'); }
-  if(fDis){ const r=parseDiscardedCsv(await fDis.text()); if(r) disRows=r; else errs.push('تنسيق ملف Discarded products غير معروف'); }
+  if(fDon){ const r=parseDonationsRows(await fileToRows(fDon)); if(r) donRows=r; else errs.push('تنسيق ملف List of donations غير معروف'); }
+  if(fDis){ const r=parseDiscardedRows(await fileToRows(fDis)); if(r) disRows=r; else errs.push('تنسيق ملف Discarded products غير معروف'); }
   if(errs.length){ $('#repLog').innerHTML=errs.join('<br>'); toast('تعذّر قراءة أحد الملفين'); }
   const agg=aggregateReport(donRows,disRows);
   if(!agg){ toast('لا توجد سجلات صالحة في الملفات المرفوعة'); return; }
