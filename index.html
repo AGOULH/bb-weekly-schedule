@@ -594,6 +594,16 @@ body.dm-printing #dmSheet *{overflow:visible!important}
     <div id="impLog" class="hint"></div>
   </div>
   <div class="card noprint">
+    <h3>🩺 تغطية DR — Staff productivity</h3>
+    <p class="hint">ارفع ملف «Staff productivity : donation» لأي فترة (الملف مجمّع لكل الفترة بلا تفصيل يومي، فلا يُوزَّع على الأسابيع ولا يغيّر نتائجها). يُقرأ جدول «Total number of screened per user»: الأطباء (الاسم يبدأ بـ Dr. أو من تحدّده يدوياً) = DR، والبقية = تغطية DR. يُحفظ الملخّص لكل فترة ويمكن فتحه لاحقاً.</p>
+    <div class="row">
+      <div class="field"><label for="drFile">Staff productivity</label><input type="file" class="inp" id="drFile" accept=".xls,.xlsx,.html,.htm"></div>
+      <button class="btn" id="drReadBtn">🔍 قراءة وتحليل</button>
+      <div class="field"><label for="drSaved">فترات محفوظة</label><select class="inp" id="drSaved" style="min-width:200px"></select></div>
+    </div>
+    <div id="drWrap"></div>
+  </div>
+  <div class="card noprint">
     <div class="row" style="justify-content:space-between">
       <div class="seg" id="resModeSeg" role="tablist" aria-label="طريقة عرض النتائج">
         <button data-m="week" class="on">أسبوعي</button><button data-m="period">فترة محددة</button><button data-m="year">السنة كاملة</button>
@@ -1103,6 +1113,8 @@ async function boot(){
   }
   const SETTINGS=await cloudAll('settings');
   TARGET=SETTINGS.target||{monthly:0};
+  DR_DOCS=SETTINGS.drDoctors?.ids||[]; DR_COVER=await cloudAll('drCover');
+  const drK=Object.keys(DR_COVER).sort().pop(); DR_CUR=drK?DR_COVER[drK]:null;
   LV_PRELIM_SETTINGS=SETTINGS.leavePrelim||{lastReq:'',reminderDays:90};
   if(!Object.keys(STAFF).length){
     SEED.forEach((n,i)=>STAFF['s'+(i+1)]={name:n,active:true,role:RECEPTION_NAMES.includes(n)?'reception':'technical',order:i+1});
@@ -1150,7 +1162,7 @@ function isOnLeave(staffId,dateFrom,dateTo){
   return Object.values(LEAVES).find(l=>l.staffId===staffId && l.start<=dateTo && l.end>=dateFrom) || null;
 }
 
-function renderAll(){ fillWeekPicks(); renderSheet(); renderResults(); renderStaff(); renderArchive(); renderApx(); renderAlerts(); renderReportArchive(); lvRenderAll(); renderDammi(); }
+function renderAll(){ fillWeekPicks(); renderSheet(); renderResults(); renderStaff(); renderArchive(); renderApx(); renderAlerts(); renderReportArchive(); lvRenderAll(); renderDammi(); fillDrSaved(); renderDrCover(); }
 
 /* ---------- التنقل ---------- */
 $$('.navbtn').forEach(b=>b.onclick=()=>{
@@ -1550,6 +1562,76 @@ async function readTableFile(file,headerMarker){
 }
 const colIdx=(header,marker)=>header.findIndex(h=>h.toLowerCase().replace(/\s+/g,' ').trim().startsWith(marker));
 const weekKeyForDate=iso=>Object.keys(WEEKS).find(k=>iso>=WEEKS[k].dateFrom&&iso<=WEEKS[k].dateTo);
+// ===== تغطية DR — Staff productivity : donation =====
+// الملف مجمّع لفترته (Start/End Date) بلا تواريخ يومية → تحليل مستقل للفترة، لا يُكتب في نتائج الأسابيع.
+// يُحفظ الملخّص في drCover/{from_to}: {dateFrom,dateTo,rows:[{sid,name,n}],generatedAt}؛ الأطباء المحدَّدون يدوياً في settings/drDoctors {ids}
+const normSid=x=>String(x||'').trim().replace(/^0+/,'');
+let DR_COVER={}, DR_DOCS=[], DR_CUR=null;
+async function readProdFile(file){
+  const buf=await file.arrayBuffer(), head=new TextDecoder().decode(buf.slice(0,600)).trimStart().toLowerCase();
+  const rows=[], add=(id,name,n)=>{ id=normSid(id); if(/^\d+$/.test(id)) rows.push({sid:id,name:String(name).replace(/\s+/g,' ').trim(),n:+n||0}); };
+  if(head.startsWith('<')){
+    const doc=new DOMParser().parseFromString(new TextDecoder().decode(buf),'text/html');
+    const txt=doc.body.textContent.replace(/\s+/g,' ');
+    const d=re=>parseSlashDate((re.exec(txt)||[])[1]||'');
+    const b=[...doc.querySelectorAll('b')].find(x=>/screened per user/i.test(x.textContent));
+    const tb=b&&b.parentElement.querySelector('table'); if(!tb) return null;
+    tb.querySelectorAll('tbody tr').forEach(tr=>{ const c=[...tr.children].map(x=>x.textContent); add(c[0],c[1],c[2]); });
+    return {from:d(/Start Date\s*:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i),to:d(/End date\s*:\s*(\d{1,2}\/\d{1,2}\/\d{4})/i),rows};
+  }
+  const wb=XLSX.read(buf,{type:'array',cellDates:true}), p2=n=>String(n).padStart(2,'0');
+  const aoa=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:''})
+    .map(r=>r.map(v=>v instanceof Date?`${v.getFullYear()}-${p2(v.getMonth()+1)}-${p2(v.getDate())}`:String(v).trim()));
+  const val=lbl=>{ for(const r of aoa){ const i=r.findIndex(c=>c.toLowerCase().startsWith(lbl)); if(i>=0) return parseSlashDate(String(r[i+1]).replace(/^:\s*/,'')); } return null; };
+  const hr=aoa.findIndex(r=>r.some(c=>/screened per user/i.test(c))); if(hr<0) return null;
+  const c0=aoa[hr].findIndex(c=>/screened per user/i.test(c));
+  aoa.slice(hr+2).forEach(r=>add(r[c0],r[c0+1],r[c0+2]));
+  return {from:val('start date'),to:val('end date'),rows};
+}
+const drIsDoc=r=>DR_DOCS.includes(r.sid)||/^dr\.?\s/i.test(r.name);
+function fillDrSaved(){
+  const ks=Object.keys(DR_COVER).sort().reverse();
+  $('#drSaved').innerHTML=`<option value="">${ks.length?'— اختر —':'لا يوجد'}</option>`+ks.map(k=>`<option value="${k}" ${DR_CUR&&k===`${DR_CUR.dateFrom}_${DR_CUR.dateTo}`?'selected':''}>${fmtLbl(DR_COVER[k].dateFrom,DR_COVER[k].dateTo)}</option>`).join('');
+}
+function renderDrCover(){
+  const R=DR_CUR; if(!R){ $('#drWrap').innerHTML=''; return; }
+  const team={}; Object.entries(STAFF).forEach(([k,v])=>{ if(v.staffId) team[normSid(v.staffId)]=k; });
+  // مرات التكليف بـ DR (t4) وDR Cover (t5) في الأسابيع المتقاطعة مع فترة الملف
+  const asg={}; Object.values(WEEKS).forEach(w=>{ if(w.dateFrom>R.dateTo||w.dateTo<R.dateFrom) return;
+    ['t4','t5'].forEach(t=>(w.assignments?.[t]||[]).filter(Boolean).forEach(k=>{ const a=asg[k]||(asg[k]={t4:0,t5:0}); a[t]++; })); });
+  const total=R.rows.reduce((s,r)=>s+r.n,0);
+  const docs=R.rows.filter(drIsDoc), cov=R.rows.filter(r=>!drIsDoc(r)).sort((a,b)=>b.n-a.n);
+  const docN=docs.reduce((s,r)=>s+r.n,0), covN=total-docN, top=cov[0]?.n||1, pct=(a,b)=>b?(a/b*100).toFixed(1)+'%':'—';
+  const teamCov=cov.filter(r=>team[r.sid]), teamN=teamCov.reduce((s,r)=>s+r.n,0);
+  const kpi=(l,v,s)=>`<div class="kpi"><div class="lb">${l}</div><div class="vl">${v}</div>${s?`<div class="dt flat">${s}</div>`:''}</div>`, medal=i=>['🥇','🥈','🥉'][i]||i+1;
+  const row=(r,i)=>{ const k=team[r.sid], a=k&&asg[k]||{t4:0,t5:0};
+    return `<tr><td>${i===null?'—':medal(i)}</td>
+      <td class="nm" style="text-align:right">${k?`<b>${STAFF[k].name}</b> <small class="hint">${r.name}</small>`:r.name}</td>
+      <td class="bidi-ltr">${r.sid}</td><td><b>${r.n}</b></td><td>${pct(r.n,total)}</td><td>${i===null?'—':pct(r.n,covN)}</td>
+      <td>${k?a.t5:'—'}</td><td>${k&&a.t5?Math.round(r.n/a.t5):'—'}</td><td>${k?a.t4:'—'}</td>
+      <td style="min-width:110px">${i===null?'':`<div class="bar"><i style="width:${Math.round(r.n/top*100)}%"></i></div>`}</td>
+      <td><button class="btn ghost sm" data-drdoc="${r.sid}">${drIsDoc(r)?'↩︎ تغطية':'🩺 طبيب'}</button></td></tr>`; };
+  $('#drWrap').innerHTML=`<h3 style="margin-top:14px">الفترة <span class="bidi-ltr">${fmtLbl(R.dateFrom,R.dateTo)}</span></h3>
+    <div class="kpis">${kpi('إجمالي المفحوصين',total)}${kpi('فحص الأطباء (DR)',docN,pct(docN,total)+` · ${docs.length} طبيب`)}${kpi('تغطية DR',covN,pct(covN,total)+` · ${cov.length} موظف`)}${kpi('تغطية فريق القسم',teamN,pct(teamN,covN)+` من التغطية · ${teamCov.length} موظف`)}</div>
+    <div style="overflow-x:auto;margin-top:12px"><table class="rk"><thead><tr><th>#</th><th style="text-align:right">الموظف</th><th>الرقم الوظيفي</th><th>المفحوصون</th><th>من الإجمالي</th><th>من التغطية</th><th>تكليفات DR Cover</th><th>لكل تكليف</th><th>تكليفات DR</th><th>نسبي</th><th>تصنيف</th></tr></thead><tbody>
+    ${cov.map((r,i)=>row(r,i)).join('')}
+    ${docs.length?`<tr><td colspan="11" style="background:var(--numcol);font-weight:700">🩺 الأطباء (DR)</td></tr>`+docs.sort((a,b)=>b.n-a.n).map(r=>row(r,null)).join(''):''}
+    </tbody></table></div>
+    <div class="hint">«تكليفات DR Cover/DR» = عدد الأسابيع المحفوظة المتقاطعة مع الفترة التي كُلّف فيها الموظف بالمهمة في الجدول الأسبوعي (لموظفي الفريق المسجَّل رقمهم الوظيفي فقط)؛ «لكل تكليف» = مفحوصوه ÷ تكليفات DR Cover. الأسماء من ملف النظام لمن ليس في قائمة الموظفين.</div>`;
+  $$('[data-drdoc]').forEach(b=>b.onclick=async()=>{ const s=b.dataset.drdoc, r=R.rows.find(x=>x.sid===s);
+    if(DR_DOCS.includes(s)) DR_DOCS=DR_DOCS.filter(x=>x!==s); else if(!/^dr\.?\s/i.test(r.name)) DR_DOCS.push(s);
+    else { toast('الاسم يبدأ بـ Dr. — يُصنَّف طبيباً تلقائياً'); return; }
+    await cloudSet('settings','drDoctors',{ids:DR_DOCS}); renderDrCover(); });
+}
+$('#drReadBtn').onclick=async()=>{
+  const f=$('#drFile').files[0]; if(!f){ toast('اختر ملف Staff productivity'); return; }
+  const p=await readProdFile(f);
+  if(!p||!p.from||!p.to||!p.rows.length){ toast('تنسيق ملف Staff productivity غير معروف'); return; }
+  DR_CUR={dateFrom:p.from,dateTo:p.to,rows:p.rows,generatedAt:new Date().toISOString()};
+  const k=`${p.from}_${p.to}`; DR_COVER[k]=DR_CUR; await cloudSet('drCover',k,DR_CUR);
+  fillDrSaved(); renderDrCover(); toast('تم التحليل والحفظ ✓');
+};
+$('#drSaved').onchange=e=>{ DR_CUR=DR_COVER[e.target.value]||null; renderDrCover(); };
 let IMP_STAGE=null;
 $('#impReadBtn').onclick=async()=>{
   const fD=$('#impDonationsFile').files[0], fW=$('#impWateenFile').files[0];
