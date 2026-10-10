@@ -2437,7 +2437,7 @@ function reportDerive(agg){
   const siteAll=staffList.some(p=>p.discarded>0)&&!staffList.some(p=>p.drawBySite);
   const byDiscarded=staffList.map(p=>({...p,siteDisc:siteAll?p.discardBySite:(p.drawBySite||{}),
       siteTotal:siteAll?p.discarded:TRACKED_DISCARD_CODES.reduce((t,c)=>t+(p.byReason[c]||0),0)}))
-    .filter(p=>p.siteTotal>0).sort((a,b)=>b.siteTotal-a.siteTotal);
+    .filter(p=>p.siteTotal>0||p.collected>0).sort((a,b)=>b.siteTotal-a.siteTotal||b.collected-a.collected); // كل من سحب يظهر، حتى بصفر (طلب حسن 2026-10-10)
   const topReasons=TRACKED_DISCARD_CODES.map(c=>[c,agg.discardReasons[c]]).filter(([,v])=>v).sort((a,b)=>b[1].count-a[1].count);
   const topCodes=topReasons.map(([c])=>c);
   const trackedDiscarded=topReasons.reduce((s,[,v])=>s+v.count,0);
@@ -2600,7 +2600,7 @@ function renderReportPage(agg){
       <div class="rpt-eyebrow"><span class="rpt-rule"></span>05 —— DISCARDS BY SITE</div>
       <div class="rpt-headrow"><h2 class="rpt-h2">Where discards happened</h2><p class="rpt-ar-h">توزيع الأكياس المستبعدة لكل موظف حسب نقطة السحب الأصلية للوحدة</p></div>
       <div class="rpt-twocol">${discardSiteColHtml(colA2)}${discardSiteColHtml(colB2)}</div>
-      <p class="rpt-foot-row"><span>${byDiscarded.length} staff · ${fmtNum(byDiscarded.reduce((t,p)=>t+p.siteTotal,0))} units · ${d.siteAll?'all discard causes (saved before 10 Oct — re-upload the files for the six draw causes only)':'six draw-related causes only ('+TRACKED_DISCARD_CODES.join(', ')+')'}</span><span>نقطة السحب هنا هي نقطة سحب الوحدة نفسها (2001F/2001D/Other) وقت التبرع، وليست موقع تنفيذ الاستبعاد</span></p>
+      <p class="rpt-foot-row"><span>${byDiscarded.length} staff (all collectors, including zero) · ${fmtNum(byDiscarded.reduce((t,p)=>t+p.siteTotal,0))} units · ${d.siteAll?'all discard causes (saved before 10 Oct — re-upload the files for the six draw causes only)':'six draw-related causes only ('+TRACKED_DISCARD_CODES.join(', ')+')'}</span><span>نقطة السحب هنا هي نقطة سحب الوحدة نفسها (2001F/2001D/Other) وقت التبرع، وليست موقع تنفيذ الاستبعاد</span></p>
     </section>`:''}
 
     <section class="rpt-page rpt-dark">
