@@ -581,7 +581,7 @@ body.dm-printing #dmSheet *{overflow:visible!important}
   </div>
   <div class="card noprint">
     <h3>📥 استيراد واعتماد نتائج فترة</h3>
-    <p class="hint">١) حدّد الفترة (اختياري — إن تُركت فارغة تُؤخذ من أقدم وأحدث تاريخ في الملفات) ٢) ارفع ملف List of donations و/أو Wateen report و/أو Staff productivity (لنتائج DR Cover — ملف لكل أسبوع لأنه مجمّع بلا تواريخ يومية؛ يمكن اختيار عدة ملفات معاً) ٣) «🔍 قراءة الملفات» تعرض معاينة لكل أسبوع بلا أي حفظ ٤) «✅ اعتماد» يحفظ كل الأسابيع المحددة دفعة واحدة. نقاط السحب 2001F/2001D فقط. الملفات تُقرأ داخل المتصفح ولا تُرفع لأي خادم.</p>
+    <p class="hint">١) حدّد الفترة (اختياري — إن تُركت فارغة تُؤخذ من أقدم وأحدث تاريخ في الملفات) ٢) ارفع ملف List of donations و/أو Wateen report و/أو Staff productivity (لنتائج DR وDR Cover — ملف لكل أسبوع لأنه مجمّع بلا تواريخ يومية؛ يمكن اختيار عدة ملفات معاً) ٣) «🔍 قراءة الملفات» تعرض معاينة لكل أسبوع بلا أي حفظ ٤) «✅ اعتماد» يحفظ كل الأسابيع المحددة دفعة واحدة. نقاط السحب 2001F/2001D فقط. الملفات تُقرأ داخل المتصفح ولا تُرفع لأي خادم.</p>
     <div class="row">
       <div class="field"><label for="impFrom">من تاريخ</label><input type="date" class="inp" id="impFrom"></div>
       <div class="field"><label for="impTo">إلى تاريخ</label><input type="date" class="inp" id="impTo"></div>
@@ -1653,8 +1653,8 @@ function renderImpPreview(){
   const ws=Object.values(S.weeks).sort((a,b)=>a.dateFrom.localeCompare(b.dateFrom));
   const um=Object.entries(S.unmatched);
   $('#impPreview').innerHTML=(S.prodSkip.length?`<div style="margin-top:14px;padding:12px 14px;border-radius:10px;background:#FFF4D6;border:1px solid var(--amber);color:#6b4a00;font-size:13px;line-height:1.8">
-      <b>⚠️ ملف Staff productivity لم يُعتمد — DR Cover لن يُحدَّث:</b><br>${S.prodSkip.join('<br>')}</div>`:'')+`<div style="margin-top:14px"><h3>🔍 معاينة — ${S.files.join(' + ')} · الفترة <span class="bidi-ltr">${fmtLbl(S.covFrom,S.covTo)}</span> <span class="hint">(لم يُحفظ شيء بعد)</span></h3>
-    <div style="overflow-x:auto"><table class="rk"><thead><tr><th><input type="checkbox" id="impAll" aria-label="تحديد الكل" checked></th><th style="text-align:right">الأسبوع</th><th>الحالة</th><th>Whole blood</th><th>الصفائح</th><th>إجمالي المتبرعين</th><th>Rh Negative</th><th>موظفون مطابَقون</th><th>DR Cover (القسم)</th><th>ملاحظة</th></tr></thead><tbody>
+      <b>⚠️ ملف Staff productivity لم يُعتمد — DR وDR Cover لن يُحدَّثا:</b><br>${S.prodSkip.join('<br>')}</div>`:'')+`<div style="margin-top:14px"><h3>🔍 معاينة — ${S.files.join(' + ')} · الفترة <span class="bidi-ltr">${fmtLbl(S.covFrom,S.covTo)}</span> <span class="hint">(لم يُحفظ شيء بعد)</span></h3>
+    <div style="overflow-x:auto"><table class="rk"><thead><tr><th><input type="checkbox" id="impAll" aria-label="تحديد الكل" checked></th><th style="text-align:right">الأسبوع</th><th>الحالة</th><th>Whole blood</th><th>الصفائح</th><th>إجمالي المتبرعين</th><th>Rh Negative</th><th>موظفون مطابَقون</th><th>DR / DR Cover (القسم)</th><th>ملاحظة</th></tr></thead><tbody>
     ${ws.map(b=>`<tr><td><input type="checkbox" data-wk="${b.key}" ${b.full?'checked':''} aria-label="اعتماد ${fmtLbl(b.dateFrom,b.dateTo)}"></td>
       <td class="nm">${fmtLbl(b.dateFrom,b.dateTo)}</td>
       <td>${b.isNew?'<span class="pill pb">أسبوع جديد</span>':resStatusPill(WEEKS[b.key].status)}</td>
@@ -1677,7 +1677,7 @@ function renderImpPreview(){
 }
 async function impApprove(){
   const S=IMP_STAGE, keys=$$('#impPreview [data-wk]:checked').map(c=>c.dataset.wk); if(!S||!keys.length) return;
-  if(!confirm(`اعتماد نتائج ${keys.length} أسبوع دفعة واحدة؟\n\nلكل أسبوع: نتائج W.B Donation وBleeder Apheresis وإجماليات المتبرعين/الصفائح${S.files.includes('Wateen report')?'/Rh Negative':''} تُستبدل بما في الملف.${S.files.includes('Staff productivity')?'\nStaff productivity: DR Cover = رقم كل موظف من القسم (المفحوصون).':''} النتائج اليدوية لباقي المهام لا تُمس.`)) return;
+  if(!confirm(`اعتماد نتائج ${keys.length} أسبوع دفعة واحدة؟\n\nلكل أسبوع: نتائج W.B Donation وBleeder Apheresis وإجماليات المتبرعين/الصفائح${S.files.includes('Wateen report')?'/Rh Negative':''} تُستبدل بما في الملف.${S.files.includes('Staff productivity')?'\nStaff productivity: DR وDR Cover = رقم كل مكلَّف من القسم (المفحوصون).':''} النتائج اليدوية لباقي المهام لا تُمس.`)) return;
   const drops=keys.map(k=>S.weeks[k]).filter(b=>partialDrop(b).length);
   if(drops.length&&!confirm(`⚠️ تنبيه: ${drops.length} أسبوع محفوظ يغطيه الملف جزئياً، واعتماده سيستبدل أرقامه بأرقام أقل:\n\n${drops.map(b=>`${fmtLbl(b.dateFrom,b.dateTo)}: ${partialDrop(b).join('، ')}`).join('\n')}\n\nالأفضل إلغاء تحديده أو رفع ملف يغطي الأسبوع كاملاً. متابعة الاعتماد رغم ذلك؟`)) return;
   $('#impApprove').disabled=true;
@@ -1702,14 +1702,15 @@ async function impApprove(){
     }
     if(b.hasWat) w.totals.rhNegative=b.rh;
     if(b.prod){
-      // DR Cover (t5) = مفحوصو كل موظف من القسم؛ المكلَّف بلا رقم = 0، ومن فحص دون تكليف يُضاف (إلا المكلَّف بـ DR في نفس الأسبوع)
-      const a=w.assignments.t5=(w.assignments.t5||[]).filter(Boolean), dr=w.assignments.t4||[];
+      // DR (t4) وDR Cover (t5) = مفحوصو كل مكلَّف من القسم (بلا رقم = 0)؛ من فحص دون تكليف بأيّ منهما يُضاف لـ DR Cover
+      const a=w.assignments.t5=(w.assignments.t5||[]).filter(Boolean), dr=(w.assignments.t4||[]).filter(Boolean);
+      if(dr.length){ w.results.t4={}; dr.forEach(id=>w.results.t4[id]=b.prod.per[id]||0); }
       w.results.t5={}; a.forEach(id=>w.results.t5[id]=b.prod.per[id]||0);
       Object.entries(b.prod.per).forEach(([id,n])=>{ if(a.includes(id)||dr.includes(id)) return; a.push(id); w.results.t5[id]=n; added++; });
     }
     w.status='closed';
     await cloudSet('weeks',k,w); if(b.hasDon) await syncApxFromWeek(w);
-    lines.push(`${w.label}${b.isNew?' (جديد)':''}: ${b.hasDon?`${b.wb+b.plt} متبرع، ${b.plt} صفائح`:''}${b.hasWat?`${b.hasDon?'، ':''}${b.rh} Rh Negative`:''}${b.prod?`${b.hasDon||b.hasWat?'، ':''}DR Cover ${Object.values(w.results.t5).reduce((x,y)=>x+y,0)}`:''}${added?` — أُضيف ${added} تكليف لمن نفّذ دون تكليف`:''}`);
+    lines.push(`${w.label}${b.isNew?' (جديد)':''}: ${b.hasDon?`${b.wb+b.plt} متبرع، ${b.plt} صفائح`:''}${b.hasWat?`${b.hasDon?'، ':''}${b.rh} Rh Negative`:''}${b.prod?`${b.hasDon||b.hasWat?'، ':''}DR ${Object.values(w.results.t4||{}).reduce((x,y)=>x+y,0)} + DR Cover ${Object.values(w.results.t5).reduce((x,y)=>x+y,0)}`:''}${added?` — أُضيف ${added} تكليف لمن نفّذ دون تكليف`:''}`);
   }
   IMP_STAGE=null; renderImpPreview();
   fillWeekPicks(); fillResYears(); renderResults(); renderArchive(); renderApx(); renderSheet();
