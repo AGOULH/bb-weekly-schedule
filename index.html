@@ -658,6 +658,17 @@ body.dm-printing #dmSheet *{overflow:visible!important}
     </div>
     <div class="hint">يمكن رفع أحد الملفين فقط إذا لم يتوفر الآخر مؤقتاً. تُستخرج الفترة (من–إلى) تلقائياً من تواريخ السجلات نفسها — لا حاجة لاختيارها يدوياً. الملفات تُقرأ بالكامل من المتصفح دون رفعها لأي خادم.</div>
     <div id="repLog" class="hint"></div>
+    <div class="row" id="repFilter" style="display:none;margin-top:12px;align-items:flex-end">
+      <div class="seg" id="repModeSeg" role="tablist" aria-label="الفترة الزمنية للتقرير">
+        <button data-m="all" class="on">كامل الملف</button><button data-m="week">أسبوعي</button><button data-m="period">فترة محددة</button><button data-m="year">سنوي</button>
+      </div>
+      <div class="field" id="repWeekCtl" style="display:none"><label for="repWeek">الأسبوع</label><select class="inp" id="repWeek" style="min-width:230px"></select></div>
+      <div class="row" id="repPeriodCtl" style="display:none">
+        <div class="field"><label for="repFrom">من</label><input type="date" class="inp" id="repFrom"></div>
+        <div class="field"><label for="repTo">إلى</label><input type="date" class="inp" id="repTo"></div>
+      </div>
+      <div class="field" id="repYearCtl" style="display:none"><label for="repYear">السنة</label><select class="inp" id="repYear" style="min-width:110px"></select></div>
+    </div>
   </div>
   <div id="reportOut"></div>
   <div class="card">
@@ -2343,10 +2354,14 @@ function parseDiscardedRows(rows){
 let jobIdToLocalStaff={};
 function buildJobIdIndex(){ jobIdToLocalStaff={}; Object.values(STAFF).forEach(s=>{ if(s.staffId) jobIdToLocalStaff[s.staffId]=s.name; }); }
 function reportStaffName(id){ return REPORT_STAFF[id]?.name || jobIdToLocalStaff[id] || `#${id}`; }
-function aggregateReport(donRows,disRows){
+// range (اختياري): {from,to} — فلتر زمني على تاريخ التبرع/تاريخ الاستبعاد؛ مطابقة رقم الوحدة تبقى من كل ملف التبرعات
+// حتى تُنسب وحدة سُحبت قبل الفترة واستُبعدت داخلها لمن سحبها
+function aggregateReport(allDon,allDis,range){
+  const inR=r=>!range||(r.date>=range.from&&r.date<=range.to);
+  const donRows=allDon.filter(inR), disRows=allDis.filter(inR);
   const allDates=[...donRows.map(r=>r.date),...disRows.map(r=>r.date)].sort();
   if(!allDates.length) return null;
-  const dateFrom=allDates[0], dateTo=allDates[allDates.length-1];
+  const dateFrom=range?range.from:allDates[0], dateTo=range?range.to:allDates[allDates.length-1];
   const bySite={}, byType={}, perStaff={}, discardReasons={}, bloodGroups={}, monthly={}, unitToRecord={};
   const blankStaff=()=>({collected:0,discarded:0,bySite:{},byReason:{},discardBySite:{}});
   donRows.forEach(r=>{
@@ -2355,8 +2370,8 @@ function aggregateReport(donRows,disRows){
     const mk=r.date.slice(0,7); monthly[mk]=monthly[mk]||{collected:0,discarded:0}; monthly[mk].collected++;
     if(r.staffId){ perStaff[r.staffId]=perStaff[r.staffId]||blankStaff(); perStaff[r.staffId].collected++;
       perStaff[r.staffId].bySite[site]=(perStaff[r.staffId].bySite[site]||0)+1; }
-    if(r.unit) unitToRecord[r.unit]={staffId:r.staffId,site};
   });
+  allDon.forEach(r=>{ if(r.unit) unitToRecord[r.unit]={staffId:r.staffId,site:IMPORT_SITES.includes(r.cp)?r.cp:'OTHER'}; });
   // ملاحظة مهمة: عمود "Staff id" في ملف Discarded products هو من سجّل/نفّذ إجراء الاستبعاد (فحص/جودة)،
   // وليس بالضرورة من سحب الوحدة أصلاً — لذا لا يُستخدم إطلاقاً. الربط الصحيح بالموظف الذي سحب الوحدة
   // يتم عبر "Unit Number" (يطابق "Donation Number" في ملف List of donations)، فتُنسب كل وحدة مستبعدة
@@ -2385,6 +2400,7 @@ $('#repAnalyzeBtn').onclick=async()=>{
   if(errs.length){ $('#repLog').innerHTML=errs.join('<br>'); toast('تعذّر قراءة أحد الملفين'); }
   const agg=aggregateReport(donRows,disRows);
   if(!agg){ toast('لا توجد سجلات صالحة في الملفات المرفوعة'); return; }
+  REP_RAW={don:donRows,dis:disRows,from:agg.dateFrom,to:agg.dateTo}; repMode='all'; repFillFilter();
   curReportAgg=agg; renderReportPage(agg);
   $('#repLog').innerHTML=(errs.length?errs.join('<br>')+'<br>':'')+`تم تحليل ${agg.totalCollected} تبرع و${agg.totalDiscarded} وحدة مستبعدة — الفترة <span class="bidi-ltr">${agg.label}</span>`;
   toast('تم التحليل ✓ راجع التقرير أدناه');
@@ -2683,6 +2699,37 @@ async function exportReportPptx(agg,d){
   });
   await P.writeFile({fileName:`Donations_Analysis_${agg.label.replace(/ /g,'_')}.pptx`});
 }
+// ===== فلتر زمني للتقرير (2026-10-10، طلب حسن): كامل الملف / أسبوعي (أحد–سبت) / فترة محددة / سنوي =====
+// يعمل على سجلات الملفات المرفوعة في هذه الجلسة (التقارير المحفوظة ملخّص رقمي بلا سجلات خام)
+let REP_RAW=null, repMode='all';
+function repFillFilter(){
+  const R=REP_RAW; $('#repFilter').style.display=R?'flex':'none'; if(!R) return;
+  const wks=[]; for(let s=dmWeekStart(R.from); s<=R.to; s=addDays(s,7)) wks.push(s);
+  $('#repWeek').innerHTML=wks.reverse().map(s=>`<option value="${s}">${fmtLbl(s,addDays(s,6))}</option>`).join('');
+  const ys=[]; for(let y=+R.from.slice(0,4); y<=+R.to.slice(0,4); y++) ys.push(y);
+  $('#repYear').innerHTML=ys.reverse().map(y=>`<option>${y}</option>`).join('');
+  $('#repFrom').value=R.from; $('#repTo').value=R.to;
+  repApplyFilter(false);
+}
+function repApplyFilter(render=true){
+  const R=REP_RAW; if(!R) return;
+  $$('#repModeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===repMode));
+  $('#repWeekCtl').style.display=repMode==='week'?'':'none';
+  $('#repPeriodCtl').style.display=repMode==='period'?'flex':'none';
+  $('#repYearCtl').style.display=repMode==='year'?'':'none';
+  if(!render) return;
+  let range=null;
+  if(repMode==='week'){ const s=$('#repWeek').value; range={from:s,to:addDays(s,6)}; }
+  else if(repMode==='period'){ let f=$('#repFrom').value, t=$('#repTo').value; if(!f||!t) return; if(f>t) [f,t]=[t,f]; range={from:f,to:t}; }
+  else if(repMode==='year'){ const y=$('#repYear').value; range={from:`${y}-01-01`,to:`${y}-12-31`}; }
+  if(range){ if(range.from<R.from) range.from=R.from; if(range.to>R.to) range.to=R.to; } // عنوان الفترة = ما يغطيه الملف فعلاً
+  const agg=aggregateReport(R.don,R.dis,range&&range.from<=range.to?range:{from:'9',to:'0'});
+  if(!agg){ $('#reportOut').innerHTML=''; curReportAgg=null; $('#repLog').innerHTML='لا توجد سجلات ضمن الفترة المختارة'; return; }
+  curReportAgg=agg; renderReportPage(agg);
+  $('#repLog').innerHTML=`${agg.totalCollected} تبرع و${agg.totalDiscarded} وحدة مستبعدة — الفترة <span class="bidi-ltr">${agg.label}</span>`;
+}
+$('#repModeSeg').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; repMode=b.dataset.m; repApplyFilter(); };
+['#repWeek','#repFrom','#repTo','#repYear'].forEach(x=>$(x).onchange=()=>repApplyFilter());
 function renderReportArchive(){
   const ks=Object.keys(REPORTS).sort().reverse();
   $('#reportArcBody').innerHTML=ks.length?ks.map(k=>{const r=REPORTS[k];
