@@ -457,6 +457,9 @@ table.rk.resmx td{font-variant-numeric:tabular-nums}
 .dm-day{font-family:'Cairo',Arial;white-space:nowrap}
 .dm-hol{display:block;font-size:9.5px;color:var(--gold)}
 .dm-role{min-width:130px}
+#dmSheet tr.dm-wkrow td{background:#FFF4D6;border-top:2px solid var(--navy);font-family:'Cairo',Arial;font-weight:700;color:var(--navy)}
+#dmSheet tr.dm-wkrow select{border-color:var(--amber);font-weight:700}
+#dmSheet tr.dm-wkrow+tr.dm-wk td{border-top:0}
 .dm-role select{direction:ltr;text-align:center}
 .dm-badge{display:inline-block;font-family:'Cairo';font-size:10px;font-weight:700;border-radius:10px;padding:1px 7px;margin:2px 2px 0}
 .dm-badge.lv{background:#fde4e4;color:var(--bad)}
@@ -3492,6 +3495,22 @@ function dmSlotCell(ds,j,rec,counts){
   return `<td class="dm-role"><select data-slot="${j}" aria-label="المناوب ${j+1} — ${ds}">${opts}</select>${flags?`<div>${flags}</div>`:''}</td>`;
 }
 
+// إدخال أسبوعي سريع: أيام عمل الأسبوع (داخل الشهر المعروض) التي تحتوي الخانة j (الجمعة خانة واحدة فقط)
+const dmWeekDays=(doc,wk,j)=>dmMonthDays(curDm).filter(ds=>dmWeekStart(ds)===wk&&dmIsWork(doc,ds)&&j<dmSlots(doc,ds));
+function dmWeekRow(doc,wk,maxSlots,counts){
+  const all=dmMonthDays(curDm).filter(ds=>dmWeekStart(ds)===wk);
+  const cells=Array.from({length:maxSlots},(_,j)=>{
+    const days=dmWeekDays(doc,wk,j); if(!days.length) return '<td class="dm-na">—</td>';
+    const vals=[...new Set(days.map(ds=>doc.days[ds]?.staff?.[j]||''))], cur=vals.length===1?vals[0]:'';
+    const opts=`<option value="">${vals.length>1?'— مختلط —':'—'}</option>`+activeStaff().map(s=>{
+      const lv=days.filter(ds=>isOnLeave(s.id,ds,ds)).length;
+      return `<option value="${s.id}" ${s.id===cur?'selected':''}>${dmEsc(s.name)} (${counts[s.id]||0})${lv?` · إجازة ${lv} يوم`:''}</option>`;
+    }).join('');
+    return `<td class="dm-role"><select data-wslot="${j}" aria-label="المناوب ${j+1} لكل أيام الأسبوع ${wk}">${opts}</select></td>`;
+  }).join('');
+  return `<tr class="dm-wkrow noprint" data-w="${wk}"><td colspan="3">⚡ الأسبوع كاملاً <span class="bidi-ltr">${dmDM(all[0])} → ${dmDM(all[all.length-1])}</span></td>${cells}<td class="hint" style="font-weight:600">اختر مرة واحدة لتعبئة الأسبوع</td></tr>`;
+}
+
 function renderDammi(){
   if(!$('#dmBody')) return;
   const doc=dmNormalize(dmDoc(curDm)), counts=dmMonthCounts(curDm), hol=dmHolidays(curDm.slice(0,4));
@@ -3502,11 +3521,12 @@ function renderDammi(){
   $('#dmWorkDays').innerHTML=LV_DAYS.map((d,i)=>`<label><input type="checkbox" data-wd="${i}" ${(doc.workDays||DM_DEFAULT_WORKDAYS).includes(i)?'checked':''}> ${d}</label>`).join('');
   $('#dmBody').innerHTML=dmMonthDays(curDm).map((ds,i)=>{
     const rec=doc.days[ds]||{}, dow=dmDow(ds), work=dmIsWork(doc,ds), h=lvHijriParts(dmDate(ds)), n=dmSlots(doc,ds);
+    const wkRow=(i===0||dow===0)?dmWeekRow(doc,dmWeekStart(ds),maxSlots,counts):'';
     const holTag=hol[ds]?`<span class="dm-hol">${hol[ds]}</span>`:'';
     const head=`<td class="num">${i+1}</td><td class="dm-dt">${dmDM(ds)}<small>${h.day} ${LV_HIJRI_MONTHS[h.month-1]||''}</small></td><td class="dm-day">${LV_DAYS[dow]}${holTag}</td>`;
-    if(!work) return `<tr class="dm-off ${dow===0?'dm-wk':''}" data-d="${ds}">${head}<td colspan="${maxSlots+1}" class="dm-closed">مغلق</td></tr>`;
+    if(!work) return wkRow+`<tr class="dm-off ${dow===0?'dm-wk':''}" data-d="${ds}">${head}<td colspan="${maxSlots+1}" class="dm-closed">مغلق</td></tr>`;
     const cells=Array.from({length:maxSlots},(_,j)=>j<n?dmSlotCell(ds,j,rec,counts):'<td class="dm-na">—</td>').join('');
-    return `<tr class="${dow===0?'dm-wk':''} ${dow===5?'dm-fri':''}" data-d="${ds}">${head}${cells}
+    return wkRow+`<tr class="${dow===0?'dm-wk':''} ${dow===5?'dm-fri':''}" data-d="${ds}">${head}${cells}
       <td><input class="dm-note" data-f="note" value="${dmEsc(rec.note||'')}" aria-label="ملاحظات ${ds}"></td></tr>`;
   }).join('');
   renderDmLeaveInfo(); renderDmSummary(); renderDmStats(); renderDmAnnual();
@@ -3658,6 +3678,21 @@ function dmAutoFill(){
 
 /* ---- الأحداث ---- */
 $('#dmBody').addEventListener('change',e=>{
+  const wtr=e.target.closest('tr[data-w]');
+  if(wtr&&e.target.dataset.wslot!==undefined){
+    // تعبئة الخانة j لكل أيام عمل الأسبوع دفعة واحدة؛ يُتخطّى يوم إجازة الموظف أو يوم هو فيه مناوب بخانة أخرى
+    const j=+e.target.dataset.wslot, sid=e.target.value, doc=dmDoc(curDm), skip=[];
+    if(!sid&&!confirm('تفريغ هذه الخانة في كل أيام الأسبوع؟')){ renderDammi(); return; }
+    dmWeekDays(doc,wtr.dataset.w,j).forEach(ds=>{
+      const r=doc.days[ds]||(doc.days[ds]={}), on=r.staff=r.staff||[];
+      for(let k=on.length;k<j;k++) on[k]='';
+      if(sid&&(isOnLeave(sid,ds,ds)||on.some((x,k)=>k!==j&&x===sid))){ skip.push(dmDM(ds)); return; }
+      on[j]=sid;
+    });
+    dmQueueSave(); renderDammi();
+    if(skip.length) toast(`لم يُعبَّأ ${skip.length} يوم (إجازة أو مناوب بخانة أخرى): ${skip.join('، ')}`);
+    return;
+  }
   const tr=e.target.closest('tr[data-d]'); if(!tr) return;
   const ds=tr.dataset.d, doc=dmDoc(curDm), r=doc.days[ds]||(doc.days[ds]={}), el=e.target;
   if(el.dataset.slot!==undefined){
