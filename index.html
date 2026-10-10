@@ -2746,11 +2746,18 @@ function renderReportArchive(){
   $('#reportArcBody').innerHTML=ks.length?ks.map(k=>{const r=REPORTS[k];
     const rate=r.totalCollected?(r.totalDiscarded/r.totalCollected*100).toFixed(1)+'%':'—';
     return `<tr><td class="nm">${r.label}</td><td>${r.totalCollected}</td><td>${r.totalDiscarded}</td><td>${rate}</td>
-    <td>${(r.generatedAt||'').slice(0,10)}</td><td><button class="btn sm ghost" data-openrep="${k}">فتح</button></td></tr>`;
+    <td>${(r.generatedAt||'').slice(0,10)}</td><td><button class="btn sm ghost" data-openrep="${k}">فتح</button> <button class="btn danger sm" data-delrep="${k}">🗑️ حذف</button></td></tr>`;
   }).join(''):'<tr><td colspan="6" style="padding:18px;color:var(--faint)">لا توجد تقارير محفوظة بعد</td></tr>';
   $$('[data-openrep]').forEach(b=>b.onclick=()=>{
     curReportAgg=REPORTS[b.dataset.openrep]; renderReportPage(curReportAgg);
     $('#reportOut').scrollIntoView({behavior:'smooth'});
+  });
+  $$('[data-delrep]').forEach(b=>b.onclick=async()=>{
+    const k=b.dataset.delrep, r=REPORTS[k];
+    if(!confirm(`حذف التقرير المحفوظ للفترة ${r.label} نهائياً؟\n(يمكن إعادة توليده برفع الملفات من جديد)`)) return;
+    delete REPORTS[k]; await cloudDel('reports',k);
+    if(curReportAgg===r){ curReportAgg=null; $('#reportOut').innerHTML=''; }
+    renderReportArchive(); toast('تم حذف التقرير ✓');
   });
 }
 
