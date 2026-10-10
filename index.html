@@ -1089,7 +1089,7 @@ const REPORT_SITE_LABEL={'2001F':'٢٠٠١F (المقر)','2001D':'٢٠٠١D (ا
 // أعطال معالجة لاحقة/تسريبات معدات (DKIT,NC14-NC21,NC23) لا علاقة لها بمن سحب الوحدة، ومخزون/انتهاء صلاحية (OVS).
 // هذا الأساس (وليس "الأعلى تكراراً") هو ما يُستخدم لحساب "نسبة الاستبعاد" ومعدّل كل موظف — لتحميل الموظف فقط ما هو فعلاً بسبب أسلوب سحبه.
 const TRACKED_DISCARD_CODES=['DLVO','NC22','NC11','DHVO','NC02','NC12'];
-const DISCARD_RBC_PRODUCTS=['RED BLOOD CELLS','RED BLOOD CELL NON LEUCO-REDUCED','WHOLE BLOOD']; // رقم وحدة مكرر بينها = كيس واحد (parseDiscardedRows)
+const DISCARD_RBC_PRODUCTS=['RED BLOOD CELLS','RED BLOOD CELL NON LEUCO-REDUCED','WHOLE BLOOD']; // المنتجات الوحيدة المحتسبة في المستبعدات، ورقم وحدة مكرر بينها = كيس واحد (parseDiscardedRows)
 const REPORT_STAFF_NAMES={ // من ملف "Donation & Discard Statistics" الذي زوّدنا به حسن — أسماء كاملة لـ٢٧ موظف سحب (منفصلة عن staff/{id})
   2649451:'Fahad Abdullah', 3821397:'Abbas Alnaserallah', 3838352:'Mahmoud Alwasi', 3843899:'Talal Al Saqri',
   3821926:'Hasan Alaqeeli', 3821573:'Dhoha Al Radwan', 3838919:'Zainab Al Braih', 3845448:'Afnan Al Mushref',
@@ -2351,8 +2351,10 @@ function parseDiscardedRows(rows){
     const r={date:dt, abo:String(c[iABO]||'').trim(), code:String(c[iCode]||'').trim(), desc:String(c[iDesc]||'').trim(), unit:String(c[iUnit]||'').trim()};
     // (2026-10-10، طلب حسن) نفس رقم الوحدة مكرراً بين RED BLOOD CELLS / Red blood cell Non Leuco-Reduced / WHOLE BLOOD = كيس واحد يُحتسب مرة واحدة؛
     // يُبقى السطر الذي سببه من TRACKED_DISCARD_CODES إن وُجد وإلا الأول
+    // (2026-10-10، طلب حسن) التقرير للدم الكامل وكريات الدم الحمراء فقط — البلازما والصفائح وغيرها تُستبعد كلياً
     const prod=iProd<0?'':String(c[iProd]||'').trim().toUpperCase();
-    if(r.unit&&(iProd<0||DISCARD_RBC_PRODUCTS.includes(prod))){
+    if(iProd>=0&&!DISCARD_RBC_PRODUCTS.includes(prod)){ out.otherRemoved=(out.otherRemoved||0)+1; continue; }
+    if(r.unit){
       const j=seen[r.unit];
       if(j!==undefined){ if(!TRACKED_DISCARD_CODES.includes(out[j].code)&&TRACKED_DISCARD_CODES.includes(r.code)) out[j]=r; out.dupRemoved=(out.dupRemoved||0)+1; continue; }
       seen[r.unit]=out.length;
@@ -2406,14 +2408,14 @@ $('#repAnalyzeBtn').onclick=async()=>{
   if(!fDon&&!fDis){ toast('اختر ملفاً واحداً على الأقل'); return; }
   let donRows=[], disRows=[], errs=[];
   if(fDon){ const r=parseDonationsRows(await fileToRows(fDon)); if(r) donRows=r; else errs.push('تنسيق ملف List of donations غير معروف'); }
-  let dupRemoved=0;
-  if(fDis){ const r=parseDiscardedRows(await fileToRows(fDis)); if(r){ disRows=r; dupRemoved=r.dupRemoved||0; } else errs.push('تنسيق ملف Discarded products غير معروف'); }
+  let dupRemoved=0, otherRemoved=0;
+  if(fDis){ const r=parseDiscardedRows(await fileToRows(fDis)); if(r){ disRows=r; dupRemoved=r.dupRemoved||0; otherRemoved=r.otherRemoved||0; } else errs.push('تنسيق ملف Discarded products غير معروف'); }
   if(errs.length){ $('#repLog').innerHTML=errs.join('<br>'); toast('تعذّر قراءة أحد الملفين'); }
   const agg=aggregateReport(donRows,disRows);
   if(!agg){ toast('لا توجد سجلات صالحة في الملفات المرفوعة'); return; }
   REP_RAW={don:donRows,dis:disRows,from:agg.dateFrom,to:agg.dateTo}; repMode='all'; repFillFilter();
   curReportAgg=agg; renderReportPage(agg);
-  $('#repLog').innerHTML=(errs.length?errs.join('<br>')+'<br>':'')+`تم تحليل ${agg.totalCollected} تبرع و${agg.totalDiscarded} وحدة مستبعدة${dupRemoved?` (حُذف ${dupRemoved} سطراً مكرراً لنفس رقم الوحدة)`:''} — الفترة <span class="bidi-ltr">${agg.label}</span>`;
+  $('#repLog').innerHTML=(errs.length?errs.join('<br>')+'<br>':'')+`تم تحليل ${agg.totalCollected} تبرع و${agg.totalDiscarded} وحدة مستبعدة${dupRemoved?` (حُذف ${dupRemoved} سطراً مكرراً لنفس رقم الوحدة)`:''}${otherRemoved?` (استُبعد ${otherRemoved} سطر بلازما/صفائح/منتجات أخرى)`:''} — الفترة <span class="bidi-ltr">${agg.label}</span>`;
   toast('تم التحليل ✓ راجع التقرير أدناه');
   $('#reportOut').scrollIntoView({behavior:'smooth'});
 };
