@@ -226,6 +226,7 @@ table.rpt-rate td{padding:7px 8px;border-bottom:1px solid var(--rline);text-alig
 table.rpt-rate td:first-child{text-align:left;white-space:normal}
 table.rpt-rate td.rmuted{color:var(--rgray)}
 table.rpt-rate td.rtot{font-weight:700}
+table.rpt-rate tr.rsmall td{opacity:.6;padding:3px 8px;font-size:10.5px}
 table.rpt-rate .rratebar{display:inline-block;height:6px;background:var(--rblue2);vertical-align:middle;margin-inline-start:8px}
 .rpt-dark{background:var(--rd);color:#fff}
 .rpt-dark .rpt-eyebrow{color:#9fb0c4}
@@ -2442,9 +2443,11 @@ function reportDerive(agg){
     .map(p=>({...p,disc:discardInTop(p),rate:p.collected?discardInTop(p)/p.collected*100:0}))
     .sort((a,b)=>b.rate-a.rate);
   const omitted=byCollected.filter(p=>p.collected<RATE_TABLE_MIN_DRAWN);
+  // (2026-10-10، طلب حسن) من سحب أقل من العتبة يظهر أيضاً أسفل الجدول، باهتاً ومفصولاً، ولا يدخل ترتيب المعدّلات الرئيسي
+  const smallRows=omitted.map(p=>({...p,disc:discardInTop(p),rate:p.collected?discardInTop(p)/p.collected*100:0,small:true})).sort((a,b)=>b.collected-a.collected);
   const unmapped=[...new Set(Object.keys(agg.perStaff).filter(id=>reportStaffName(id)===`#${id}`))];
   return {staffList,byCollected,byDiscarded,topReasons,topCodes,trackedDiscarded,discardInTop,
-    officeCount,fieldCount,overallRate,offsitePct,rateRows,omitted,unmapped};
+    officeCount,fieldCount,overallRate,offsitePct,rateRows,omitted,smallRows,unmapped};
 }
 function reportFindings(agg,d){
   const {byCollected,topReasons,trackedDiscarded,discardInTop,overallRate,offsitePct}=d;
@@ -2483,7 +2486,7 @@ function reportFindings(agg,d){
 }
 function renderReportPage(agg){
   const d=reportDerive(agg);
-  const {byCollected,byDiscarded,topReasons,trackedDiscarded,discardInTop,overallRate,offsitePct,rateRows,omitted,unmapped}=d;
+  const {byCollected,byDiscarded,topReasons,trackedDiscarded,discardInTop,overallRate,offsitePct,rateRows,omitted,smallRows,unmapped}=d;
   const monthsSpan=Math.max(1,Object.keys(agg.monthly).length);
   const staffCount=byCollected.length;
   const siteRows=[['2001F',agg.bySite['2001F']||0],['2001D',agg.bySite['2001D']||0],['Other',agg.bySite.OTHER||0]];
@@ -2514,11 +2517,13 @@ function renderReportPage(agg){
     ${nonVolumeTop?`“${nonVolumeTop[1].desc}” alone is ${fmtNum(nonVolumeTop[1].count)} units, ${(trackedDiscarded?nonVolumeTop[1].count/trackedDiscarded*100:0).toFixed(1)}%.`:''}
     </div></div>`:'';
   const maxRate=Math.max(0.01,...rateRows.map(r=>r.rate));
-  const rateTableHtml=rateRows.length?`<div class="rpt-tablewrap"><table class="rpt-rate"><thead><tr><th>Staff</th><th>Drawn</th>
-    ${topReasons.map(([c,v])=>`<th title="${v.desc.replace(/"/g,'&quot;')}">${c}</th>`).join('')}<th>Discarded</th><th>Rate</th></tr></thead><tbody>
-    ${rateRows.map(p=>`<tr><td>${p.name} <small style="color:var(--rmuted)">${p.id}</small></td><td class="rtot">${fmtNum(p.collected)}</td>
+  const rateTr=p=>`<tr${p.small?' class="rsmall"':''}><td>${p.name} <small style="color:var(--rmuted)">${p.id}</small></td><td class="rtot">${fmtNum(p.collected)}</td>
       ${topReasons.map(([c])=>`<td class="${p.byReason[c]?'':'rmuted'}">${p.byReason[c]?fmtNum(p.byReason[c]):'·'}</td>`).join('')}
-      <td class="rtot">${fmtNum(p.disc)}</td><td class="rtot">${p.rate.toFixed(2)}%<span class="rratebar" style="width:${Math.round(p.rate/maxRate*50)}px"></span></td></tr>`).join('')}
+      <td class="rtot">${fmtNum(p.disc)}</td><td class="rtot">${p.rate.toFixed(2)}%${p.small?'':`<span class="rratebar" style="width:${Math.round(p.rate/maxRate*50)}px"></span>`}</td></tr>`;
+  const rateTableHtml=(rateRows.length||smallRows.length)?`<div class="rpt-tablewrap"><table class="rpt-rate"><thead><tr><th>Staff</th><th>Drawn</th>
+    ${topReasons.map(([c,v])=>`<th title="${v.desc.replace(/"/g,'&quot;')}">${c}</th>`).join('')}<th>Discarded</th><th>Rate</th></tr></thead><tbody>
+    ${rateRows.map(rateTr).join('')}
+    ${smallRows.length?`<tr><td colspan="${topReasons.length+4}" style="color:var(--rmuted);font-size:.85em;padding-top:14px">Below ${RATE_TABLE_MIN_DRAWN} draws — small sample, rate indicative only (not ranked) · أقل من ${RATE_TABLE_MIN_DRAWN} وحدة: النسبة استرشادية</td></tr>${smallRows.map(rateTr).join('')}`:''}
     </tbody></table></div>`:'<p class="rpt-foot">لا يوجد موظف بلغ الحد الأدنى من الوحدات المسحوبة لعرض جدول المعدّلات.</p>';
   const findings=reportFindings(agg,d);
   const unmatchedNote=agg.unmatchedDiscard?` · ${fmtNum(agg.unmatchedDiscard)} units could not be matched to a draw`:'';
@@ -2582,7 +2587,7 @@ function renderReportPage(agg){
       <div class="rpt-headrow"><h2 class="rpt-h2">Discards per collector</h2><p class="rpt-ar-h">ربط كل وحدة مستبعدة بالموظف الذي سحبها — مرتّبة بنسبة الاستبعاد</p></div>
       ${rateTableHtml}
       <p class="rpt-foot" style="margin-top:6px">${topReasons.map(([c,v])=>`${c} — ${v.desc}`).join(' &nbsp;·&nbsp; ')}</p>
-      <p class="rpt-foot-row"><span>Staff with ${RATE_TABLE_MIN_DRAWN}+ draws.${omitted.length?` ${omitted.length} IDs below ${RATE_TABLE_MIN_DRAWN} draws omitted (${fmtNum(omitted.reduce((s,p)=>s+p.collected,0))} draws, ${fmtNum(omitted.reduce((s,p)=>s+discardInTop(p),0))} discards combined).`:''}</span><span>Baseline rate ${overallRate.toFixed(2)}%${unmatchedNote}</span></p>
+      <p class="rpt-foot-row"><span>Ranked: staff with ${RATE_TABLE_MIN_DRAWN}+ draws.${omitted.length?` ${omitted.length} staff below ${RATE_TABLE_MIN_DRAWN} draws listed underneath, unranked (${fmtNum(omitted.reduce((s,p)=>s+p.collected,0))} draws, ${fmtNum(omitted.reduce((s,p)=>s+discardInTop(p),0))} discards combined).`:''} Discarded here = the six draw-related causes only; the by-site table counts all causes.</span><span>Baseline rate ${overallRate.toFixed(2)}%${unmatchedNote}</span></p>
     </section>
 
     ${byDiscarded.length?`<section class="rpt-page">
