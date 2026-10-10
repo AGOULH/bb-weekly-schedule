@@ -1819,6 +1819,9 @@ function apxCoverage(f,t){
   });
   return counts;
 }
+// (طلب حسن 2026-10-10) في الإحصائيات والمقارنة DR وDR Cover مهمة واحدة: نتائج DR Cover (t5) تُجمع في DR (t4)
+const STAT_MERGE={t5:'t4'};
+const STAT_TASKS=TASKS.filter(t=>!STAT_MERGE[t.id]);
 function aggregate(f,t){
   const ks=Object.keys(WEEKS).filter(k=>inRange(k,f,t)).sort();
   const per={}, dept={donors:0,rhNegative:0,apheresisDonors:0,days:0,weeks:ks.length};
@@ -1829,13 +1832,15 @@ function aggregate(f,t){
     const w=WEEKS[k];
     dept.donors+=w.totals?.donors||0; dept.rhNegative+=w.totals?.rhNegative||0;
     dept.apheresisDonors+=w.totals?.apheresisDonors||0; dept.days+=w.totals?.workDays||5;
-    TASKS.forEach(T=>{
-      (w.assignments[T.id]||[]).forEach(sid=>{
+    const seen=new Set(); // نفس الموظف في DR وDR Cover بنفس الأسبوع = تكليف واحد
+    TASKS.forEach(T0=>{
+      const T=STAT_MERGE[T0.id]?TASKS.find(x=>x.id===STAT_MERGE[T0.id]):T0;
+      (w.assignments[T0.id]||[]).forEach(sid=>{
         if(!per[sid]) per[sid]=blankPerson(sid,sName(sid)||'—',STAFF[sid]?.role);
-        const p=per[sid]; p.assigned++; p.variety.add(T.id);
-        p.taskAssigned[T.id]=(p.taskAssigned[T.id]||0)+1;
-        const v=weekResults(w)[T.id]?.[sid];
-        if(T.type==='count'){ const n=+v||0; p.total+=n; p.tasks[T.id]=(p.tasks[T.id]||0)+n; p.weeks[k]=(p.weeks[k]||0)+n; p.countAssigned++; }
+        const p=per[sid], first=!seen.has(T.id+sid); seen.add(T.id+sid);
+        if(first){ p.assigned++; p.variety.add(T.id); p.taskAssigned[T.id]=(p.taskAssigned[T.id]||0)+1; }
+        const v=weekResults(w)[T0.id]?.[sid];
+        if(T.type==='count'){ const n=+v||0; p.total+=n; p.tasks[T.id]=(p.tasks[T.id]||0)+n; p.weeks[k]=(p.weeks[k]||0)+n; if(first) p.countAssigned++; }
         else if(v){ const sc=RATINGS.find(r=>r.v===v)?.score||0; p.ratingCounts[v]=(p.ratingCounts[v]||0)+1; p.ratingTotal++; p.ratingScoreSum+=sc;
           const tr=p.taskRatings[T.id]||(p.taskRatings[T.id]={excellent:0,satisfactory:0,unsatisfactory:0,sum:0,n:0}); tr[v]=(tr[v]||0)+1; tr.sum+=sc; tr.n++;
           p.ratingByWeek[k]=p.ratingByWeek[k]||{sum:0,count:0}; p.ratingByWeek[k].sum+=sc; p.ratingByWeek[k].count++; }
@@ -1846,16 +1851,16 @@ function aggregate(f,t){
 }
 /* ---- مقارنة الأقسام والموظفين: اختيار أقسام (مهام) وموظفين، ترتيب بالأعلى، مصفوفة أرقام، ومؤشر مقارنة ---- */
 // «Rh Negative» على مستوى الموظف = مهمة RH Contact (t11): رقم Rh Negative للأسبوع يُنسب لمكلَّفها تلقائياً (rhAuto)
-const CMP_TASK_PRESETS={core:['t8','t7','t6','t11'],technical:['t3','t4','t5','t6','t7','t8','t11'],reception:['t1','t2','t10'],rating:['t9','t10','t12']};
+const CMP_TASK_PRESETS={core:['t8','t7','t6','t11'],technical:['t3','t4','t6','t7','t8','t11'],reception:['t1','t2','t10'],rating:['t9','t10','t12']};
 const CMP_COLORS=['#1B3A6B','#0D7377','#F0A500','#C8860A','#5B8DEF','#2E9E6B','#B5487A','#7A5BC7','#E06D3A','#4A5568','#17A2B8','#8B6914'];
 let CMP=Object.assign({tasks:CMP_TASK_PRESETS.core,staff:null,metric:'total',sort:'total'},LS.get('bb_cmp',{})), cmpData=null;
-const cmpTaskLabel=t=>({t2:'B.B Reception (No Cleric)',t11:'RH Contact (Rh−)',t12:'Cleaning'}[t.id]||t.name);
+const cmpTaskLabel=t=>({t4:'DR + DR Cover',t2:'B.B Reception (No Cleric)',t11:'RH Contact (Rh−)',t12:'Cleaning'}[t.id]||t.name);
 function cmpSave(){ LS.set('bb_cmp',CMP); renderCompare(); }
 function renderCompare(){
   const box=$('#cmpSec'); if(!box||!cmpData) return;
   const order=id=>STAFF[id]?.order??999;
   const pool=Object.values(cmpData.per).filter(p=>p.assigned>0).sort((a,b)=>order(a.id)-order(b.id));
-  const selT=TASKS.filter(t=>CMP.tasks.includes(t.id)), cntT=selT.filter(t=>t.type==='count');
+  const selT=STAT_TASKS.filter(t=>CMP.tasks.includes(t.id)), cntT=selT.filter(t=>t.type==='count');
   const selS=pool.filter(p=>!CMP.staff||CMP.staff.includes(p.id));
   const isRate=CMP.metric==='rate';
   // null = لم يُكلَّف بالقسم (يظهر «—» ولا يدخل في الترتيب)
@@ -1890,7 +1895,7 @@ function renderCompare(){
     <h3>🔀 مقارنة الأقسام والموظفين</h3>
     <div class="cmp-lbl">الأقسام (المهام) — اختر قسماً أو أكثر
       <span class="lnk"><button data-tp="core">السحب والصفائح وRh</button><button data-tp="technical">الأقسام الفنية</button><button data-tp="reception">الاستقبال</button><button data-tp="rating">التقييمات</button><button data-tp="all">الكل</button><button data-tp="none">مسح</button></span></div>
-    <div class="cmp-chips">${TASKS.map(t=>`<button class="cmp-chip ${CMP.tasks.includes(t.id)?'on':''}" data-t="${t.id}" aria-pressed="${CMP.tasks.includes(t.id)}">${cmpTaskLabel(t)}</button>`).join('')}</div>
+    <div class="cmp-chips">${STAT_TASKS.map(t=>`<button class="cmp-chip ${CMP.tasks.includes(t.id)?'on':''}" data-t="${t.id}" aria-pressed="${CMP.tasks.includes(t.id)}">${cmpTaskLabel(t)}</button>`).join('')}</div>
     <div class="cmp-lbl">الموظفون — الكل أو مجموعة أو أشخاص معيّنون (${selS.length} من ${pool.length})
       <span class="lnk"><button data-sp="all">الكل</button><button data-sp="technical">الفنيون</button><button data-sp="reception">الاستقبال</button><button data-sp="none">مسح</button></span></div>
     <div class="cmp-chips">${pool.map(p=>`<button class="cmp-chip ${p.role==='reception'?'rec':''} ${staffSel(p.id)?'on':''}" data-s="${p.id}" aria-pressed="${staffSel(p.id)}">${p.name}<small>${p.role==='reception'?'استقبال':'فني'}</small></button>`).join('')||'<span class="hint">لا يوجد موظفون مكلَّفون في هذا المدى.</span>'}</div>
@@ -1952,7 +1957,7 @@ $('#statsOut').addEventListener('click',e=>{
   const b=e.target.closest('#cmpSec button'); if(!b) return;
   const d=b.dataset, poolP=()=>Object.values(cmpData.per).filter(p=>p.assigned>0);
   if(d.t){ CMP.tasks=CMP.tasks.includes(d.t)?CMP.tasks.filter(x=>x!==d.t):[...CMP.tasks,d.t]; }
-  else if(d.tp){ CMP.tasks=d.tp==='all'?TASKS.map(t=>t.id):d.tp==='none'?[]:[...CMP_TASK_PRESETS[d.tp]]; }
+  else if(d.tp){ CMP.tasks=d.tp==='all'?STAT_TASKS.map(t=>t.id):d.tp==='none'?[]:[...CMP_TASK_PRESETS[d.tp]]; }
   else if(d.s){ const all=poolP().map(p=>p.id), cur=CMP.staff||all;
     CMP.staff=cur.includes(d.s)?cur.filter(x=>x!==d.s):[...cur,d.s];
     if(all.every(id=>CMP.staff.includes(id))) CMP.staff=null; }
@@ -2054,7 +2059,7 @@ function renderStats(){
       <td><b>${p.total}</b></td><td>${p.countAssigned}</td>
       <td><b>${p.rate.toFixed(1)}</b><div style="font-size:10px;color:var(--muted)">${zLabel}</div></td>
       <td><div style="font-size:11px">${cvLabel}</div><div style="font-size:11px">${momLabel}</div></td>
-      <td>${p.variety.size} / ${TASKS.length}</td>
+      <td>${p.variety.size} / ${STAT_TASKS.length}</td>
       <td>${rIndex===null?'—':`<div style="font-size:11px;color:var(--muted)">✅${rc.excellent} · ➖${rc.satisfactory} · ⚠️${rc.unsatisfactory}</div><span class="${rIndex>=85?'up':rIndex>=60?'flat':'down'}"><b>${rIndex}%</b></span>`}</td>
       <td><div class="bar"><i style="width:${Math.round(p.rate/g.maxRate*100)}%"></i></div></td></tr>`;
     });
@@ -2162,12 +2167,12 @@ function renderStats(){
   const opts=listAll.map(p=>`<option value="${p.name}">${p.name}</option>`).join('');
   $('#cmpA').innerHTML=opts; $('#cmpB').innerHTML=opts;
   if(listAll[1]) $('#cmpB').value=listAll[1].name;
-  const cntT=TASKS.filter(t=>t.type==='count');
+  const cntT=STAT_TASKS.filter(t=>t.type==='count');
   const drawRadar=()=>{
     const pick=n=>listAll.find(p=>p.name===n)||{tasks:{}};
     const a=pick($('#cmpA').value), b=pick($('#cmpB').value);
     charts.radar?.destroy();
-    charts.radar=new Chart($('#cRadar'),{type:'radar',data:{labels:cntT.map(t=>t.name.split('(')[0].trim()),
+    charts.radar=new Chart($('#cRadar'),{type:'radar',data:{labels:cntT.map(t=>t.id==='t4'?'DR + DR Cover':t.name.split('(')[0].trim()),
       datasets:[
         {label:a.name||'أ',data:cntT.map(t=>a.tasks?.[t.id]||0),borderColor:N,backgroundColor:'rgba(27,58,107,.18)'},
         {label:b.name||'ب',data:cntT.map(t=>b.tasks?.[t.id]||0),borderColor:B,backgroundColor:'rgba(240,165,0,.18)'}]},
