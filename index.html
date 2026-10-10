@@ -2338,7 +2338,7 @@ function parseDonationsRows(rows){
   const out=[];
   for(let i=hi+1;i<rows.length;i++){
     const c=rows[i], dt=parseSlashDate(String(c[iDate]||'').trim()); if(!dt) continue;
-    out.push({date:dt, cp:String(c[iCP]||'').trim(), type:String(c[iType]||'').trim(), staffId:String(c[iStaff]||'').trim(), unit:String(c[iUnit]||'').trim()});
+    out.push({date:dt, cp:String(c[iCP]||'').trim(), type:String(c[iType]||'').trim(), staffId:normSid(c[iStaff]), unit:String(c[iUnit]||'').trim()}); // normSid: الملف يكتب بعض الأرقام بصفر بادئ (0124961)
   }
   return out;
 }
@@ -2367,8 +2367,8 @@ function parseDiscardedRows(rows){
   return out;
 }
 let jobIdToLocalStaff={};
-function buildJobIdIndex(){ jobIdToLocalStaff={}; Object.values(STAFF).forEach(s=>{ if(s.staffId) jobIdToLocalStaff[s.staffId]=s.name; }); }
-function reportStaffName(id){ return REPORT_STAFF[id]?.name || jobIdToLocalStaff[id] || `#${id}`; }
+function buildJobIdIndex(){ jobIdToLocalStaff={}; Object.values(STAFF).forEach(s=>{ if(s.staffId) jobIdToLocalStaff[normSid(s.staffId)]=s.name; }); }
+function reportStaffName(id){ const n=normSid(id); return REPORT_STAFF[id]?.name || REPORT_STAFF[n]?.name || jobIdToLocalStaff[n] || `#${id}`; }
 // range (اختياري): {from,to} — فلتر زمني على تاريخ التبرع/تاريخ الاستبعاد؛ مطابقة رقم الوحدة تبقى من كل ملف التبرعات
 // حتى تُنسب وحدة سُحبت قبل الفترة واستُبعدت داخلها لمن سحبها
 function aggregateReport(allDon,allDis,range){
@@ -2442,7 +2442,7 @@ function reportDerive(agg){
     .map(p=>({...p,disc:discardInTop(p),rate:p.collected?discardInTop(p)/p.collected*100:0}))
     .sort((a,b)=>b.rate-a.rate);
   const omitted=byCollected.filter(p=>p.collected<RATE_TABLE_MIN_DRAWN);
-  const unmapped=[...new Set(Object.keys(agg.perStaff).filter(id=>!REPORT_STAFF[id]&&!jobIdToLocalStaff[id]))];
+  const unmapped=[...new Set(Object.keys(agg.perStaff).filter(id=>reportStaffName(id)===`#${id}`))];
   return {staffList,byCollected,byDiscarded,topReasons,topCodes,trackedDiscarded,discardInTop,
     officeCount,fieldCount,overallRate,offsitePct,rateRows,omitted,unmapped};
 }
