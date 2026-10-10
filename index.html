@@ -673,7 +673,7 @@ body.dm-printing #dmSheet *{overflow:visible!important}
   <div id="reportOut"></div>
   <div class="card">
     <h3>🗂️ التقارير المحفوظة</h3>
-    <div style="overflow-x:auto"><table class="rk"><thead><tr><th>الفترة</th><th>المتبرعون</th><th>المستبعد</th><th>نسبة الاستبعاد</th><th>تاريخ التوليد</th><th>إجراء</th></tr></thead><tbody id="reportArcBody"></tbody></table></div>
+    <div style="overflow-x:auto"><table class="rk"><thead><tr><th>الفترة</th><th>المتبرعون</th><th>المستبعد</th><th>معدّل أسباب السحب</th><th>نسبة الاستبعاد الإجمالية</th><th>تاريخ التوليد</th><th>إجراء</th></tr></thead><tbody id="reportArcBody"></tbody></table></div>
   </div>
 </section>
 
@@ -2746,10 +2746,12 @@ $('#repModeSeg').onclick=e=>{ const b=e.target.closest('button'); if(!b) return;
 function renderReportArchive(){
   const ks=Object.keys(REPORTS).sort().reverse();
   $('#reportArcBody').innerHTML=ks.length?ks.map(k=>{const r=REPORTS[k];
-    const rate=r.totalCollected?(r.totalDiscarded/r.totalCollected*100).toFixed(1)+'%':'—';
-    return `<tr><td class="nm">${r.label}</td><td>${r.totalCollected}</td><td>${r.totalDiscarded}</td><td>${rate}</td>
+    const pct=n=>r.totalCollected?(n/r.totalCollected*100).toFixed(1)+'%':'—';
+    // معدّل أسباب السحب = نفس أساس "معدّل الاستبعاد" داخل التقرير (TRACKED_DISCARD_CODES فقط)؛ الإجمالية = كل الأسباب
+    const tracked=TRACKED_DISCARD_CODES.reduce((t,c)=>t+(r.discardReasons?.[c]?.count||0),0);
+    return `<tr><td class="nm">${r.label}</td><td>${r.totalCollected}</td><td>${r.totalDiscarded}</td><td><b>${pct(tracked)}</b></td><td>${pct(r.totalDiscarded)}</td>
     <td>${(r.generatedAt||'').slice(0,10)}</td><td><button class="btn sm ghost" data-openrep="${k}">فتح</button> <button class="btn danger sm" data-delrep="${k}">🗑️ حذف</button></td></tr>`;
-  }).join(''):'<tr><td colspan="6" style="padding:18px;color:var(--faint)">لا توجد تقارير محفوظة بعد</td></tr>';
+  }).join(''):'<tr><td colspan="7" style="padding:18px;color:var(--faint)">لا توجد تقارير محفوظة بعد</td></tr>';
   $$('[data-openrep]').forEach(b=>b.onclick=()=>{
     curReportAgg=REPORTS[b.dataset.openrep]; renderReportPage(curReportAgg);
     $('#reportOut').scrollIntoView({behavior:'smooth'});
