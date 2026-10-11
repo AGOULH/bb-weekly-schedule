@@ -514,6 +514,7 @@ table.rk tr.ds-tot td{background:#EEF3F8;font-weight:900;color:var(--navy)}
 table.rk tr.ds-sec td{background:#FFF6E0;font-weight:800}
 table.rk .ds-on,table.rk tr.ds-on td{background:var(--row-a);font-weight:800}
 table.ds-units td:first-child{text-align:right}
+.kpi.ds-bad{border-top-color:var(--bad)}.kpi.ds-bad .vl{color:var(--bad)}
 .ds-en{display:inline-block;direction:ltr;unicode-bidi:isolate;font-family:Arial}
 /* ===== PRINT ===== */
 @media print{
@@ -4024,15 +4025,19 @@ function dsPrepKind(code,desc){
 function dsParseOps(rows){
   const H=dsHeader(rows,['operation code','operation date','sample number','product code']); if(!H) return null;
   const [iC,iD,iU,iP,iDs,iA]=['operation code','operation date','sample number','product code','product description','aborh'].map(H.idx);
-  const rec=[],prep=[],pool=[],tre=[],seen=new Set(), once=k=>!seen.has(k)&&seen.add(k);
+  const rec=[],prep=[],pool=[],tre=[],seen=new Set(), once=k=>!seen.has(k)&&seen.add(k), sepU=new Set(), wbDisc=new Set();
   for(let i=H.hi+1;i<rows.length;i++){
     const c=rows[i], op=String(c[iC]||'').trim().toUpperCase(), d=dsDate(String(c[iD]||'').trim()); if(!d) continue;
     const u=String(c[iU]||'').trim(), p=String(c[iP]||'').trim().toUpperCase(), desc=String(c[iDs]||'').trim().toUpperCase();
     if(op==='REC'){ if(once('R'+u)) rec.push({u,d,k:/APHERESIS/.test(desc)?'APH':'WB'}); }
-    else if(/^SEP/.test(op)){ const k=dsPrepKind(p,desc); if(k&&once('P'+u+k)) prep.push({u,d,k}); }
+    else if(/^SEP/.test(op)){ sepU.add(u); const k=dsPrepKind(p,desc); if(k&&once('P'+u+k)) prep.push({u,d,k}); }
+    else if(op==='DISC'&&desc==='WHOLE BLOOD') wbDisc.add(u);
     else if(op==='PO5D') pool.push({d,k:/POOLED/.test(desc)?'out':'in',a:String(c[iA]||'').trim()||'—'});
     else if(op==='TRE'){ const k=/POOLED/.test(desc)?'POOL':/APHERESIS/.test(desc)?'APH':null; if(k&&once('T'+u+k)) tre.push({d,k}); }
   }
+  // (2026-10-11، طلب حسن) مصير كل كيس WHOLE BLOOD مستلم: فُصل (SEP*) / أُتلف قبل الفصل (DISC WHOLE BLOOD) / بانتظار الفصل —
+  // فيتطابق: الدم الكامل المستلم = المفصول (= RBC LR + Non-LR) + المتلف + المنتظر
+  rec.forEach(r=>{ if(r.k==='WB') r.st=sepU.has(r.u)?'sep':wbDisc.has(r.u)?'disc':'pend'; });
   return {rec,prep,pool,tre};
 }
 let DS=null, dsMode='all', dsSites=new Set(['F','D','C']), dsCharts={}; // نقاط السحب المختارة (متعددة مثل مقارنة الأقسام)
@@ -4158,6 +4163,7 @@ function dsRender(){
   if(DS.rec.length||DS.prep.length){
     const SC=['F','D','C','U'], rec=DS.rec.filter(r=>inR(r.dd)), prep=DS.prep.filter(r=>inR(r.dd));
     const by=(a,k)=>{ const o={F:0,D:0,C:0,U:0}; a.forEach(r=>{ if(!k||r.k===k||(Array.isArray(k)&&k.includes(r.k))) o[r.s]++; }); return o; };
+    const wbSt=(a,st)=>by(a.filter(r=>r.k==='WB'&&r.st===st));
     const donOf=a=>{ const o={F:0,D:0,C:0,U:0}; a.forEach(r=>{ if(r.t!=='SO'&&r.t!=='OT') o[r.s]++; }); return o; };
     const donS=donOf(W);
     const on=s=>!allSites&&dsSites.has(s)?'ds-on':'';
@@ -4179,6 +4185,11 @@ function dsRender(){
       ${card('g','Apheresis PLATELETS',sel(by(rec,'APH')),sel(by(pRec,'APH')))}
     </div>
     <div class="kpis">
+      ${card('','WHOLE BLOOD مفصول',sel(wbSt(rec,'sep')),sel(wbSt(pRec,'sep')))}
+      ${card('n ds-bad','WHOLE BLOOD متلف قبل الفصل',sel(wbSt(rec,'disc')),sel(wbSt(pRec,'disc')))}
+      ${card('g','WHOLE BLOOD بانتظار الفصل',sel(wbSt(rec,'pend')),sel(wbSt(pRec,'pend')))}
+    </div>
+    <div class="kpis">
       ${card('a','إجمالي الوحدات المحضّرة',sel(P()),sel(PP()))}
       ${card('n','FRESH FROZEN PLASMA',sel(P('FFP')),sel(PP('FFP')))}
       ${card('g','PLATELETS',sel(P('PLT')),sel(PP('PLT')))}
@@ -4190,6 +4201,9 @@ function dsRender(){
       ${tr('المتبرعون — Wateen',donS,'ds-sec')}
       ${tr('Reception — الاستلام',Rc,'ds-tot')}
       ${tr('<span class="ds-en">WHOLE BLOOD</span>',by(rec,'WB'),'',1)}
+      ${tr('<span style="padding-right:18px">↳ مفصول</span>',wbSt(rec,'sep'),'',1)}
+      ${tr('<span style="padding-right:18px;color:var(--bad)">↳ متلف قبل الفصل</span>',wbSt(rec,'disc'),'',1)}
+      ${tr('<span style="padding-right:18px">↳ بانتظار الفصل</span>',wbSt(rec,'pend'),'',1)}
       ${tr('<span class="ds-en">Apheresis PLATELETS</span>',by(rec,'APH'),'',1)}
       ${tr('متبرع بلا استلام (الفرق)',diff,'',1)}
       ${tr('الوحدات المحضّرة',P(),'ds-tot')}
@@ -4200,7 +4214,7 @@ function dsRender(){
       ${tr('<span class="ds-en" style="padding-left:18px">B- Non Leuco-Reduced (E0429V00)</span>',P('RBCNLR'),'',1)}
       ${tr('<span class="ds-en">4- CRYOPRECIPITATE</span>',P('CRYO'),'',1)}
     </tbody></table></div>
-    <div class="hint">الاستلام والتحضير منسوبان لتاريخ التبرع ونقطة السحب عبر رقم الكيس في Wateen report. «غير مرتبطة» = وحدات تبرعها خارج فترة Wateen report المرفوع (مثل CRYO من بلازما قديمة) — تُحسب بتاريخ العملية وتدخل البطاقات عند اختيار كل النقاط فقط. المحضّر = منتجات عمليات الفصل (SEP/SEP2/SEPR/SEPC)، كل منتج لكل كيس مرة واحدة.</div></div>`;
+    <div class="hint">الاستلام والتحضير منسوبان لتاريخ التبرع ونقطة السحب عبر رقم الكيس في Wateen report. «غير مرتبطة» = وحدات تبرعها خارج فترة Wateen report المرفوع (مثل CRYO من بلازما قديمة) — تُحسب بتاريخ العملية وتدخل البطاقات عند اختيار كل النقاط فقط. المحضّر = منتجات عمليات الفصل (SEP/SEP2/SEPR/SEPC)، كل منتج لكل كيس مرة واحدة. <b>الدم الكامل المستلم = المفصول (= RBC Leuco-Reduced + Non Leuco-Reduced) + المتلف قبل الفصل (عملية DISC على WHOLE BLOOD) + بانتظار الفصل.</b></div></div>`;
   }
   // ===== 3) الصفائح: Pooling 5 days (Iso Group) و Treatment — يومي، بلا توزيع على نقاط السحب =====
   if(DS.pool.length||DS.tre.length){
