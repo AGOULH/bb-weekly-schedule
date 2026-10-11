@@ -513,7 +513,6 @@ body.dm-printing #dmSheet *{overflow:visible!important}
 table.rk tr.ds-tot td{background:#EEF3F8;font-weight:900;color:var(--navy)}
 table.rk tr.ds-sec td{background:#FFF6E0;font-weight:800}
 table.rk .ds-on,table.rk tr.ds-on td{background:var(--row-a);font-weight:800}
-table.ds-units td:first-child{text-align:right}
 .kpi.ds-bad{border-top-color:var(--bad)}.kpi.ds-bad .vl{color:var(--bad)}
 .ds-en{display:inline-block;direction:ltr;unicode-bidi:isolate;font-family:Arial}
 /* ===== PRINT ===== */
@@ -4166,9 +4165,7 @@ function dsRender(){
     const wbSt=(a,st)=>by(a.filter(r=>r.k==='WB'&&r.st===st));
     const donOf=a=>{ const o={F:0,D:0,C:0,U:0}; a.forEach(r=>{ if(r.t!=='SO'&&r.t!=='OT') o[r.s]++; }); return o; };
     const donS=donOf(W);
-    const on=s=>!allSites&&dsSites.has(s)?'ds-on':'';
-    const tr=(lb,o,cls='',sub)=>`<tr class="${cls}"><td class="nm" style="${sub?'padding-right:26px;font-weight:600':''}">${lb}</td>${SC.map(s=>`<td class="${on(s)}">${s==='U'&&!o.U?'—':fmtNum(o[s])}</td>`).join('')}<td><b>${fmtNum(SC.reduce((t,s)=>t+o[s],0))}</b></td></tr>`;
-    const P=k=>by(prep,k), Rc=by(rec), diff={F:donS.F-Rc.F,D:donS.D-Rc.D,C:donS.C-Rc.C,U:0};
+    const P=k=>by(prep,k), Rc=by(rec);
     const sel=o=>SC.reduce((t,s)=>t+(dsSites.has(s)||(allSites&&s==='U')?o[s]:0),0); // «غير مرتبطة» تدخل فقط عند اختيار كل النقاط
     // الفترة السابقة المماثلة (نفس عدد الأيام قبلها مباشرة) — فقط إن كانت داخل ما يغطيه الملف، وإلا «لا مقارنة»
     const len=Math.round((new Date(R.to)-new Date(R.from))/864e5)+1, pf=addDays(R.from,-len), pt=addDays(R.from,-1), hasPrev=pf>=DS.from;
@@ -4183,11 +4180,12 @@ function dsRender(){
       ${card('n','Reception — الاستلام',sel(Rc),sel(by(pRec)))}
       ${card('n','WHOLE BLOOD',sel(by(rec,'WB')),sel(by(pRec,'WB')))}
       ${card('g','Apheresis PLATELETS',sel(by(rec,'APH')),sel(by(pRec,'APH')))}
+      ${card('','متبرع بلا استلام',Math.max(0,sel(donS)-sel(Rc)),hasPrev?Math.max(0,sel(pDon)-sel(by(pRec))):0)}
     </div>
     <div class="kpis">
-      ${card('','WHOLE BLOOD مفصول',sel(wbSt(rec,'sep')),sel(wbSt(pRec,'sep')))}
-      ${card('n ds-bad','WHOLE BLOOD متلف قبل الفصل',sel(wbSt(rec,'disc')),sel(wbSt(pRec,'disc')))}
-      ${card('g','WHOLE BLOOD بانتظار الفصل',sel(wbSt(rec,'pend')),sel(wbSt(pRec,'pend')))}
+      ${card('','مفصول — WHOLE BLOOD',sel(wbSt(rec,'sep')),sel(wbSt(pRec,'sep')))}
+      ${card('n ds-bad','متلف قبل الفصل — WHOLE BLOOD',sel(wbSt(rec,'disc')),sel(wbSt(pRec,'disc')))}
+      ${card('g','بانتظار الفصل — WHOLE BLOOD',sel(wbSt(rec,'pend')),sel(wbSt(pRec,'pend')))}
     </div>
     <div class="kpis">
       ${card('a','إجمالي الوحدات المحضّرة',sel(P()),sel(PP()))}
@@ -4197,24 +4195,7 @@ function dsRender(){
       ${card('','RBC — Non Leuco-Reduced',sel(P('RBCNLR')),sel(PP('RBCNLR')))}
       ${card('a','CRYOPRECIPITATE',sel(P('CRYO')),sel(PP('CRYO')))}
     </div>
-    <div style="overflow-x:auto"><table class="rk ds-units"><thead><tr><th>البند</th><th>القسم</th><th>دمي</th><th>الحملات</th><th>غير مرتبطة</th><th>الإجمالي</th></tr></thead><tbody>
-      ${tr('المتبرعون — Wateen',donS,'ds-sec')}
-      ${tr('Reception — الاستلام',Rc,'ds-tot')}
-      ${tr('<span class="ds-en">WHOLE BLOOD</span>',by(rec,'WB'),'',1)}
-      ${tr('<span style="padding-right:18px">↳ مفصول</span>',wbSt(rec,'sep'),'',1)}
-      ${tr('<span style="padding-right:18px;color:var(--bad)">↳ متلف قبل الفصل</span>',wbSt(rec,'disc'),'',1)}
-      ${tr('<span style="padding-right:18px">↳ بانتظار الفصل</span>',wbSt(rec,'pend'),'',1)}
-      ${tr('<span class="ds-en">Apheresis PLATELETS</span>',by(rec,'APH'),'',1)}
-      ${tr('متبرع بلا استلام (الفرق)',diff,'',1)}
-      ${tr('الوحدات المحضّرة',P(),'ds-tot')}
-      ${tr('<span class="ds-en">1- FRESH FROZEN PLASMA</span>',P('FFP'),'',1)}
-      ${tr('<span class="ds-en">2- PLATELETS</span>',P('PLT'),'',1)}
-      ${tr('<span class="ds-en">3- Red blood cell</span>',P(['RBCLR','RBCNLR']),'',1)}
-      ${tr('<span class="ds-en" style="padding-left:18px">A- Leuco-Reduced (E0439V00)</span>',P('RBCLR'),'',1)}
-      ${tr('<span class="ds-en" style="padding-left:18px">B- Non Leuco-Reduced (E0429V00)</span>',P('RBCNLR'),'',1)}
-      ${tr('<span class="ds-en">4- CRYOPRECIPITATE</span>',P('CRYO'),'',1)}
-    </tbody></table></div>
-    <div class="hint">الاستلام والتحضير منسوبان لتاريخ التبرع ونقطة السحب عبر رقم الكيس في Wateen report. «غير مرتبطة» = وحدات تبرعها خارج فترة Wateen report المرفوع (مثل CRYO من بلازما قديمة) — تُحسب بتاريخ العملية وتدخل البطاقات عند اختيار كل النقاط فقط. المحضّر = منتجات عمليات الفصل (SEP/SEP2/SEPR/SEPC)، كل منتج لكل كيس مرة واحدة. <b>الدم الكامل المستلم = المفصول (= RBC Leuco-Reduced + Non Leuco-Reduced) + المتلف قبل الفصل (عملية DISC على WHOLE BLOOD) + بانتظار الفصل.</b></div></div>`;
+    <div class="hint">الاستلام والتحضير منسوبان لتاريخ التبرع ونقطة السحب عبر رقم الكيس في Wateen report. وحدات تبرعها خارج فترة Wateen report المرفوع (مثل CRYO من بلازما قديمة) تُحسب بتاريخ العملية وتدخل البطاقات عند اختيار كل النقاط فقط. التوزيع حسب النقطة عبر أزرار نقاط السحب أعلاه. المحضّر = منتجات عمليات الفصل (SEP/SEP2/SEPR/SEPC)، كل منتج لكل كيس مرة واحدة. <b>الدم الكامل المستلم = المفصول (= RBC Leuco-Reduced + Non Leuco-Reduced) + المتلف قبل الفصل (عملية DISC على WHOLE BLOOD) + بانتظار الفصل.</b></div></div>`;
   }
   // ===== 3) الصفائح: Pooling 5 days (Iso Group) و Treatment — يومي، بلا توزيع على نقاط السحب =====
   if(DS.pool.length||DS.tre.length){
