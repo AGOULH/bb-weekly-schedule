@@ -4223,9 +4223,6 @@ function dsRender(){
   if(DS.w.length){
     const nWB=cnt(don,r=>r.t==='WB'), nPLT=cnt(don,r=>r.t==='PLT'), nPLS=cnt(don,r=>r.t==='PLS'), nSO=cnt(Ws,r=>r.t==='SO');
     const nNeg=cnt(don,r=>r.neg), nSa=cnt(don,r=>r.sa), nF=cnt(don,r=>r.f);
-    const row=(lb,a,cls='')=>{ const d=a.filter(r=>r.t!=='SO'&&r.t!=='OT'), c=fn=>cnt(d,fn);
-      return `<tr class="${cls}"><td class="nm">${lb}</td><td><b>${fmtNum(d.length)}</b></td><td>${c(r=>r.t==='WB')}</td><td>${c(r=>r.t==='PLT')}</td><td>${c(r=>r.t==='PLS')}</td><td style="color:var(--muted)">${cnt(a,r=>r.t==='SO')}</td>
-      <td>${c(r=>r.sa)}</td><td>${c(r=>!r.sa)}</td><td>${c(r=>!r.f)}</td><td>${c(r=>r.f)}</td><td>${c(r=>r.neg)}</td><td>${pct(c(r=>r.neg),d.length)}</td></tr>`; };
     h+=`<div class="card"><h3>🩸 <span class="ds-en">1) Donors</span></h3>
     <div class="kpis">
       ${kpi('','إجمالي المتبرعين',fmtNum(don.length),days?`متوسط ${(don.length/days).toFixed(1)} يومياً (${days} يوم تبرع)`:'—','donors')}
@@ -4237,13 +4234,8 @@ function dsRender(){
       ${kpi('n','ذكر',fmtNum(don.length-nF),pct(don.length-nF,don.length),'male')}
       ${kpi('n','أنثى',fmtNum(nF),pct(nF,don.length),'female')}
       ${kpi('','Sample Only',fmtNum(nSO),'','sample')}
+      ${(()=>{ const all=cnt(W,r=>r.t!=='SO'&&r.t!=='OT'); return [['F','n'],['D',''],['C','a']].map(([x,c])=>{ const n=cnt(W,r=>r.s===x&&r.t!=='SO'&&r.t!=='OT'); return kpi(c,DS_SITES[x],fmtNum(n),pct(n,all),'donors'); }).join(''); })()}
     </div>
-    <div style="overflow-x:auto"><table class="rk"><thead><tr><th>نقطة السحب</th><th>المتبرعون</th><th>Whole blood</th><th>Plateletpheresis</th><th>Plasmapheresis</th><th>Sample Only*</th><th>سعودي</th><th>غير سعودي</th><th>ذكر</th><th>أنثى</th><th>Rh−</th><th>نسبة Rh−</th></tr></thead><tbody>
-      ${['F','D','C'].map(s=>row(DS_SITES[s],W.filter(r=>r.s===s),!allSites&&dsSites.has(s)?'ds-on':'')).join('')}
-      ${allSites?'':row('مجموع المختار',W.filter(r=>siteOk(r.s)),'ds-tot')}
-      ${row('الإجمالي',W,'ds-tot')}
-    </tbody></table></div>
-    <div class="hint">* Sample Only لا يُحتسب ضمن المتبرعين. المتبرعون = Whole blood + Plateletpheresis + Plasmapheresis.</div>
     <h3 style="margin-top:16px">📍 Donors by Site</h3>
     ${dsSplit(['F','D','C'].filter(x=>dsSites.has(x)).map(x=>({lb:DS_SITES[x],n:cnt(don,r=>r.s===x),col:DS_SITE_COL[x]})))}
     <h3 style="margin-top:16px">🩸 Blood Group</h3>
