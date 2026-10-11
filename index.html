@@ -4246,17 +4246,17 @@ function dsRender(){
       ${kpi('n','Whole blood',fmtNum(nWB),pct(nWB,don.length),'wb')}
       ${kpi('g','Plateletpheresis',fmtNum(nPLT),nPLS?`+ Plasmapheresis ${nPLS}`:pct(nPLT,don.length),'aph')}
       ${kpi('a','Rh Negative',fmtNum(nNeg),pct(nNeg,don.length)+' من المتبرعين','rhneg')}
-      ${kpi('','سعودي',fmtNum(nSa),pct(nSa,don.length),'saudi')}
-      ${kpi('','غير سعودي',fmtNum(don.length-nSa),pct(don.length-nSa,don.length),'globe')}
-      ${kpi('n','ذكر',fmtNum(don.length-nF),pct(don.length-nF,don.length),'male')}
-      ${kpi('n','أنثى',fmtNum(nF),pct(nF,don.length),'female')}
+      ${kpi('','Saudi',fmtNum(nSa),pct(nSa,don.length),'saudi')}
+      ${kpi('','Non-Saudi',fmtNum(don.length-nSa),pct(don.length-nSa,don.length),'globe')}
+      ${kpi('n','Male',fmtNum(don.length-nF),pct(don.length-nF,don.length),'male')}
+      ${kpi('n','Female',fmtNum(nF),pct(nF,don.length),'female')}
       ${kpi('','Sample Only',fmtNum(nSO),'','sample')}
       ${(()=>{ const all=cnt(W,r=>r.t!=='SO'&&r.t!=='OT'); return [['F','n'],['D',''],['C','a']].map(([x,c])=>{ const n=cnt(W,r=>r.s===x&&r.t!=='SO'&&r.t!=='OT'); return kpi(c,DS_SITES[x],fmtNum(n),pct(n,all),'donors'); }).join(''); })()}
     </div>
-    <h3 style="margin-top:16px">👥 الجنس × الجنسية</h3>
-    <div class="kpis">
-      ${[['ذكر سعودي',r=>!r.f&&r.sa,'n','male'],['ذكر غير سعودي',r=>!r.f&&!r.sa,'n','male'],['أنثى سعودية',r=>r.f&&r.sa,'a','female'],['أنثى غير سعودية',r=>r.f&&!r.sa,'a','female']]
-        .map(([lb,fn,c,ic])=>{ const n=cnt(don,fn), g=cnt(don,r=>!!r.f===(ic==='female')); return kpi(c,lb,fmtNum(n),`${pct(n,don.length)} من المتبرعين · ${pct(n,g)} من ${ic==='female'?'الإناث':'الذكور'}`,ic); }).join('')}
+    <h3 style="margin-top:16px">👥 <span class="ds-en">Gender × Nationality</span></h3>
+    <div class="kpis" dir="ltr">
+      ${[['Saudi Male',r=>!r.f&&r.sa,'n','male'],['Non-Saudi Male',r=>!r.f&&!r.sa,'n','male'],['Saudi Female',r=>r.f&&r.sa,'a','female'],['Non-Saudi Female',r=>r.f&&!r.sa,'a','female']]
+        .map(([lb,fn,c,ic])=>{ const n=cnt(don,fn), g=cnt(don,r=>!!r.f===(ic==='female')); return kpi(c,lb,fmtNum(n),`${pct(n,don.length)} of donors · ${pct(n,g)} of ${ic==='female'?'females':'males'}`,ic); }).join('')}
     </div>
     <h3 style="margin-top:16px">📍 Donors by Site</h3>
     ${dsSplit(['F','D','C'].filter(x=>dsSites.has(x)).map(x=>({lb:DS_SITES[x],n:cnt(don,r=>r.s===x),col:DS_SITE_COL[x]})))}
