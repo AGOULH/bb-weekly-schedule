@@ -513,6 +513,21 @@ body.dm-printing #dmSheet *{overflow:visible!important}
 table.rk tr.ds-tot td{background:#EEF3F8;font-weight:900;color:var(--navy)}
 table.rk tr.ds-sec td{background:#FFF6E0;font-weight:800}
 table.rk .ds-on,table.rk tr.ds-on td{background:var(--row-a);font-weight:800}
+.ds-abo{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:10px}
+.ds-abo .t{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 10px;text-align:center;box-shadow:var(--shadow-card)}
+.ds-abo .t.neg{background:#FFF8E8;border-color:#F3D9A0}
+.ds-abo .g{font:900 22px Arial;color:var(--navy);direction:ltr}.ds-abo .t.neg .g{color:var(--gold)}
+.ds-abo .n{font:800 17px Arial;color:var(--ink);margin-top:2px}.ds-abo .p{font-size:11px;color:var(--muted);font-family:Arial}
+.ds-abo .bar{margin-top:7px;min-width:0}.ds-abo .t.neg .bar i{background:var(--gold)}
+.ds-split{display:flex;height:36px;border-radius:10px;overflow:hidden;box-shadow:var(--shadow-card)}
+.ds-split span{display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:12.5px;white-space:nowrap;overflow:hidden}
+.ds-leg{display:flex;flex-wrap:wrap;gap:16px;margin-top:8px;font-size:12.5px;color:var(--muted)}
+.ds-leg i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-inline-end:6px;vertical-align:-1px}.ds-leg b{color:var(--ink);font-family:Arial}
+.ds-gauges{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.ds-gauge{background:#fff;border-radius:11px;padding:14px;box-shadow:var(--shadow-card);border-top:3px solid var(--teal)}
+.ds-gauge .lb{font-size:11.5px;color:var(--muted);font-weight:700}.ds-gauge .vl{font:900 27px Arial;color:var(--navy);margin:4px 0}
+.ds-gauge .vl small{font-size:15px;margin-inline-start:2px}.ds-gauge .bar{height:10px}.ds-gauge .sub{font-size:11.5px;color:var(--muted);margin-top:6px;font-weight:700}
+.ds-det{margin-top:14px}.ds-det summary{cursor:pointer;font-weight:800;color:var(--navy);font-size:13px;padding:6px 0}
 .kpi.ds-bad{border-top-color:var(--bad)}.kpi.ds-bad .vl{color:var(--bad)}
 .ds-en{display:inline-block;direction:ltr;unicode-bidi:isolate;font-family:Arial}
 /* ===== PRINT ===== */
@@ -4093,6 +4108,22 @@ function dsReportFor(f,t){
   const best=Object.values(REPORTS).filter(r=>r.dateFrom>=f&&r.dateTo<=t).sort((a,b)=>span(b)-span(a))[0];
   return best?{agg:best,src:'تقرير محفوظ',exact:best.dateFrom===f&&best.dateTo===t}:null;
 }
+// (2026-10-11، طلب حسن) مؤشرات بصرية بدل الرسوم البيانية: شريط توزيع النقاط، بطاقات الفصائل، شريط نسبة
+const DS_ABO=['O+','A+','B+','AB+','O-','A-','B-','AB-'], DS_SITE_COL={F:'#1B3A6B',D:'#0D7377',C:'#F0A500'};
+const dsAboKey=x=>{ x=String(x||'').trim(); const m=/^(AB|A|B|O)\s*(pos|neg|\+|-)$/i.exec(x); return m?m[1].toUpperCase()+(/^(pos|\+)$/i.test(m[2])?'+':'-'):'?'; };
+function dsAboTiles(counts){ // counts: {'O+':n,...,'?':n}
+  const tot=Object.values(counts).reduce((t,n)=>t+n,0), mx=Math.max(1,...DS_ABO.map(g=>counts[g]||0));
+  return `<div class="ds-abo">${DS_ABO.map(g=>{ const n=counts[g]||0;
+    return `<div class="t ${g.endsWith('-')?'neg':''}"><div class="g">${g}</div><div class="n">${fmtNum(n)}</div><div class="p">${tot?(n/tot*100).toFixed(1):0}%</div><div class="bar"><i style="width:${n/mx*100}%"></i></div></div>`; }).join('')}</div>
+    ${counts['?']?`<div class="hint">فصيلة غير محددة: ${fmtNum(counts['?'])}</div>`:''}`;
+}
+function dsSplit(parts){ // parts: [{lb,n,col}]
+  const tot=parts.reduce((t,p)=>t+p.n,0); if(!tot) return '';
+  return `<div class="ds-split">${parts.filter(p=>p.n).map(p=>{ const w=p.n/tot*100; return `<span style="flex:${p.n};background:${p.col}" title="${p.lb}: ${p.n}">${w>=12?`${p.lb}&nbsp;<bdi dir="ltr">${w.toFixed(0)}%</bdi>`:''}</span>`; }).join('')}</div>
+    <div class="ds-leg">${parts.map(p=>`<span><i style="background:${p.col}"></i>${p.lb} <b>${fmtNum(p.n)}</b> <bdi dir="ltr">(${(p.n/tot*100).toFixed(1)}%)</bdi></span>`).join('')}</div>`;
+}
+const dsGauge=(lb,n,of,sub)=>{ const w=of?Math.min(100,n/of*100):0;
+  return `<div class="ds-gauge"><div class="lb">${lb}</div><div class="vl">${of?w.toFixed(1):'—'}<small>%</small></div><div class="bar"><i style="width:${w}%"></i></div><div class="sub">${sub}</div></div>`; };
 function dsRender(){
   if(!DS) return;
   $$('#dsModeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===dsMode));
@@ -4134,10 +4165,12 @@ function dsRender(){
       ${row('الإجمالي',W,'ds-tot')}
     </tbody></table></div>
     <div class="hint">* Sample Only لا يُحتسب ضمن المتبرعين. المتبرعون = Whole blood + Plateletpheresis + Plasmapheresis.</div>
-    <div class="row" style="align-items:stretch;margin-top:12px">
-      <div style="flex:2;min-width:300px"><div class="chartbox"><canvas id="dsTrend"></canvas></div></div>
-      <div style="flex:1;min-width:240px"><div class="chartbox"><canvas id="dsAbo"></canvas></div></div>
-    </div></div>`;
+    <h3 style="margin-top:16px">📍 توزيع المتبرعين حسب نقطة السحب</h3>
+    ${dsSplit(['F','D','C'].filter(x=>dsSites.has(x)).map(x=>({lb:DS_SITES[x],n:cnt(don,r=>r.s===x),col:DS_SITE_COL[x]})))}
+    <h3 style="margin-top:16px">🩸 الفصائل</h3>
+    ${(()=>{ const c={}; don.forEach(r=>{ const k=dsAboKey(r.abo); c[k]=(c[k]||0)+1; }); return dsAboTiles(c); })()}
+    ${new Set(don.map(r=>r.d)).size>=3?`<h3 style="margin-top:16px">📈 الاتجاه</h3><div class="chartbox" style="height:230px"><canvas id="dsTrend"></canvas></div>`:''}
+    </div>`;
   }
   // ===== مؤشر من تقارير التبرعات =====
   const rep=dsReportFor(R.from,R.to);
@@ -4204,41 +4237,42 @@ function dsRender(){
     DS.tre.filter(r=>inR(r.d)).forEach(r=>{ g(r.d)[r.k==='POOL'?'tp':'ta']++; });
     const ds=Object.keys(day).sort(), T=ds.reduce((t,d)=>{ ['out','in','tp','ta'].forEach(k=>t[k]+=day[d][k]); return t; },{out:0,in:0,tp:0,ta:0});
     const wd=iso=>DS_DAY[new Date(iso+'T12:00:00').getDay()];
-    h+=`<div class="card"><h3>🟡 3) الصفائح — Pooling 5 days (Iso Group) و Treatment</h3>
+    const aboP={}; Object.entries(aboOut).forEach(([a,n])=>{ const k=dsAboKey(a); aboP[k]=(aboP[k]||0)+n; });
+    h+=`<div class="card"><h3>🟡 3) الصفائح — <span class="ds-en">Pooling 5 days (Iso Group) &amp; Treatment</span></h3>
     <div class="kpis">
-      ${kpi('','Pools محضّرة',fmtNum(T.out),ds.length?`متوسط ${(T.out/ds.length).toFixed(1)} يومياً`:'—')}
-      ${kpi('g','وحدات صفائح مدمجة',fmtNum(T.in),T.out?`${(T.in/T.out).toFixed(2)} وحدة لكل Pool`:'')}
-      ${kpi('n','Treatment — Pooled',fmtNum(T.tp),T.out?pct(T.tp,T.out)+' من الـPools':'')}
-      ${kpi('a','Treatment — Apheresis',fmtNum(T.ta),'')}
+      ${kpi('','المجمّعات المحضّرة (Pools)',fmtNum(T.out),ds.length>1?`متوسط ${(T.out/ds.length).toFixed(1)} يومياً · ${ds.length} يوم`:'')}
+      ${kpi('g','وحدات الصفائح المدمجة',fmtNum(T.in),T.out?`${(T.in/T.out).toFixed(1)} وحدة لكل Pool`:'')}
+      ${kpi('n','المعالَج — Pooled',fmtNum(T.tp),'')}
+      ${kpi('a','المعالَج — Apheresis',fmtNum(T.ta),'')}
     </div>
-    <div class="hint" style="margin-bottom:8px">فصائل الـPools: ${Object.entries(aboOut).sort((a,b)=>b[1]-a[1]).map(([a,n])=>`<b class="bidi-ltr">${dsEsc(a)}</b> ${n}`).join(' · ')||'—'}</div>
-    <div class="chartbox" style="height:260px"><canvas id="dsPool"></canvas></div>
-    <div style="overflow:auto;max-height:420px;margin-top:12px"><table class="rk"><thead><tr><th>التاريخ</th><th>اليوم</th><th>Pools</th><th>وحدات مدمجة</th><th>متوسط/Pool</th><th>Treatment Pooled</th><th>Treatment Apheresis</th></tr></thead><tbody>
-      ${ds.slice().reverse().map(d=>{const x=day[d];return `<tr><td class="bidi-ltr">${fmtDMY(d)}</td><td>${wd(d)}</td><td><b>${x.out}</b></td><td>${x.in}</td><td>${x.out?(x.in/x.out).toFixed(1):'—'}</td><td>${x.tp}</td><td>${x.ta}</td></tr>`}).join('')||'<tr><td colspan="7" class="empty">لا عمليات في الفترة</td></tr>'}
-      ${ds.length?`<tr class="ds-tot"><td colspan="2">الإجمالي</td><td>${T.out}</td><td>${T.in}</td><td>${T.out?(T.in/T.out).toFixed(2):'—'}</td><td>${T.tp}</td><td>${T.ta}</td></tr>`:''}
-    </tbody></table></div></div>`;
+    <div class="ds-gauges">
+      ${dsGauge('نسبة معالجة المجمّعات (Treatment ÷ Pools)',T.tp,T.out,`${fmtNum(T.tp)} من ${fmtNum(T.out)} Pool`)}
+      ${(()=>{ const neg=DS_ABO.filter(g=>g.endsWith('-')).reduce((t,g)=>t+(aboP[g]||0),0); return dsGauge('المجمّعات Rh Negative',neg,T.out,`${fmtNum(neg)} من ${fmtNum(T.out)} Pool`); })()}
+    </div>
+    <h3 style="margin-top:16px">🩸 فصائل المجمّعات</h3>
+    ${dsAboTiles(aboP)}
+    ${ds.length>=3?`<h3 style="margin-top:16px">📈 الاتجاه اليومي</h3><div class="chartbox" style="height:230px"><canvas id="dsPool"></canvas></div>`:''}
+    ${ds.length>1?`<details class="ds-det"><summary>📋 التفصيل اليومي (${ds.length} يوم)</summary><div style="overflow:auto;max-height:420px"><table class="rk"><thead><tr><th>التاريخ</th><th>اليوم</th><th>Pools</th><th>وحدات مدمجة</th><th>متوسط/Pool</th><th>Treatment Pooled</th><th>Treatment Apheresis</th></tr></thead><tbody>
+      ${ds.slice().reverse().map(d=>{const x=day[d];return `<tr><td class="bidi-ltr">${fmtDMY(d)}</td><td>${wd(d)}</td><td><b>${x.out}</b></td><td>${x.in}</td><td>${x.out?(x.in/x.out).toFixed(1):'—'}</td><td>${x.tp}</td><td>${x.ta}</td></tr>`}).join('')}
+    </tbody></table></div></details>`:''}
+    </div>`;
     poolData={ds,day};
   }
   $('#dashOut').innerHTML=h;
   // ===== الرسوم =====
+  const line=(lb,data,col)=>({label:lb,data,borderColor:col,backgroundColor:col+'22',fill:true,tension:.35,pointRadius:2,borderWidth:2.5});
+  const lineOpts={responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom',labels:{usePointStyle:true}}},scales:{y:{beginAtZero:true,grid:{color:'#EEF2F6'}},x:{grid:{display:false}}}};
   if($('#dsTrend')){
     const span=(new Date(R.to)-new Date(R.from))/864e5, weekly=span>45, key=d=>weekly?dmWeekStart(d):d;
-    const keys=[...new Set(W.map(r=>key(r.d)))].sort(), sites=['F','D','C'].filter(x=>dsSites.has(x)), col={F:'#1B3A6B',D:'#0D7377',C:'#F0A500'};
-    dsCharts.trend=new Chart($('#dsTrend'),{type:'bar',data:{labels:keys.map(k=>fmtDMY(k).slice(0,5)),
-      datasets:sites.map(s=>({label:DS_SITES[s],backgroundColor:col[s],borderRadius:3,
-        data:keys.map(k=>W.filter(r=>r.s===s&&r.t!=='SO'&&r.t!=='OT'&&key(r.d)===k).length)}))},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'},title:{display:true,text:weekly?'المتبرعون أسبوعياً':'المتبرعون يومياً'}},scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}}}});
-    const ab={}; don.forEach(r=>ab[r.abo]=(ab[r.abo]||0)+1); const abk=Object.keys(ab).sort((a,b)=>ab[b]-ab[a]);
-    dsCharts.abo=new Chart($('#dsAbo'),{type:'bar',data:{labels:abk,datasets:[{label:'المتبرعون',data:abk.map(k=>ab[k]),backgroundColor:abk.map(k=>/neg/i.test(k)?'#C8860A':'#0D7377'),borderRadius:5}]},
-      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},title:{display:true,text:'الفصائل'}},scales:{x:{beginAtZero:true}}}});
+    const keys=[...new Set(don.map(r=>key(r.d)))].sort();
+    dsCharts.trend=new Chart($('#dsTrend'),{type:'line',data:{labels:keys.map(k=>fmtDMY(k).slice(0,5)),
+      datasets:['F','D','C'].filter(x=>dsSites.has(x)).map(s=>line(DS_SITES[s],keys.map(k=>don.filter(r=>r.s===s&&key(r.d)===k).length),DS_SITE_COL[s]))},
+      options:{...lineOpts,plugins:{...lineOpts.plugins,title:{display:true,text:weekly?'المتبرعون أسبوعياً':'المتبرعون يومياً'}}}});
   }
   if(poolData&&$('#dsPool')){
     const {ds,day}=poolData;
-    dsCharts.pool=new Chart($('#dsPool'),{type:'bar',data:{labels:ds.map(d=>fmtDMY(d).slice(0,5)),datasets:[
-      {label:'Pools',data:ds.map(d=>day[d].out),backgroundColor:'#F0A500',borderRadius:3},
-      {label:'Treatment Pooled',data:ds.map(d=>day[d].tp),backgroundColor:'#0D7377',borderRadius:3},
-      {label:'Treatment Apheresis',data:ds.map(d=>day[d].ta),backgroundColor:'#1B3A6B',borderRadius:3}]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true}}}});
+    dsCharts.pool=new Chart($('#dsPool'),{type:'line',data:{labels:ds.map(d=>fmtDMY(d).slice(0,5)),datasets:[
+      line('Pools',ds.map(d=>day[d].out),'#F0A500'),line('Treatment Pooled',ds.map(d=>day[d].tp),'#0D7377'),line('Treatment Apheresis',ds.map(d=>day[d].ta),'#1B3A6B')]},options:lineOpts});
   }
 }
 
