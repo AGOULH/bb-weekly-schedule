@@ -494,6 +494,11 @@ body.dm-printing #dmSheet .sh-foot{padding:4px 8px;font-size:10px}
 body.dm-printing #dmSheet *{overflow:visible!important}
 @media print{ body.dm-printing #dmSheet{page-break-inside:avoid;break-inside:avoid} }
 
+/* صفحة المتبرعين والوحدات المحضّرة */
+table.rk tr.ds-tot td{background:#EEF3F8;font-weight:900;color:var(--navy)}
+table.rk tr.ds-sec td{background:#FFF6E0;font-weight:800}
+table.rk .ds-on,table.rk tr.ds-on td{background:var(--row-a);font-weight:800}
+table.ds-units td:first-child{text-align:right}
 /* ===== PRINT ===== */
 @media print{
   @page{size:A4 landscape;margin:10mm}
@@ -522,6 +527,7 @@ body.dm-printing #dmSheet *{overflow:visible!important}
     <button class="navbtn" data-pg="results"><span class="ic" aria-hidden="true">📝</span> إدخال النتائج</button>
     <button class="navbtn" data-pg="stats"><span class="ic" aria-hidden="true">📈</span> الإحصائيات والمقارنة</button>
     <button class="navbtn" data-pg="reports"><span class="ic" aria-hidden="true">📊</span> تقارير التبرعات</button>
+    <button class="navbtn" data-pg="dash"><span class="ic" aria-hidden="true">🧪</span> المتبرعون والوحدات المحضّرة</button>
     <button class="navbtn" data-pg="apheresis"><span class="ic" aria-hidden="true">🩸</span> جدول الصفائح</button>
     <button class="navbtn" data-pg="dammi"><span class="ic" aria-hidden="true">🏥</span> جدول مركز دمي</button>
     <button class="navbtn" data-pg="staff"><span class="ic" aria-hidden="true">👥</span> قائمة الموظفين</button>
@@ -676,6 +682,38 @@ body.dm-printing #dmSheet *{overflow:visible!important}
     <h3>🗂️ التقارير المحفوظة</h3>
     <div style="overflow-x:auto"><table class="rk"><thead><tr><th>الفترة</th><th>المتبرعون</th><th>المستبعد</th><th>معدّل أسباب السحب</th><th>نسبة الاستبعاد الإجمالية</th><th>تاريخ التوليد</th><th>إجراء</th></tr></thead><tbody id="reportArcBody"></tbody></table></div>
   </div>
+</section>
+
+<!-- ============ DASH (Wateen report + List of Operations) ============ -->
+<section class="page" id="pg-dash">
+  <div class="pghead noprint">
+    <div><h2 tabindex="-1">المتبرعون والوحدات المحضّرة</h2><p>ارفع Wateen report وList of Operations كما يُنزَّلان من النظام: لوحة المتبرعين (القسم/دمي/الحملات)، الوحدات المحضّرة، والصفائح (Pooling/Treatment)</p></div>
+  </div>
+  <div class="card noprint">
+    <h3>📥 رفع الملفات</h3>
+    <div class="row">
+      <div class="field"><label for="dsWateenFile">Wateen report</label><input type="file" class="inp" id="dsWateenFile" accept=".xls,.xlsx,.html,.htm"></div>
+      <div class="field"><label for="dsOpsFile">List of Operations</label><input type="file" class="inp" id="dsOpsFile" accept=".xls,.xlsx,.html,.htm"></div>
+      <button class="btn teal" id="dsLoadBtn">🔍 قراءة وتحليل</button>
+    </div>
+    <div class="hint">يمكن رفع أحد الملفين فقط. الربط بين الملفين برقم الكيس: الوحدات المستلمة والمحضّرة تُنسب لتاريخ التبرع ونقطة السحب من Wateen report؛ وحدة غير موجودة فيه (تبرع خارج فترة الملف) تُحسب بتاريخ العملية تحت «غير مرتبطة». الملفات تُقرأ في المتصفح فقط ولا تُحفظ.</div>
+    <div id="dsLog" class="hint"></div>
+    <div class="row" id="dsFilter" style="display:none;margin-top:12px;align-items:flex-end">
+      <div class="seg" id="dsModeSeg" role="tablist" aria-label="الفترة الزمنية">
+        <button data-m="all" class="on">كامل الملف</button><button data-m="week">أسبوعي</button><button data-m="period">فترة محددة</button><button data-m="year">سنوي</button>
+      </div>
+      <div class="field" id="dsWeekCtl" style="display:none"><label for="dsWeek">الأسبوع</label><select class="inp" id="dsWeek" style="min-width:230px"></select></div>
+      <div class="row" id="dsPeriodCtl" style="display:none">
+        <div class="field"><label for="dsFrom">من</label><input type="date" class="inp" id="dsFrom"></div>
+        <div class="field"><label for="dsTo">إلى</label><input type="date" class="inp" id="dsTo"></div>
+      </div>
+      <div class="field" id="dsYearCtl" style="display:none"><label for="dsYear">السنة</label><select class="inp" id="dsYear" style="min-width:110px"></select></div>
+      <div class="seg" id="dsSiteSeg" role="tablist" aria-label="نقطة السحب">
+        <button data-s="all" class="on">الكل</button><button data-s="F">القسم</button><button data-s="D">دمي</button><button data-s="C">الحملات</button>
+      </div>
+    </div>
+  </div>
+  <div id="dashOut"></div>
 </section>
 
 <!-- ============ APHERESIS ============ -->
@@ -3911,6 +3949,259 @@ $('#dmPrint').onclick=()=>{
   dmFitPrint(); window.print();
   setTimeout(()=>document.title=o,700); // الإرجاع من dm-printing يتم عبر afterprint (بعض متصفحات الجوال لا توقف التنفيذ أثناء الطباعة)
 };
+
+/* ============ المتبرعون والوحدات المحضّرة (Wateen report + List of Operations) — طلب حسن 2026-10-11 ============ */
+// صفحة مستقلة: الملفات تُرفع كل مرة وتُحلَّل في الجلسة فقط (لا تُخزَّن). نقاط السحب: 2001F = القسم، 2001D = دمي، أي كود آخر = الحملات
+const DS_SITES={F:'القسم',D:'دمي',C:'الحملات'}, DS_SITE_CP={F:'2001F',D:'2001D',C:'OTHER'};
+const DS_DAY=['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+const dsSiteOf=cp=>{ cp=String(cp||'').trim().toUpperCase(); return cp==='2001F'?'F':cp==='2001D'?'D':'C'; };
+const dsEsc=x=>String(x??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const dsDate=x=>parseMonDate(x)||parseSlashDate(x);
+// List of Operations يتجاوز 25MB — DOMParser ثقيل عليه، فيُقرأ جدول HTML بتعبيرات نمطية مباشرة؛ xls/xlsx حقيقي → fileToRows.
+// الصف ينتهي عند </tr> أو بداية صف/نهاية جدول — جدول معايير الملف قبل الرأس لا يغلق آخر صف فيه
+async function dsFileRows(file){
+  const head=(await file.slice(0,600).text()).replace(/^\uFEFF/,'').trimStart();
+  if(!head.startsWith('<')) return fileToRows(file);
+  const text=await file.text(), out=[], trRe=/<tr(?:\s[^>]*)?>([\s\S]*?)(?=<\/tr>|<tr[\s>]|<\/table>)/gi, tdRe=/<t[dh](?:\s[^>]*)?>([\s\S]*?)<\/t[dh]>/gi;
+  const clean=x=>x.replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/\s+/g,' ').trim();
+  let m,c; while((m=trRe.exec(text))){ const r=[]; tdRe.lastIndex=0; while((c=tdRe.exec(m[1]))) r.push(clean(c[1])); out.push(r); }
+  return out;
+}
+function dsHeader(rows,keys){
+  const n=x=>String(x).toLowerCase().replace(/\s+/g,' ').trim();
+  const hi=rows.findIndex(r=>keys.every(k=>r.some(c=>n(c).startsWith(k)))); if(hi<0) return null;
+  const h=rows[hi].map(n); return {hi,idx:k=>h.findIndex(c=>c.startsWith(k))};
+}
+function dsParseWateen(rows){
+  const H=dsHeader(rows,['donation type','donation date','collection point']); if(!H) return null;
+  const [iT,iD,iCP,iN,iG,iB,iU]=['donation type','donation date','collection point','nationality','gender','blood group','رقم كيس الدم'].map(H.idx);
+  const TY={'whole blood':'WB','plateletpheresis':'PLT','plasmapheresis':'PLS','sample only':'SO'}, out=[];
+  for(let i=H.hi+1;i<rows.length;i++){
+    const c=rows[i], d=dsDate(String(c[iD]||'').trim()); if(!d) continue;
+    const bg=String(c[iB]||'').trim();
+    out.push({d,s:dsSiteOf(c[iCP]),t:TY[String(c[iT]||'').trim().toLowerCase()]||'OT',
+      sa:String(c[iN]||'').trim().toUpperCase()==='SAUDI ARABIA', f:/^f/i.test(String(c[iG]||'').trim()),
+      neg:/neg/i.test(bg), abo:bg||'—', u:iU<0?'':String(c[iU]||'').trim()});
+  }
+  return out;
+}
+// من List of Operations نحتاج: Reception (REC) — الاستلام؛ عمليات الفصل SEP/SEP2/SEPR/SEPC — المنتجات المحضّرة (المدخل WHOLE BLOOD يُتجاهل)؛
+// Pooling 5 days (PO5D)؛ Treatment (TRE). كل وحدة/منتج يُحتسب مرة واحدة (رقم الكيس + المنتج)
+function dsPrepKind(code,desc){
+  if(desc==='FRESH FROZEN PLASMA') return 'FFP';
+  if(desc==='PLATELETS') return 'PLT';
+  if(desc==='CRYOPRECIPITATE') return 'CRYO';
+  if(code==='E0429V00'||/NON LEUCO/.test(desc)) return 'RBCNLR';
+  if(desc==='RED BLOOD CELLS') return 'RBCLR'; // E0439V00 Leuco-Reduced
+  return null;
+}
+function dsParseOps(rows){
+  const H=dsHeader(rows,['operation code','operation date','sample number','product code']); if(!H) return null;
+  const [iC,iD,iU,iP,iDs,iA]=['operation code','operation date','sample number','product code','product description','aborh'].map(H.idx);
+  const rec=[],prep=[],pool=[],tre=[],seen=new Set(), once=k=>!seen.has(k)&&seen.add(k);
+  for(let i=H.hi+1;i<rows.length;i++){
+    const c=rows[i], op=String(c[iC]||'').trim().toUpperCase(), d=dsDate(String(c[iD]||'').trim()); if(!d) continue;
+    const u=String(c[iU]||'').trim(), p=String(c[iP]||'').trim().toUpperCase(), desc=String(c[iDs]||'').trim().toUpperCase();
+    if(op==='REC'){ if(once('R'+u)) rec.push({u,d,k:/APHERESIS/.test(desc)?'APH':'WB'}); }
+    else if(/^SEP/.test(op)){ const k=dsPrepKind(p,desc); if(k&&once('P'+u+k)) prep.push({u,d,k}); }
+    else if(op==='PO5D') pool.push({d,k:/POOLED/.test(desc)?'out':'in',a:String(c[iA]||'').trim()||'—'});
+    else if(op==='TRE'){ const k=/POOLED/.test(desc)?'POOL':/APHERESIS/.test(desc)?'APH':null; if(k&&once('T'+u+k)) tre.push({d,k}); }
+  }
+  return {rec,prep,pool,tre};
+}
+let DS=null, dsMode='all', dsSite='all', dsCharts={};
+$('#dsLoadBtn').onclick=async()=>{
+  const fW=$('#dsWateenFile').files[0], fO=$('#dsOpsFile').files[0];
+  if(!fW&&!fO){ toast('اختر ملفاً واحداً على الأقل'); return; }
+  const btn=$('#dsLoadBtn'); btn.disabled=true; $('#dsLog').textContent='⏳ جاري قراءة الملفات…';
+  try{
+    const errs=[]; let w=[], ops={rec:[],prep:[],pool:[],tre:[]};
+    if(fW){ const r=dsParseWateen(await dsFileRows(fW)); if(r) w=r; else errs.push('تنسيق Wateen report غير معروف'); }
+    if(fO){ const r=dsParseOps(await dsFileRows(fO)); if(r) ops=r; else errs.push('تنسيق List of Operations غير معروف'); }
+    // الربط برقم الكيس: تاريخ التبرع ونقطة السحب من Wateen؛ غير الموجود فيه = غير مرتبط (U) بتاريخ العملية
+    const um={}; w.forEach(r=>{ if(r.u) um[r.u]=r; });
+    let unl=0; [...ops.rec,...ops.prep].forEach(r=>{ const x=um[r.u]; r.dd=x?x.d:r.d; r.s=x?x.s:'U'; if(!x) unl++; });
+    const dates=[...w.map(r=>r.d),...ops.rec.map(r=>r.dd),...ops.prep.map(r=>r.dd),...ops.pool.map(r=>r.d),...ops.tre.map(r=>r.d)].sort();
+    if(!dates.length){ $('#dsLog').innerHTML=errs.join('<br>')||'لا توجد سجلات صالحة'; toast('لا توجد سجلات صالحة'); return; }
+    DS={w,...ops,from:dates[0],to:dates[dates.length-1]}; dsMode='all';
+    $('#dsLog').innerHTML=(errs.length?errs.join('<br>')+'<br>':'')+`تمت قراءة ${fmtNum(w.length)} سجل تبرع و${fmtNum(ops.rec.length)} استلام و${fmtNum(ops.prep.length)} منتج محضّر`
+      +`${unl?` (${fmtNum(unl)} وحدة غير موجودة في Wateen report — تُحسب بتاريخ العملية تحت «غير مرتبطة»)`:''} — الفترة <span class="bidi-ltr">${fmtLbl(DS.from,DS.to)}</span>`;
+    dsFillFilter(); toast('تم التحليل ✓');
+  }catch(e){ console.error(e); $('#dsLog').textContent='تعذّرت قراءة الملفات: '+e.message; }
+  finally{ btn.disabled=false; }
+};
+function dsFillFilter(){
+  $('#dsFilter').style.display='flex';
+  const wks=[]; for(let s=dmWeekStart(DS.from); s<=DS.to; s=addDays(s,7)) wks.push(s);
+  $('#dsWeek').innerHTML=wks.reverse().map(s=>`<option value="${s}">${fmtLbl(s,addDays(s,6))}</option>`).join('');
+  const ys=[]; for(let y=+DS.from.slice(0,4); y<=+DS.to.slice(0,4); y++) ys.push(y);
+  $('#dsYear').innerHTML=ys.reverse().map(y=>`<option>${y}</option>`).join('');
+  $('#dsFrom').value=DS.from; $('#dsTo').value=DS.to;
+  dsRender();
+}
+function dsRange(){
+  let r={from:DS.from,to:DS.to};
+  if(dsMode==='week'){ const s=$('#dsWeek').value; r={from:s,to:addDays(s,6)}; }
+  else if(dsMode==='period'){ let f=$('#dsFrom').value, t=$('#dsTo').value; if(f&&t){ if(f>t) [f,t]=[t,f]; r={from:f,to:t}; } }
+  else if(dsMode==='year'){ const y=$('#dsYear').value; r={from:`${y}-01-01`,to:`${y}-12-31`}; }
+  if(r.from<DS.from) r.from=DS.from; if(r.to>DS.to) r.to=DS.to; // العنوان = ما يغطيه الملف فعلاً
+  return r;
+}
+$('#dsModeSeg').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; dsMode=b.dataset.m; dsRender(); };
+$('#dsSiteSeg').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; dsSite=b.dataset.s; dsRender(); };
+['#dsWeek','#dsFrom','#dsTo','#dsYear'].forEach(x=>$(x).onchange=()=>dsRender());
+// مؤشر الأكثر سحباً والأكياس المتلفة من «تقارير التبرعات»: ملفات تلك الصفحة المرفوعة في الجلسة (فلترة دقيقة بالفترة)،
+// وإلا أكبر تقرير محفوظ يقع بالكامل داخل الفترة (لا يُستخدم تقرير أوسع منها — سنة كاملة لعرض أسبوع أرقام مضلّلة)
+function dsReportFor(f,t){
+  if(REP_RAW&&REP_RAW.from<=t&&REP_RAW.to>=f){
+    const r={from:f<REP_RAW.from?REP_RAW.from:f,to:t>REP_RAW.to?REP_RAW.to:t}, a=aggregateReport(REP_RAW.don,REP_RAW.dis,r);
+    if(a) return {agg:a,src:'ملفات صفحة تقارير التبرعات المرفوعة في هذه الجلسة',exact:r.from===f&&r.to===t};
+  }
+  const span=r=>new Date(r.dateTo)-new Date(r.dateFrom);
+  const best=Object.values(REPORTS).filter(r=>r.dateFrom>=f&&r.dateTo<=t).sort((a,b)=>span(b)-span(a))[0];
+  return best?{agg:best,src:'تقرير محفوظ',exact:best.dateFrom===f&&best.dateTo===t}:null;
+}
+function dsRender(){
+  if(!DS) return;
+  $$('#dsModeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===dsMode));
+  $$('#dsSiteSeg button').forEach(b=>b.classList.toggle('on',b.dataset.s===dsSite));
+  $('#dsWeekCtl').style.display=dsMode==='week'?'':'none';
+  $('#dsPeriodCtl').style.display=dsMode==='period'?'flex':'none';
+  $('#dsYearCtl').style.display=dsMode==='year'?'':'none';
+  Object.values(dsCharts).forEach(c=>c.destroy()); dsCharts={};
+  let poolData=null;
+  const R=dsRange(), inR=d=>d>=R.from&&d<=R.to, siteOk=s=>dsSite==='all'||s===dsSite;
+  const siteLbl=dsSite==='all'?'كل النقاط':DS_SITES[dsSite], pct=(n,t)=>t?(n/t*100).toFixed(1)+'%':'—';
+  const kpi=(cls,lb,vl,dt)=>`<div class="kpi ${cls}"><div class="lb">${lb}</div><div class="vl">${vl}</div><div class="dt flat">${dt}</div></div>`;
+  const W=DS.w.filter(r=>inR(r.d)), Ws=W.filter(r=>siteOk(r.s)), don=Ws.filter(r=>r.t!=='SO'&&r.t!=='OT');
+  const cnt=(a,fn)=>a.reduce((n,r)=>n+(fn(r)?1:0),0);
+  const days=new Set(don.map(r=>r.d)).size;
+  let h=`<div class="alert info">الفترة: <b class="bidi-ltr">${fmtLbl(R.from,R.to)}</b> — نقطة السحب: <b>${siteLbl}</b></div>`;
+  // ===== ١) المتبرعون =====
+  if(DS.w.length){
+    const nWB=cnt(don,r=>r.t==='WB'), nPLT=cnt(don,r=>r.t==='PLT'), nPLS=cnt(don,r=>r.t==='PLS'), nSO=cnt(Ws,r=>r.t==='SO');
+    const nNeg=cnt(don,r=>r.neg), nSa=cnt(don,r=>r.sa), nF=cnt(don,r=>r.f);
+    const row=(lb,a,cls='')=>{ const d=a.filter(r=>r.t!=='SO'&&r.t!=='OT'), c=fn=>cnt(d,fn);
+      return `<tr class="${cls}"><td class="nm">${lb}</td><td><b>${fmtNum(d.length)}</b></td><td>${c(r=>r.t==='WB')}</td><td>${c(r=>r.t==='PLT')}</td><td>${c(r=>r.t==='PLS')}</td><td style="color:var(--muted)">${cnt(a,r=>r.t==='SO')}</td>
+      <td>${c(r=>r.sa)}</td><td>${c(r=>!r.sa)}</td><td>${c(r=>!r.f)}</td><td>${c(r=>r.f)}</td><td>${c(r=>r.neg)}</td><td>${pct(c(r=>r.neg),d.length)}</td></tr>`; };
+    h+=`<div class="card"><h3>🩸 ١) المتبرعون — Wateen report</h3>
+    <div class="kpis">
+      ${kpi('','إجمالي المتبرعين',fmtNum(don.length),days?`متوسط ${(don.length/days).toFixed(1)} يومياً (${days} يوم تبرع)`:'—')}
+      ${kpi('n','Whole blood',fmtNum(nWB),pct(nWB,don.length))}
+      ${kpi('g','Plateletpheresis',fmtNum(nPLT),nPLS?`+ Plasmapheresis ${nPLS}`:pct(nPLT,don.length))}
+      ${kpi('a','Rh Negative',fmtNum(nNeg),pct(nNeg,don.length)+' من المتبرعين')}
+      ${kpi('','سعودي',fmtNum(nSa),pct(nSa,don.length))}
+      ${kpi('','غير سعودي',fmtNum(don.length-nSa),pct(don.length-nSa,don.length))}
+      ${kpi('n','ذكر',fmtNum(don.length-nF),pct(don.length-nF,don.length))}
+      ${kpi('n','أنثى',fmtNum(nF),pct(nF,don.length))}
+      ${kpi('','Sample Only',fmtNum(nSO),'لا يُحتسب ضمن المتبرعين')}
+    </div>
+    <div style="overflow-x:auto"><table class="rk"><thead><tr><th>نقطة السحب</th><th>المتبرعون</th><th>Whole blood</th><th>Plateletpheresis</th><th>Plasmapheresis</th><th>Sample Only*</th><th>سعودي</th><th>غير سعودي</th><th>ذكر</th><th>أنثى</th><th>Rh−</th><th>نسبة Rh−</th></tr></thead><tbody>
+      ${['F','D','C'].map(s=>row(DS_SITES[s],W.filter(r=>r.s===s),dsSite===s?'ds-on':'')).join('')}
+      ${row('الإجمالي',W,'ds-tot')}
+    </tbody></table></div>
+    <div class="hint">* Sample Only لا يُحتسب ضمن المتبرعين. المتبرعون = Whole blood + Plateletpheresis + Plasmapheresis.</div>
+    <div class="row" style="align-items:stretch;margin-top:12px">
+      <div style="flex:2;min-width:300px"><div class="chartbox"><canvas id="dsTrend"></canvas></div></div>
+      <div style="flex:1;min-width:240px"><div class="chartbox"><canvas id="dsAbo"></canvas></div></div>
+    </div></div>`;
+  }
+  // ===== مؤشر من تقارير التبرعات =====
+  const rep=dsReportFor(R.from,R.to);
+  if(rep){
+    const d=reportDerive(rep.agg), sc=DS_SITE_CP[dsSite], bySite=dsSite!=='all';
+    const tracked=p=>TRACKED_DISCARD_CODES.reduce((t,c)=>t+(p.byReason[c]||0),0);
+    const list=d.staffList.map(p=>{ const col=bySite?(p.bySite[sc]||0):p.collected, dis=bySite?(p.drawBySite?.[sc]||0):tracked(p);
+      return {name:p.name,col,dis,rate:col?dis/col*100:0}; }).filter(p=>p.col>0||p.dis>0);
+    const top=[...list].sort((a,b)=>b.col-a.col).slice(0,10), topDis=list.filter(p=>p.dis>0).sort((a,b)=>b.dis-a.dis||b.rate-a.rate).slice(0,10);
+    const totCol=list.reduce((t,p)=>t+p.col,0), totDis=list.reduce((t,p)=>t+p.dis,0), mx=top[0]?.col||1;
+    const tb=(rows,cols)=>`<table class="rk"><thead><tr><th>#</th><th>الموظف</th>${cols.map(c=>`<th>${c[0]}</th>`).join('')}</tr></thead><tbody>${rows.length?rows.map((p,i)=>`<tr><td>${i<3?['🥇','🥈','🥉'][i]:i+1}</td><td class="nm">${dsEsc(p.name)}</td>${cols.map(c=>`<td>${c[1](p)}</td>`).join('')}</tr>`).join(''):'<tr><td colspan="9" class="empty">لا بيانات</td></tr>'}</tbody></table>`;
+    h+=`<div class="card"><h3>🏅 الأكثر سحباً والأكياس المتلفة — من تقارير التبرعات</h3>
+      <div class="hint" style="margin:-6px 0 10px">المصدر: ${rep.src} <b class="bidi-ltr">${rep.agg.label}</b>${rep.exact?'':' — ⚠️ يغطي جزءاً من الفترة المختارة فقط؛ للمطابقة الكاملة ارفع ملفَي List of donations وDiscarded products في صفحة «تقارير التبرعات» ثم عُد هنا'}${bySite?` — نقطة السحب: ${siteLbl}`:''}. الأكياس المتلفة = أسباب السحب الستة (${TRACKED_DISCARD_CODES.join('، ')}) منسوبة لمن سحب الكيس.</div>
+      <div class="kpis">${kpi('','الوحدات المسحوبة',fmtNum(totCol),`${list.filter(p=>p.col>0).length} موظفاً`)}${kpi('a','الأكياس المتلفة (أسباب السحب)',fmtNum(totDis),pct(totDis,totCol)+' من المسحوب')}${bySite?'':kpi('n','إجمالي المستبعد (كل الأسباب)',fmtNum(rep.agg.totalDiscarded),'كل المنتجات الحمراء')}</div>
+      <div class="row" style="align-items:flex-start">
+        <div style="flex:1;min-width:300px;overflow-x:auto"><h3>🩸 الأكثر سحباً</h3>${tb(top,[['المسحوب',p=>`<b>${p.col}</b>`],['',p=>`<div class="bar"><i style="width:${p.col/mx*100}%"></i></div>`],['المتلف',p=>p.dis]])}</div>
+        <div style="flex:1;min-width:300px;overflow-x:auto"><h3>🗑️ الأكثر أكياساً متلفة</h3>${tb(topDis,[['المتلف',p=>`<b>${p.dis}</b>`],['المسحوب',p=>p.col],['المعدّل',p=>p.col?p.rate.toFixed(1)+'%':'—']])}</div>
+      </div></div>`;
+  } else h+=`<div class="card"><h3>🏅 الأكثر سحباً والأكياس المتلفة</h3><div class="empty">لا يوجد تقرير تبرعات محفوظ داخل هذه الفترة — ارفع ملفَي List of donations وDiscarded products في صفحة «تقارير التبرعات» (تُفلتر هنا تلقائياً لأي أسبوع/فترة طوال الجلسة).</div></div>`;
+  // ===== ٢) الوحدات المستلمة والمحضّرة =====
+  if(DS.rec.length||DS.prep.length){
+    const SC=['F','D','C','U'], rec=DS.rec.filter(r=>inR(r.dd)), prep=DS.prep.filter(r=>inR(r.dd));
+    const by=(a,k)=>{ const o={F:0,D:0,C:0,U:0}; a.forEach(r=>{ if(!k||r.k===k||(Array.isArray(k)&&k.includes(r.k))) o[r.s]++; }); return o; };
+    const donS={F:0,D:0,C:0,U:0}; W.forEach(r=>{ if(r.t!=='SO'&&r.t!=='OT') donS[r.s]++; });
+    const tr=(lb,o,cls='',sub)=>`<tr class="${cls}"><td class="nm" style="${sub?'padding-right:26px;font-weight:600':''}">${lb}</td>${SC.map(s=>`<td class="${dsSite===s?'ds-on':''}">${s==='U'&&!o.U?'—':fmtNum(o[s])}</td>`).join('')}<td><b>${fmtNum(SC.reduce((t,s)=>t+o[s],0))}</b></td></tr>`;
+    const P=k=>by(prep,k), Rc=by(rec), diff={F:donS.F-Rc.F,D:donS.D-Rc.D,C:donS.C-Rc.C,U:0};
+    const sel=o=>dsSite==='all'?SC.reduce((t,s)=>t+o[s],0):o[dsSite];
+    const wbRec=sel(by(rec,'WB'));
+    h+=`<div class="card"><h3>🧪 ٢) الوحدات المستلمة والمحضّرة — List of Operations</h3>
+    <div class="kpis">
+      ${kpi('','Reception',fmtNum(sel(Rc)),`من ${fmtNum(sel(donS))} متبرع`)}
+      ${kpi('n','FRESH FROZEN PLASMA',fmtNum(sel(P('FFP'))),wbRec?`${(sel(P('FFP'))/wbRec*100).toFixed(0)}% من WB المستلم`:'')}
+      ${kpi('g','PLATELETS',fmtNum(sel(P('PLT'))),wbRec?`${(sel(P('PLT'))/wbRec*100).toFixed(0)}% من WB المستلم`:'')}
+      ${kpi('a','Red blood cell',fmtNum(sel(P(['RBCLR','RBCNLR']))),`LR ${fmtNum(sel(P('RBCLR')))} · Non-LR ${fmtNum(sel(P('RBCNLR')))}`)}
+      ${kpi('','CRYOPRECIPITATE',fmtNum(sel(P('CRYO'))),'')}
+    </div>
+    <div style="overflow-x:auto"><table class="rk ds-units"><thead><tr><th>البند</th><th>القسم</th><th>دمي</th><th>الحملات</th><th>غير مرتبطة</th><th>الإجمالي</th></tr></thead><tbody>
+      ${tr('المتبرعون (Wateen)',donS,'ds-sec')}
+      ${tr('Reception — الاستلام',Rc,'ds-tot')}
+      ${tr('WHOLE BLOOD',by(rec,'WB'),'',1)}
+      ${tr('Apheresis PLATELETS',by(rec,'APH'),'',1)}
+      ${tr('متبرع بلا استلام (الفرق)',diff,'',1)}
+      ${tr('الوحدات المحضّرة',P(),'ds-tot')}
+      ${tr('١- FRESH FROZEN PLASMA',P('FFP'),'',1)}
+      ${tr('٢- PLATELETS',P('PLT'),'',1)}
+      ${tr('٣- Red blood cell',P(['RBCLR','RBCNLR']),'',1)}
+      ${tr('&nbsp;&nbsp;&nbsp;A- Leuco-Reduced <span class="bidi-ltr">E0439V00</span>',P('RBCLR'),'',1)}
+      ${tr('&nbsp;&nbsp;&nbsp;B- Non Leuco-Reduced <span class="bidi-ltr">E0429V00</span>',P('RBCNLR'),'',1)}
+      ${tr('٤- CRYOPRECIPITATE',P('CRYO'),'',1)}
+    </tbody></table></div>
+    <div class="hint">الاستلام والتحضير منسوبان لتاريخ التبرع ونقطة السحب عبر رقم الكيس في Wateen report. «غير مرتبطة» = وحدات تبرعها خارج فترة Wateen report المرفوع (مثل CRYO من بلازما قديمة) — تُحسب بتاريخ العملية. المحضّر = منتجات عمليات الفصل (SEP/SEP2/SEPR/SEPC)، كل منتج لكل كيس مرة واحدة.</div></div>`;
+  }
+  // ===== ٣) الصفائح: Pooling 5 days (Iso Group) و Treatment — يومي، بلا توزيع على نقاط السحب =====
+  if(DS.pool.length||DS.tre.length){
+    const day={}, g=d=>day[d]=day[d]||{out:0,in:0,tp:0,ta:0}, aboOut={};
+    DS.pool.filter(r=>inR(r.d)).forEach(r=>{ g(r.d)[r.k]++; if(r.k==='out') aboOut[r.a]=(aboOut[r.a]||0)+1; });
+    DS.tre.filter(r=>inR(r.d)).forEach(r=>{ g(r.d)[r.k==='POOL'?'tp':'ta']++; });
+    const ds=Object.keys(day).sort(), T=ds.reduce((t,d)=>{ ['out','in','tp','ta'].forEach(k=>t[k]+=day[d][k]); return t; },{out:0,in:0,tp:0,ta:0});
+    const wd=iso=>DS_DAY[new Date(iso+'T12:00:00').getDay()];
+    h+=`<div class="card"><h3>🟡 ٣) الصفائح — Pooling 5 days (Iso Group) و Treatment</h3>
+    <div class="kpis">
+      ${kpi('','Pools محضّرة',fmtNum(T.out),ds.length?`متوسط ${(T.out/ds.length).toFixed(1)} يومياً`:'—')}
+      ${kpi('g','وحدات صفائح مدمجة',fmtNum(T.in),T.out?`${(T.in/T.out).toFixed(2)} وحدة لكل Pool`:'')}
+      ${kpi('n','Treatment — Pooled',fmtNum(T.tp),T.out?pct(T.tp,T.out)+' من الـPools':'')}
+      ${kpi('a','Treatment — Apheresis',fmtNum(T.ta),'')}
+    </div>
+    <div class="hint" style="margin-bottom:8px">فصائل الـPools: ${Object.entries(aboOut).sort((a,b)=>b[1]-a[1]).map(([a,n])=>`<b class="bidi-ltr">${dsEsc(a)}</b> ${n}`).join(' · ')||'—'}</div>
+    <div class="chartbox" style="height:260px"><canvas id="dsPool"></canvas></div>
+    <div style="overflow:auto;max-height:420px;margin-top:12px"><table class="rk"><thead><tr><th>التاريخ</th><th>اليوم</th><th>Pools</th><th>وحدات مدمجة</th><th>متوسط/Pool</th><th>Treatment Pooled</th><th>Treatment Apheresis</th></tr></thead><tbody>
+      ${ds.slice().reverse().map(d=>{const x=day[d];return `<tr><td class="bidi-ltr">${fmtDMY(d)}</td><td>${wd(d)}</td><td><b>${x.out}</b></td><td>${x.in}</td><td>${x.out?(x.in/x.out).toFixed(1):'—'}</td><td>${x.tp}</td><td>${x.ta}</td></tr>`}).join('')||'<tr><td colspan="7" class="empty">لا عمليات في الفترة</td></tr>'}
+      ${ds.length?`<tr class="ds-tot"><td colspan="2">الإجمالي</td><td>${T.out}</td><td>${T.in}</td><td>${T.out?(T.in/T.out).toFixed(2):'—'}</td><td>${T.tp}</td><td>${T.ta}</td></tr>`:''}
+    </tbody></table></div></div>`;
+    poolData={ds,day};
+  }
+  $('#dashOut').innerHTML=h;
+  // ===== الرسوم =====
+  if($('#dsTrend')){
+    const span=(new Date(R.to)-new Date(R.from))/864e5, weekly=span>45, key=d=>weekly?dmWeekStart(d):d;
+    const keys=[...new Set(W.map(r=>key(r.d)))].sort(), sites=dsSite==='all'?['F','D','C']:[dsSite], col={F:'#1B3A6B',D:'#0D7377',C:'#F0A500'};
+    dsCharts.trend=new Chart($('#dsTrend'),{type:'bar',data:{labels:keys.map(k=>fmtDMY(k).slice(0,5)),
+      datasets:sites.map(s=>({label:DS_SITES[s],backgroundColor:col[s],borderRadius:3,
+        data:keys.map(k=>W.filter(r=>r.s===s&&r.t!=='SO'&&r.t!=='OT'&&key(r.d)===k).length)}))},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'},title:{display:true,text:weekly?'المتبرعون أسبوعياً':'المتبرعون يومياً'}},scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}}}});
+    const ab={}; don.forEach(r=>ab[r.abo]=(ab[r.abo]||0)+1); const abk=Object.keys(ab).sort((a,b)=>ab[b]-ab[a]);
+    dsCharts.abo=new Chart($('#dsAbo'),{type:'bar',data:{labels:abk,datasets:[{label:'المتبرعون',data:abk.map(k=>ab[k]),backgroundColor:abk.map(k=>/neg/i.test(k)?'#C8860A':'#0D7377'),borderRadius:5}]},
+      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},title:{display:true,text:'الفصائل'}},scales:{x:{beginAtZero:true}}}});
+  }
+  if(poolData&&$('#dsPool')){
+    const {ds,day}=poolData;
+    dsCharts.pool=new Chart($('#dsPool'),{type:'bar',data:{labels:ds.map(d=>fmtDMY(d).slice(0,5)),datasets:[
+      {label:'Pools',data:ds.map(d=>day[d].out),backgroundColor:'#F0A500',borderRadius:3},
+      {label:'Treatment Pooled',data:ds.map(d=>day[d].tp),backgroundColor:'#0D7377',borderRadius:3},
+      {label:'Treatment Apheresis',data:ds.map(d=>day[d].ta),backgroundColor:'#1B3A6B',borderRadius:3}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true}}}});
+  }
+}
+
 
 boot();
 </script>
