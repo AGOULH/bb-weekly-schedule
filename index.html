@@ -4059,6 +4059,17 @@ function dsParseOps(rows){
   rec.forEach(r=>{ if(r.k==='WB') r.st=sepU.has(r.u)?'sep':wbDisc.has(r.u)?'disc':'pend'; });
   return {rec,prep,pool,tre};
 }
+let dsHidden=new Set(LS.get('bb_ds_items',[])); // عناصر قسم الوحدات المستلمة والمحضّرة المخفية
+function dsItemChips(items){
+  return `<div class="noprint" style="margin:-2px 0 8px"><div class="hint" style="margin:0">Items shown in the report:</div><div class="cmp-chips" id="dsItemChips" style="margin:5px 0 4px">`
+    +`<button class="cmp-chip" data-i="all">All</button><button class="cmp-chip" data-i="none">None</button>`
+    +items.map(it=>{ const on=!dsHidden.has(it.id); return `<button class="cmp-chip${on?' on':''}" data-i="${it.id}" aria-pressed="${on}">${it.lb}</button>`; }).join('')+`</div></div>`;
+}
+$('#dashOut').addEventListener('click',e=>{ const b=e.target.closest('#dsItemChips button'); if(!b) return; const i=b.dataset.i;
+  if(i==='all') dsHidden.clear();
+  else if(i==='none') $$('#dsItemChips button[data-i]').forEach(x=>{ if(!['all','none'].includes(x.dataset.i)) dsHidden.add(x.dataset.i); });
+  else dsHidden.has(i)?dsHidden.delete(i):dsHidden.add(i);
+  LS.set('bb_ds_items',[...dsHidden]); dsRender(); });
 let DS=null, dsMode='all', dsSites=new Set(['F','D','C']), dsCharts={}; // نقاط السحب المختارة (متعددة مثل مقارنة الأقسام)
 async function dsLoad(){
   const fW=upFile('wateen'), fO=upFile('ops');
@@ -4277,28 +4288,28 @@ function dsRender(){
     const delta=(c,p)=>!p?'<span class="flat">— No comparison</span>':(()=>{const d=Math.round((c-p)/p*100);return `<span class="${d>0?'up':d<0?'down':'flat'}">${d>0?'▲':d<0?'▼':'●'} ${Math.abs(d)}% vs previous period</span>`})();
     const card=(cls,lb,cur,prev,ic)=>`<div class="kpi ${cls}">${dsIc(ic)}<div class="lb">${lb}</div><div class="vl">${fmtNum(cur)}</div><div class="dt">${delta(cur,prev)}</div></div>`;
     const PP=k=>by(pPrep,k);
+    // العناصر الظاهرة قابلة للاختيار (dsHidden، تُحفظ لكل متصفح في bb_ds_items) — id = أيقونة البطاقة
+    const items=[
+      {g:1,id:'donors',c:'',lb:'Donors',cur:sel(donS),prev:sel(pDon)},
+      {g:1,id:'recv',c:'n',lb:'Reception',cur:sel(Rc),prev:sel(by(pRec))},
+      {g:1,id:'wb',c:'n',lb:'WHOLE BLOOD',cur:sel(by(rec,'WB')),prev:sel(by(pRec,'WB'))},
+      {g:1,id:'aph',c:'g',lb:'Apheresis PLATELETS',cur:sel(by(rec,'APH')),prev:sel(by(pRec,'APH'))},
+      {g:1,id:'norecv',c:'',lb:'Donors without Reception',cur:Math.max(0,sel(donS)-sel(Rc)),prev:hasPrev?Math.max(0,sel(pDon)-sel(by(pRec))):0},
+      {g:2,id:'sep',c:'',lb:'Separated — WHOLE BLOOD',cur:sel(wbSt(rec,'sep')),prev:sel(wbSt(pRec,'sep'))},
+      {g:2,id:'disc',c:'n ds-bad',lb:'Discarded before Separation — WHOLE BLOOD',cur:sel(wbSt(rec,'disc')),prev:sel(wbSt(pRec,'disc'))},
+      {g:2,id:'pend',c:'g',lb:'Pending Separation — WHOLE BLOOD',cur:sel(wbSt(rec,'pend')),prev:sel(wbSt(pRec,'pend'))},
+      {g:3,id:'total',c:'a',lb:'Total Prepared Units',cur:sel(P()),prev:sel(PP())},
+      {g:3,id:'ffp',c:'n',lb:'FRESH FROZEN PLASMA',cur:sel(P('FFP')),prev:sel(PP('FFP'))},
+      {g:3,id:'plt',c:'g',lb:'PLATELETS',cur:sel(P('PLT')),prev:sel(PP('PLT'))},
+      {g:3,id:'rbclr',c:'',lb:'RBC — Leuco-Reduced',cur:sel(P('RBCLR')),prev:sel(PP('RBCLR'))},
+      {g:3,id:'rbcnlr',c:'',lb:'RBC — Non Leuco-Reduced',cur:sel(P('RBCNLR')),prev:sel(PP('RBCNLR'))},
+      {g:3,id:'cryo',c:'a',lb:'CRYOPRECIPITATE',cur:sel(P('CRYO')),prev:sel(PP('CRYO'))},
+    ];
     h+=`<div class="card ds-ltr" dir="ltr"><h3>🧪 2) Received and Prepared Units — List of Operations</h3>
     <div class="hint" style="margin:-6px 0 10px">Site: <b>${siteLblEn}</b>${hasPrev?` — compared with the previous period of equal length ${fmtDMY(pf)} → ${fmtDMY(pt)}`:' — no previous period in the file to compare with'}</div>
-    <div class="kpis">
-      ${card('','Donors',sel(donS),sel(pDon),'donors')}
-      ${card('n','Reception',sel(Rc),sel(by(pRec)),'recv')}
-      ${card('n','WHOLE BLOOD',sel(by(rec,'WB')),sel(by(pRec,'WB')),'wb')}
-      ${card('g','Apheresis PLATELETS',sel(by(rec,'APH')),sel(by(pRec,'APH')),'aph')}
-      ${card('','Donors without Reception',Math.max(0,sel(donS)-sel(Rc)),hasPrev?Math.max(0,sel(pDon)-sel(by(pRec))):0,'norecv')}
-    </div>
-    <div class="kpis">
-      ${card('','Separated — WHOLE BLOOD',sel(wbSt(rec,'sep')),sel(wbSt(pRec,'sep')),'sep')}
-      ${card('n ds-bad','Discarded before Separation — WHOLE BLOOD',sel(wbSt(rec,'disc')),sel(wbSt(pRec,'disc')),'disc')}
-      ${card('g','Pending Separation — WHOLE BLOOD',sel(wbSt(rec,'pend')),sel(wbSt(pRec,'pend')),'pend')}
-    </div>
-    <div class="kpis">
-      ${card('a','Total Prepared Units',sel(P()),sel(PP()),'total')}
-      ${card('n','FRESH FROZEN PLASMA',sel(P('FFP')),sel(PP('FFP')),'ffp')}
-      ${card('g','PLATELETS',sel(P('PLT')),sel(PP('PLT')),'plt')}
-      ${card('','RBC — Leuco-Reduced',sel(P('RBCLR')),sel(PP('RBCLR')),'rbclr')}
-      ${card('','RBC — Non Leuco-Reduced',sel(P('RBCNLR')),sel(PP('RBCNLR')),'rbcnlr')}
-      ${card('a','CRYOPRECIPITATE',sel(P('CRYO')),sel(PP('CRYO')),'cryo')}
-    </div>
+    ${dsItemChips(items)}
+    ${[1,2,3].map(g=>{ const v=items.filter(it=>it.g===g&&!dsHidden.has(it.id)); return v.length?`<div class="kpis">${v.map(it=>card(it.c,it.lb,it.cur,it.prev,it.id)).join('')}</div>`:''; }).join('')}
+    ${items.every(it=>dsHidden.has(it.id))?'<div class="hint">No items selected — choose items from the buttons above.</div>':''}
     <div class="hint">Reception and preparation are attributed to the donation date and collection site through the bag number in the Wateen report. Units donated outside the period of the uploaded Wateen report (e.g. CRYO from older plasma) are counted by operation date and included only when all sites are selected. Use the site buttons above for a per-site breakdown. Prepared = products of separation operations (SEP/SEP2/SEPR/SEPC), each product counted once per bag. <b>WHOLE BLOOD received = Separated (= RBC Leuco-Reduced + Non Leuco-Reduced) + Discarded before Separation (DISC operation on WHOLE BLOOD) + Pending Separation.</b></div></div>`;
   }
   // ===== 3) الصفائح: Pooling 5 days (Iso Group) و Treatment — يومي، بلا توزيع على نقاط السحب =====
