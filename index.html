@@ -544,7 +544,7 @@ table.rk .ds-on,table.rk tr.ds-on td{background:var(--row-a);font-weight:800}
 .iss-unk table.rk td{background:#fff;padding:5px 8px}.iss-unk select{min-width:170px;padding:4px 8px;height:auto;font-size:12.5px}
 table.rk.iss-mx td.nm{text-align:left}table.rk.iss-mx td.tot,table.rk.iss-mx tr.tot td{font-weight:900;color:var(--navy);background:#EEF3F8}
 /* عنوان القسم: شريط navy بارز وأيقونة داخل دائرة كهرمانية وخط ذهبي سفلي (طلب حسن 2026-10-12) */
-.card h3.ds-sec{display:flex;align-items:center;gap:12px;margin:-2px 0 16px;padding:9px 20px 9px 9px;width:fit-content;max-width:100%;
+.card h3.ds-sec{display:flex;align-items:center;gap:12px;margin:-2px 0 16px auto;padding:9px 20px 9px 9px;width:fit-content;max-width:100%;
   background:linear-gradient(100deg,var(--navy),#2E5590);color:#fff;font-size:20px;font-weight:900;letter-spacing:.01em;border-radius:999px;
   box-shadow:0 6px 16px -8px rgba(27,58,107,.6),inset 0 -3px 0 var(--amber);font-family:Arial,sans-serif}
 .card h3.ds-sec .si{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:var(--amber);font-size:19px;line-height:1;flex:none;box-shadow:0 0 0 3px rgba(255,255,255,.25)}
@@ -4383,7 +4383,7 @@ function dsRender(){
     ${[1,2,3].map(g=>{ const v=items.filter(it=>it.g===g&&!dsHidden.has(it.id)); return v.length?`<div class="kpis">${v.map(it=>card(it.c,it.lb,it.cur,it.prev,it.id)).join('')}</div>`:''; }).join('')}
     ${items.every(it=>dsHidden.has(it.id))?'<div class="hint">No items selected — choose items from the buttons above.</div>':''}
     <div class="hint">Reception and preparation are attributed to the donation date and collection site through the bag number in the Wateen report. Units donated outside the period of the uploaded Wateen report (e.g. CRYO from older plasma) are counted by operation date and included only when all sites are selected. Use the site buttons above for a per-site breakdown. Prepared = products of separation operations (SEP/SEP2/SEPR/SEPC), each product counted once per bag. <b>WHOLE BLOOD received = Separated (= RBC Leuco-Reduced + Non Leuco-Reduced) + Discarded before Separation (DISC operation on WHOLE BLOOD) + Pending Separation.</b></div></div>`;
-  }
+  } else h+=`<div class="card ds-ltr" dir="ltr"><h3 class="ds-sec"><span class="si">🧪</span>Received and Prepared Units</h3><div class="empty">Upload <b>List of Operations</b> on the 📥 upload page to show this section.</div></div>`;
   // ===== 3) الصفائح: Pooling 5 days (Iso Group) و Treatment — يومي، بلا توزيع على نقاط السحب =====
   if(DS.pool.length||DS.tre.length){
     const day={}, g=d=>day[d]=day[d]||{out:0,in:0,tp:0,ta:0}, aboOut={};
@@ -4412,7 +4412,7 @@ function dsRender(){
     </tbody></table></div></details>`:''}
     </div>`;
     poolData={ds,day};
-  }
+  } else h+=`<div class="card ds-ltr" dir="ltr"><h3 class="ds-sec"><span class="si">🟡</span>Platelets</h3><div class="empty">Upload <b>List of Operations</b> on the 📥 upload page to show this section.</div></div>`;
   // ===== 4) Issuing Units — Delivered to outside: الصرف حسب الجهة والمنتج والفصيلة، بتاريخ الصرف، بلا توزيع على نقاط السحب =====
   if(DS.iss?.length){
     const allSec=dsSecs.size===Object.keys(ISSUE_CATS).length, cats=Object.keys(ISSUE_CATS).filter(c=>dsSecs.has(c)), catOf=r=>issueCls(r.c)||'UNK';
@@ -4459,7 +4459,7 @@ function dsRender(){
       ${hl.map((x,i)=>{ const c=issueCls(x.c); return `<tr><td>${i+1}</td><td class="nm">${dsEsc(x.cn)||'—'}</td><td>${dsEsc(x.c)}</td><td>${c?ISSUE_CATS[c].lb:'<b style="color:var(--bad)">Unclassified</b>'}</td><td><b>${fmtNum(x.n)}</b></td><td><div class="bar"><i style="width:${x.n/hmx*100}%"></i></div></td><td>${pct(x.n,tot)}</td></tr>`; }).join('')}
     </tbody></table></div></details>`:'<div class="empty">No issued units in this period.</div>'}
     </div>`;
-  }
+  } else h+=`<div class="card ds-ltr" dir="ltr"><h3 class="ds-sec"><span class="si">🚚</span>Issuing Units</h3><div class="empty">Upload <b>Delivered to outside</b> on the 📥 upload page to show this section.</div></div>`;
   $('#dashOut').innerHTML=h;
   $('#issSaveCls')?.addEventListener('click',async()=>{
     const add={}; $$('[data-isscode]').forEach(s=>{ if(s.value) add[s.dataset.isscode]=s.value; });
