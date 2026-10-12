@@ -552,7 +552,8 @@ table.rk.iss-mx td.nm{text-align:left}table.rk.iss-mx td.tot,table.rk.iss-mx tr.
 .ds-en{display:inline-block;direction:ltr;unicode-bidi:isolate;font-family:Arial}
 /* ===== تقرير Donors and Blood Components المطبوع (#dsPrint) — يظهر فقط عند التصدير ===== */
 #dsPrint{display:none}
-.dsp-page{font-family:Arial,'Cairo',sans-serif;color:var(--ink)}
+.dsp-page{font-family:Arial,'Cairo',sans-serif;color:var(--ink);width:100%;border-collapse:collapse}.dsp-page>*>tr>td{padding:0;vertical-align:top}
+.dsp-foot{margin-top:8px;padding-top:5px;border-top:2px solid var(--amber);text-align:center;font:900 10.5px Arial;letter-spacing:.12em;color:var(--navy)}
 .dsp-head{display:flex;align-items:center;gap:16px;padding-bottom:10px;margin-bottom:12px;border-bottom:3px solid var(--amber)}
 .dsp-logo svg{display:block;height:74px;width:calc(74px * 118.872 / 108.384)}
 .dsp-tt{flex:1}.dsp-tt .ar{font:800 21px 'Cairo',Arial;color:var(--navy);line-height:1.3}.dsp-tt .en{font:800 15px Arial;color:var(--teal)}.dsp-tt .sub{font-size:11px;color:var(--muted);margin-top:2px}
@@ -4552,8 +4553,10 @@ function dsExportPdf(){
   if(!DS){ toast('ارفع الملفات أولاً'); return; }
   const M=dsExportModel(), main=M.secs.filter(s=>!s.draws), dr=M.secs.find(s=>s.draws);
   if(!M.secs.length){ toast('لا توجد بطاقات للتصدير'); return; }
-  $('#dsPrint').innerHTML=`<div class="dsp-page">${dsPrintHead(M)}${main.map(dsPrintSec).join('')}</div>`
-    +(dr?`<div class="dsp-page dsp-break">${dsPrintHead(M)}${dsPrintSec(dr)}${dsDrawsTable(DS_DRAWS||[])}</div>`:'');
+  // جدول لكل جزء: tfoot يتكرر تلقائياً أسفل كل صفحة مطبوعة (DONE BY في كل الصفحات)، وكل قسم صف مستقل يُقسم بين الصفحات بينها
+  const page=(rows,br)=>`<table class="dsp-page${br?' dsp-break':''}"><tfoot><tr><td><div class="dsp-foot">DONE BY : HASAN ALAGOUL</div></td></tr></tfoot><tbody>${rows.map(r=>`<tr><td>${r}</td></tr>`).join('')}</tbody></table>`;
+  $('#dsPrint').innerHTML=page([dsPrintHead(M),...main.map(dsPrintSec)])
+    +(dr?page([dsPrintHead(M),dsPrintSec(dr)+dsDrawsTable(DS_DRAWS||[])],true):'');
   document.body.classList.add('ds-printing');
   const o=document.title; document.title=dsFileName(M.R);
   window.print(); setTimeout(()=>document.title=o,700);
@@ -4578,6 +4581,11 @@ async function dsExportPptx(){
   for(const s of M.secs) for(const c of s.cards) if(c.ic&&!icons[c.ic]) icons[c.ic]=await dsSvgPng(c.ic,256).catch(()=>null);
   const P=new PptxGenJS(); P.defineLayout({name:'A4L',width:11.69,height:8.27}); P.layout='A4L';
   const PW=11.69, PH=8.27, MX=0.45;
+  // قالب كل الشرائح (بما فيها شرائح الجدول التلقائية): DONE BY أسفل كل شريحة
+  P.defineSlideMaster({title:'DS',background:{color:'FFFFFF'},objects:[
+    {rect:{x:MX,y:PH-0.47,w:PW-2*MX,h:0.025,fill:{color:AMB},line:{color:AMB}}},
+    {text:{text:'DONE BY : HASAN ALAGOUL',options:{x:MX,y:PH-0.43,w:PW-2*MX,h:0.3,align:'center',fontSize:9.5,bold:true,color:NAVY,fontFace:'Arial',charSpacing:1.5}}}]});
+  const addSl=()=>P.addSlide({masterName:'DS'});
   const head=sl=>{ // رأس كل شريحة: الشعار + الاسم بالعربي والإنجليزي + الفترة
     sl.background={color:'FFFFFF'};
     const lh=0.95; sl.addImage({data:logo.data,x:MX,y:0.3,h:lh,w:lh*logo.ar});
@@ -4615,7 +4623,7 @@ async function dsExportPptx(){
     let first=true;
     rows.forEach(r=>{
       const need=(first?0.55:0)+CH+GAP;
-      if(!state.sl||state.y+need>PH-0.3){ state.sl=P.addSlide(); state.y=head(state.sl); if(!first) state.y=secTitle(state.sl,{...s,title:s.title+' (cont.)'},state.y); }
+      if(!state.sl||state.y+need>PH-0.55){ state.sl=addSl(); state.y=head(state.sl); if(!first) state.y=secTitle(state.sl,{...s,title:s.title+' (cont.)'},state.y); }
       if(first){ state.y=secTitle(state.sl,s,state.y); first=false; }
       r.forEach((c,i)=>card(state.sl,c,s.rtl?PW-MX-CW-i*(CW+GAP):MX+i*(CW+GAP),state.y));
       state.y+=CH+GAP;
@@ -4630,12 +4638,12 @@ async function dsExportPptx(){
     const list=DS_DRAWS||[], hdr=['#','Staff','Drawn','Discarded','Rate'].map(t=>({text:t,options:{bold:true,color:'FFFFFF',fill:{color:NAVY},align:'center'}}));
     const row=(x,n)=>[String(n+1),x.name,fmtNum(x.col),String(x.dis),x.col?x.rate.toFixed(1)+'%':'—'].map((t,k)=>({text:t,options:{align:k===1?'left':'center',bold:k===2}}));
     const topt={y:d.y,fontSize:8,fontFace:'Arial',color:INK,border:{type:'solid',pt:0.5,color:LINE},rowH:0.21,colW:[0.4,2.2,0.85,0.9,0.75]};
-    const fit=Math.floor((PH-0.35-d.y)/0.21)-1;
+    const fit=Math.floor((PH-0.6-d.y)/0.21)-1;
     if(list.length<=fit) d.sl.addTable([hdr,...list.map(row)],{...topt,x:MX});
     else if(list.length<=2*fit){ const h=Math.ceil(list.length/2);
       d.sl.addTable([hdr,...list.slice(0,h).map(row)],{...topt,x:MX});
       d.sl.addTable([hdr,...list.slice(h).map((x,i)=>row(x,h+i))],{...topt,x:MX+5.2}); }
-    else d.sl.addTable([hdr,...list.map(row)],{...topt,x:MX,autoPage:true,autoPageRepeatHeader:true,autoPageSlideStartY:1.6});
+    else d.sl.addTable([hdr,...list.map(row)],{...topt,x:MX,autoPage:true,autoPageRepeatHeader:true,autoPageSlideStartY:1.6,masterName:'DS',margin:[0.3,0.45,0.6,0.45]});
   }
   await P.writeFile({fileName:dsFileName(M.R)+'.pptx'});
 }
