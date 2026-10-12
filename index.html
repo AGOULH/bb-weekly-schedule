@@ -764,9 +764,6 @@ table.rk.iss-mx td.nm{text-align:left}table.rk.iss-mx td.tot,table.rk.iss-mx tr.
       <div class="field"><label>نقطة السحب (اختر واحدة أو أكثر)</label>
         <div class="cmp-chips ds-chips" id="dsSiteChips" style="margin:0"><button class="cmp-chip on" data-s="F" aria-pressed="true">CENTER</button><button class="cmp-chip on" data-s="D" aria-pressed="true">DAMY</button><button class="cmp-chip on" data-s="C" aria-pressed="true">MOBILE</button><button class="btn ghost sm" data-s="all">الكل</button></div>
       </div>
-      <div class="field" id="dsSecCtl" style="display:none"><label>جهة الصرف — Issuing Units (اختر واحدة أو أكثر)</label>
-        <div class="cmp-chips ds-chips" id="dsSecChips" style="margin:0"><button class="cmp-chip on" data-c="GOV" aria-pressed="true">GOVERNMENTAL</button><button class="cmp-chip on" data-c="PRIVATE" aria-pressed="true">PRIVATE</button><button class="cmp-chip on" data-c="NONGOV" aria-pressed="true">NON GOVERNMENTAL</button><button class="cmp-chip on" data-c="OTHER" aria-pressed="true">Other Regions</button><button class="btn ghost sm" data-c="all">الكل</button></div>
-      </div>
     </div>
   </div>
   <div id="dashOut"></div>
@@ -4156,10 +4153,10 @@ $('#dsSiteChips').onclick=e=>{ const b=e.target.closest('button'); if(!b) return
   dsRender(); };
 // (2026-10-12، طلب حسن) جهات الصرف المختارة لقسم Issuing Units — بنفس أسلوب نقاط السحب؛ «غير مصنّف» يدخل فقط عند اختيار الكل
 let dsSecs=new Set(Object.keys(ISSUE_CATS));
-$('#dsSecChips').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; const c=b.dataset.c;
+$('#dashOut').addEventListener('click',e=>{ const b=e.target.closest('#dsSecChips button'); if(!b) return; const c=b.dataset.c;
   if(c==='all') dsSecs=new Set(Object.keys(ISSUE_CATS));
   else if(dsSecs.has(c)){ if(dsSecs.size>1) dsSecs.delete(c); } else dsSecs.add(c); // تبقى جهة واحدة على الأقل
-  dsRender(); };
+  dsRender(); });
 ['#dsWeek','#dsMonth','#dsFrom','#dsTo','#dsYear'].forEach(x=>$(x).onchange=()=>dsRender());
 // مؤشر الأكثر سحباً والأكياس المتلفة من «تقارير التبرعات»: ملفات تلك الصفحة المرفوعة في الجلسة (فلترة دقيقة بالفترة)،
 // وإلا أكبر تقرير محفوظ يقع بالكامل داخل الفترة (لا يُستخدم تقرير أوسع منها — سنة كاملة لعرض أسبوع أرقام مضلّلة)
@@ -4281,8 +4278,6 @@ function dsRender(){
   if(!DS) return;
   $$('#dsModeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.m===dsMode));
   $$('#dsSiteChips .cmp-chip').forEach(b=>{ const on=dsSites.has(b.dataset.s); b.classList.toggle('on',on); b.setAttribute('aria-pressed',on); });
-  $$('#dsSecChips .cmp-chip').forEach(b=>{ const on=dsSecs.has(b.dataset.c); b.classList.toggle('on',on); b.setAttribute('aria-pressed',on); });
-  $('#dsSecCtl').style.display=DS.iss?.length?'':'none';
   $('#dsWeekCtl').style.display=dsMode==='week'?'':'none';
   $('#dsMonthCtl').style.display=dsMode==='month'?'':'none';
   $('#dsPeriodCtl').style.display=dsMode==='period'?'flex':'none';
@@ -4432,7 +4427,8 @@ function dsRender(){
     const hl=Object.values(hosp).sort((a,b)=>b.n-a.n), hmx=hl[0]?.n||1;
     const aboC={}; I.forEach(r=>aboC[r.abo]=(aboC[r.abo]||0)+1);
     h+=`<div class="card ds-ltr" dir="ltr"><h3>🚚 4) Issuing Units — Delivered to Outside Hospitals</h3>
-    <div class="hint" style="margin:-6px 0 10px">Sector: <b>${secLbl}</b> — by delivery date — not split by collection site.${hasPrev?` Compared with the previous period of equal length ${fmtDMY(pf)} → ${fmtDMY(pt)}.`:''} Every delivery row is counted: a unit returned and issued again to another hospital counts twice.</div>
+    <div class="noprint" style="margin:-4px 0 10px"><div class="hint" style="margin:0">Issuing sector (choose one or more):</div><div class="cmp-chips" id="dsSecChips" style="margin:5px 0 0">${Object.entries(ISSUE_CATS).map(([c,x])=>{ const on=dsSecs.has(c); return `<button class="cmp-chip${on?' on':''}" data-c="${c}" aria-pressed="${on}">${x.lb}</button>`; }).join('')}<button class="btn ghost sm" data-c="all">All</button></div></div>
+    <div class="hint" style="margin:0 0 10px">Sector: <b>${secLbl}</b> — by delivery date — not split by collection site.${hasPrev?` Compared with the previous period of equal length ${fmtDMY(pf)} → ${fmtDMY(pt)}.`:''} Every delivery row is counted: a unit returned and issued again to another hospital counts twice.</div>
     ${unkAll.length?`<div class="iss-unk"><h4>⚠️ ${unkAll.length} client code${unkAll.length>1?'s are':' is'} not classified</h4>
       <div class="hint" style="margin:0 0 8px">These codes are new or missing from the GOV classification file, so their units appear under <b>Unclassified</b>. Choose a sector and save — it applies to everyone using the site.</div>
       <table class="rk"><thead><tr><th>Code</th><th>Hospital</th><th>Units (whole file)</th><th>Sector</th></tr></thead><tbody>
