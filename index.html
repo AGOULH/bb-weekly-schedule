@@ -551,30 +551,50 @@ table.rk.iss-mx td.nm{text-align:left}table.rk.iss-mx td.tot,table.rk.iss-mx tr.
 @media print{.card h3.ds-sec{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
 .ds-en{display:inline-block;direction:ltr;unicode-bidi:isolate;font-family:Arial}
 /* ===== تقرير Donors and Blood Components المطبوع (#dsPrint) — يظهر فقط عند التصدير ===== */
-#dsPrint{display:none}
-.dsp-page{font-family:Arial,'Cairo',sans-serif;color:var(--ink);width:100%;border-collapse:collapse}.dsp-page>*>tr>td{padding:0;vertical-align:top}
-.dsp-foot{margin-top:8px;padding-top:5px;border-top:2px solid var(--amber);text-align:center;font:900 10.5px Arial;letter-spacing:.12em;color:var(--navy)}
+#dsPrint{display:none;--muted:#4A5566}
+/* كل جزء ورقة A4 أفقية مستقلة بمقاسها الحرفي، بخلفية وردية متدرّجة تصل حواف الورقة (صفحة مسمّاة dsp بلا هوامش) — طلب حسن 2026-10-12 */
+.dsp-sheet{page:dsp;width:297mm;height:210mm;box-sizing:border-box;padding:10mm;display:flex;flex-direction:column;overflow:hidden;
+  font-family:Arial,'Cairo',sans-serif;color:var(--ink);break-after:page;
+  background:radial-gradient(ellipse 70% 60% at 50% 38%,rgba(250,244,245,.95) 0%,rgba(250,244,245,0) 70%),linear-gradient(165deg,#F2E5E8 0%,#E8D3D9 55%,#DDC3CA 100%)}
+.dsp-sheet:last-child{break-after:auto}
+@page dsp{size:A4 landscape;margin:0}
+#dsPrint,#dsPrint *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.dsp-body{flex:none}
+.dsp-foot{margin-top:auto;padding-top:5px;border-top:2px solid var(--amber);display:flex;justify-content:center;align-items:baseline;gap:14px;font:900 10.5px Arial;letter-spacing:.12em;color:var(--navy)}
+.dsp-foot .pg{font:700 8.5px Arial;letter-spacing:.02em;color:var(--muted)}
 .dsp-head{display:flex;align-items:center;gap:16px;padding-bottom:10px;margin-bottom:12px;border-bottom:3px solid var(--amber)}
 .dsp-logo svg{display:block;height:74px;width:calc(74px * 118.872 / 108.384)}
 .dsp-tt{flex:1}.dsp-tt .ar{font:800 21px 'Cairo',Arial;color:var(--navy);line-height:1.3}.dsp-tt .en{font:800 15px Arial;color:var(--teal)}.dsp-tt .sub{font-size:11px;color:var(--muted);margin-top:2px}
 .dsp-per{text-align:right}.dsp-per .lb{font-size:10px;color:var(--muted)}.dsp-per .v{font:900 17px Arial;color:var(--navy);direction:ltr}.dsp-per .s{font-size:9.5px;color:var(--muted)}
 .dsp-sec{margin-bottom:12px;page-break-inside:avoid}
 .dsp-st{display:flex;align-items:center;gap:8px;width:fit-content;margin:0 0 8px auto;padding:4px 14px 4px 4px;border-radius:999px;background:var(--navy);color:#fff;font:900 14px Arial;box-shadow:inset 0 -2px 0 var(--amber)}
-.dsp-sec[dir=ltr] .dsp-st{margin:0 0 8px auto}
 .dsp-st .si{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--amber);font-size:13px}
-.dsp-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}.dsp-break .dsp-grid{grid-template-columns:repeat(4,1fr)}
-.dsp-card{display:grid;grid-template-columns:minmax(0,1fr) 46px;column-gap:8px;align-items:center;background:#fff;border:1px solid #E1E8F0;border-top:3px solid var(--teal);border-radius:9px;padding:7px 10px;page-break-inside:avoid}
+.dsp-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}.dsp-sheet.dsp-draws .dsp-grid{grid-template-columns:repeat(4,1fr)}
+.dsp-card{display:grid;grid-template-columns:minmax(0,1fr) 46px;column-gap:8px;align-items:center;background:rgba(255,255,255,.82);border:1px solid rgba(255,255,255,.95);border-top:3px solid var(--teal);border-radius:10px;box-shadow:0 2px 6px rgba(110,70,82,.10);padding:7px 10px;page-break-inside:avoid}
 .dsp-card.t-n{border-top-color:var(--navy)}.dsp-card.t-a{border-top-color:var(--amber)}.dsp-card.t-g{border-top-color:var(--gold)}.dsp-card.t-bad{border-top-color:var(--bad)}
 .dsp-card>:not(.ic){grid-column:1}.dsp-card .ic{grid-column:2;grid-row:1/span 3;width:46px;height:46px}.dsp-card .ic svg{display:block;width:100%;height:100%}
 .dsp-card .lb{font-size:9.5px;font-weight:700;color:var(--muted)}.dsp-card .vl{font:900 19px Arial;color:var(--navy);margin:1px 0}.dsp-card.t-bad .vl{color:var(--bad)}
 .dsp-card .dt{font-size:8.5px;font-weight:700;line-height:1.45;color:var(--muted)}
 .dsp-tbls{display:flex;gap:14px;align-items:flex-start}
-.dsp-tbl{flex:1;border-collapse:collapse;font-size:9.5px}.dsp-tbl th{background:var(--navy);color:#fff;padding:4px 6px}.dsp-tbl td{border-bottom:1px solid #E1E8F0;padding:3px 6px;text-align:center}.dsp-tbl td.nm{text-align:left;font-weight:700}
-.dsp-tbl tr:nth-child(even) td{background:var(--row-a)}
+.dsp-tbl{flex:1;border-collapse:separate;border-spacing:0;font-size:9.5px;border-radius:9px;overflow:hidden}
+.dsp-tbl th{background:var(--navy);color:#fff;padding:4px 6px}
+.dsp-tbl td{background:rgba(255,255,255,.82);border-bottom:1px solid rgba(160,120,132,.18);padding:3px 6px;text-align:center;box-sizing:border-box;height:var(--rh,auto)}.dsp-tbl td.nm{text-align:left;font-weight:700}
+.dsp-tbl tr:nth-child(even) td{background:rgba(247,234,238,.88)}
+.dsp-tbl tr:last-child td{border-bottom:0}
+.dsp-med{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;color:#fff;font:900 10px Arial;vertical-align:middle}
+.dsp-med.m1{background:#E0B13A}.dsp-med.m2{background:#9AA6B4}.dsp-med.m3{background:#B9774A}
+.dsp-tbl td.hi{color:#9B1C1C;font-weight:900}
+/* نسخة ورقية بخلفية بيضاء (توفير الحبر) */
+#dsPrint.dsp-plain .dsp-sheet{background:#fff}
+#dsPrint.dsp-plain .dsp-card{background:#fff;border:1px solid #E1E8F0;border-top-width:3px;box-shadow:none}
+#dsPrint.dsp-plain .dsp-tbl td{background:#fff;border-bottom-color:#E1E8F0}#dsPrint.dsp-plain .dsp-tbl tr:nth-child(even) td{background:#F4F6F9}
 @media print{
   body.ds-printing #pg-dash>*:not(#dsPrint){display:none!important}
   body.ds-printing #dsPrint{display:block!important}
-  .dsp-break{page-break-before:always}
+  body.ds-printing #main{padding:0!important;margin:0!important}
+  /* Chrome يخطّط الصفحة بعدد صحيح من البكسلات فيبقى ~0.4pt يمين الورقة بلون خلفية الصفحة — يُلوَّن وردياً (أو أبيض للنسخة الورقية) */
+  html:has(body.ds-printing),body.ds-printing{background:#E6D0D6!important}
+  html:has(#dsPrint.dsp-plain),body.ds-printing:has(#dsPrint.dsp-plain){background:#fff!important}
 }
 /* ===== PRINT ===== */
 @media print{
@@ -776,7 +796,7 @@ table.rk.iss-mx td.nm{text-align:left}table.rk.iss-mx td.tot,table.rk.iss-mx tr.
 <section class="page" id="pg-dash">
   <div class="pghead noprint">
     <div><h2 tabindex="-1">Donors and Blood Components</h2><p>من Wateen report وList of Operations وDelivered to outside: لوحة المتبرعين (CENTER/DAMY/MOBILE)، الوحدات المحضّرة، الصفائح (Pooling/Treatment)، والوحدات المصروفة (Issuing Units)</p></div>
-    <div class="row"><button class="btn ghost sm" id="dsPdfBtn" title="البطاقات الظاهرة فقط + صفحة مستقلة لـ Draws and Discarded Bags">🖨️ تصدير PDF</button><button class="btn ghost sm" id="dsPptBtn" title="البطاقات الظاهرة فقط + صفحة مستقلة لـ Draws and Discarded Bags">📊 PowerPoint</button></div>
+    <div class="row"><button class="btn ghost sm" id="dsPdfBtn" title="البطاقات الظاهرة فقط + صفحة مستقلة لـ Draws and Discarded Bags">🖨️ تصدير PDF</button><button class="btn ghost sm" id="dsPdfPlainBtn" title="نفس التقرير بخلفية بيضاء للطباعة الورقية (توفير الحبر)">🖨️ نسخة ورقية</button><button class="btn ghost sm" id="dsPptBtn" title="البطاقات الظاهرة فقط + صفحة مستقلة لـ Draws and Discarded Bags">📊 PowerPoint</button></div>
   </div>
   <div class="card noprint">
     <h3>📥 الملفات</h3>
@@ -4547,29 +4567,60 @@ function dsDrawsTable(list){
   if(!list.length) return '';
   const half=list.length>22?Math.ceil(list.length/2):list.length, parts=[list.slice(0,half),list.slice(half)].filter(p=>p.length);
   return `<div class="dsp-tbls" dir="ltr">${parts.map((p,j)=>`<table class="dsp-tbl"><thead><tr><th>#</th><th>Staff</th><th>Drawn</th><th>Discarded</th><th>Rate</th></tr></thead><tbody>
-    ${p.map((x,i)=>{ const n=j*half+i; return `<tr><td>${n<3?['🥇','🥈','🥉'][n]:n+1}</td><td class="nm">${dsEsc(x.name)}</td><td><b>${fmtNum(x.col)}</b></td><td>${x.dis}</td><td>${x.col?x.rate.toFixed(1)+'%':'—'}</td></tr>`; }).join('')}</tbody></table>`).join('')}</div>`;
+    ${p.map((x,i)=>{ const n=j*half+i, hi=x.rate>10&&x.col>=10; // أحمر غامق فقط لنسبة > 10% من 10 أكياس فأكثر
+      return `<tr><td>${n<3?`<span class="dsp-med m${n+1}">${n+1}</span>`:n+1}</td><td class="nm">${dsEsc(x.name)}</td><td><b>${fmtNum(x.col)}</b></td><td>${x.dis}</td><td${hi?' class="hi"':''}>${x.col?x.rate.toFixed(1)+'%':'—'}</td></tr>`; }).join('')}</tbody></table>`).join('')}</div>`;
 }
-function dsExportPdf(){
+// لغة موحّدة في التقرير المطبوع: بطاقات Donors العربية بالإنجليزية، وكل الأقسام LTR
+function dsPrintEn(sec){
+  return {...sec,rtl:false,cards:sec.cards.map(c=>{
+    if(c.lb==='إجمالي المتبرعين'){ const m=/متوسط ([\d.]+) يومياً<br>(\d+) يوم تبرع/.exec(c.dt); return {...c,rtl:false,lb:'Total Donors',dt:m?`Avg ${m[1]}/day · ${m[2]} days`:c.dt}; }
+    return {...c,rtl:false,dt:c.dt.replace(/<br>\s*من المتبرعين/,' of donors').replace('من المتبرعين','of donors')}; })};
+}
+function dsExportPdf(plain){
   if(!DS){ toast('ارفع الملفات أولاً'); return; }
-  const M=dsExportModel(), main=M.secs.filter(s=>!s.draws), dr=M.secs.find(s=>s.draws);
+  const M=dsExportModel(), main=M.secs.filter(s=>!s.draws).map(dsPrintEn), dr=M.secs.find(s=>s.draws);
   if(!M.secs.length){ toast('لا توجد بطاقات للتصدير'); return; }
-  // جدول لكل جزء: tfoot يتكرر تلقائياً أسفل كل صفحة مطبوعة (DONE BY في كل الصفحات)، وكل قسم صف مستقل يُقسم بين الصفحات بينها
-  const page=(rows,br)=>`<table class="dsp-page${br?' dsp-break':''}"><tfoot><tr><td><div class="dsp-foot">DONE BY : HASAN ALAGOUL</div></td></tr></tfoot><tbody>${rows.map(r=>`<tr><td>${r}</td></tr>`).join('')}</tbody></table>`;
-  $('#dsPrint').innerHTML=page([dsPrintHead(M),...main.map(dsPrintSec)])
-    +(dr?page([dsPrintHead(M),dsPrintSec(dr)+dsDrawsTable(DS_DRAWS||[])],true):'');
+  // كل جزء ورقة مستقلة: المحتوى (.dsp-body) ثم سطر DONE BY مثبّت أسفل الورقة مع رقم الصفحة وتاريخ الطباعة
+  const sheets=[[dsPrintHead(M),...main.map(dsPrintSec)].join('')], today=fmtDMY(new Date().toISOString().slice(0,10));
+  if(dr) sheets.push(dsPrintHead(M)+dsPrintSec(dsPrintEn(dr))+dsDrawsTable(DS_DRAWS||[]));
+  $('#dsPrint').classList.toggle('dsp-plain',!!plain);
+  $('#dsPrint').innerHTML=sheets.map((b,i)=>`<div class="dsp-sheet${dr&&i===sheets.length-1?' dsp-draws':''}"><div class="dsp-body">${b}</div>
+    <div class="dsp-foot"><span>DONE BY : HASAN ALAGOUL</span><span class="pg">Page ${i+1} of ${sheets.length} · Printed ${today}</span></div></div>`).join('');
   dsFitPages();
   document.body.classList.add('ds-printing');
-  const o=document.title; document.title=dsFileName(M.R);
+  const o=document.title; document.title=dsFileName(M.R)+(plain?'_print':'');
   window.print(); setTimeout(()=>document.title=o,700);
 }
 window.addEventListener('afterprint',()=>document.body.classList.remove('ds-printing'));
-// (2026-10-12، طلب حسن) التقرير في صفحتين: كل جزء يُقاس بعرض صفحة A4 أفقية ويُصغَّر (zoom) إن تجاوز ارتفاعها
-const DSP_W=1040, DSP_H=700; // ‎A4 أفقي بهوامش 10mm ≈ 1047×718px عند 96dpi (مع هامش أمان)
+// (2026-10-12، طلب حسن) التقرير صفحتان: محتوى كل ورقة يُصغَّر (zoom) حتى يتسع فوق سطر DONE BY؛ الصفحة الأولى تُكبَّر حتى 1.25 إن قصُرت؛
+// والصفحة الثانية يُوزَّع فراغها على صفوف جدول الموظفين (خط 11.5px إن اتسع، وصف ≤ 34px) فينتهي الجدول فوق DONE BY مباشرة
+const DSP_W=1040, DSP_H=700; // ‎المساحة الداخلية للورقة بعد padding 10mm ≈ 1047×718px عند 96dpi (مع هامش أمان)
 function dsFitPages(){
   const box=$('#dsPrint'), keep=box.getAttribute('style')||'';
-  box.setAttribute('style',`display:block;position:absolute;left:-99999px;top:0;width:${DSP_W}px`);
-  // التصغير يعيد توزيع المحتوى (البطاقات تتسع عرضاً) فيُقاس الارتفاع الفعلي بعد كل خطوة بدل تقدير واحد
-  $$('#dsPrint .dsp-page').forEach(t=>{ let z=1; t.style.zoom=''; while(t.getBoundingClientRect().height>DSP_H&&z>0.35){ z-=0.01; t.style.zoom=z.toFixed(2); } });
+  box.setAttribute('style','display:block;position:absolute;left:-99999px;top:0');
+  const H=el=>el.getBoundingClientRect().height;
+  $$('#dsPrint .dsp-sheet').forEach((sh,idx)=>{
+    // المساحة الفعلية داخل الورقة (210mm − padding) تُقاس، وDSP_H حد أدنى مضمون؛ ناقص سطر DONE BY
+    const pd=parseFloat(getComputedStyle(sh).paddingTop)*2, inner=Math.max(DSP_H,H(sh)-pd);
+    const b=sh.querySelector('.dsp-body'), f=sh.querySelector('.dsp-foot'), max=inner-H(f)-4;
+    let z=1; b.style.zoom='';
+    while(H(b)>max&&z>0.35){ z-=0.01; b.style.zoom=z.toFixed(2); } // التصغير يعيد توزيع المحتوى فيُقاس بعد كل خطوة
+    if(idx===0&&z===1){ while(z<1.25){ b.style.zoom=(z+0.01).toFixed(2); if(H(b)>max){ b.style.zoom=z.toFixed(2); break; } z+=0.01; } }
+    const tbls=[...sh.querySelectorAll('.dsp-tbl')]; if(!tbls.length) return;
+    // خط أكبر إن اتسع
+    tbls.forEach(t=>t.style.fontSize='11.5px'); if(H(b)>max) tbls.forEach(t=>t.style.fontSize='');
+    const zz=parseFloat(b.style.zoom)||1, free=(max-H(b))/zz; if(free<=0) return;
+    // كل الجداول تنتهي على نفس الارتفاع، وكل الصفوف بارتفاع واحد (حتى صفوف الميداليات): الهدف = أطول جدول + الفراغ،
+    // وارتفاع صف كل جدول = (الهدف − الرأس) ÷ عدد صفوفه، بحد 34px وألا يقل عن أطول صف حالي
+    const th=t=>t.getBoundingClientRect().height/zz, target=Math.max(...tbls.map(th))+free;
+    tbls.forEach(t=>{
+      const rows=[...t.tBodies[0].rows]; if(!rows.length) return;
+      const head=t.tHead.getBoundingClientRect().height/zz, tall=Math.max(...rows.map(r=>r.getBoundingClientRect().height/zz));
+      t.style.setProperty('--rh',Math.max(tall,Math.min(34,(target-head)/rows.length)).toFixed(2)+'px');
+    });
+    while(H(b)>max&&tbls.every(t=>parseFloat(t.style.getPropertyValue('--rh'))>0)) // احتياط: لا تجاوز أبداً
+      tbls.forEach(t=>t.style.setProperty('--rh',(parseFloat(t.style.getPropertyValue('--rh'))-0.25).toFixed(2)+'px'));
+  });
   box.setAttribute('style',keep);
 }
 // SVG → PNG بأبعاد مطابقة لنسبة viewBox (لا تمطيط)، للـ PowerPoint
@@ -4671,7 +4722,8 @@ async function dsExportPptx(){
   }
   await P.writeFile({fileName:dsFileName(M.R)+'.pptx'});
 }
-$('#dsPdfBtn').onclick=dsExportPdf;
+$('#dsPdfBtn').onclick=()=>dsExportPdf(false);
+$('#dsPdfPlainBtn').onclick=()=>dsExportPdf(true);
 $('#dsPptBtn').onclick=()=>dsExportPptx().catch(e=>{ console.error(e); toast('تعذّر تصدير PowerPoint: '+e.message); });
 
 /* ============ 📥 مركز رفع الملفات (2026-10-11، طلب حسن) ============ */
