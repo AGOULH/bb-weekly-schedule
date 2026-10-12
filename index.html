@@ -543,6 +543,7 @@ table.rk .ds-on,table.rk tr.ds-on td{background:var(--row-a);font-weight:800}
 .iss-unk h4{margin:0 0 6px;color:var(--bad);font-size:14px}
 .iss-unk table.rk td{background:#fff;padding:5px 8px}.iss-unk select{min-width:170px;padding:4px 8px;height:auto;font-size:12.5px}
 table.rk.iss-mx td.nm{text-align:left}table.rk.iss-mx td.tot,table.rk.iss-mx tr.tot td{font-weight:900;color:var(--navy);background:#EEF3F8}
+.card h3.ds-sec{font-size:21px;font-weight:900;margin-bottom:14px;letter-spacing:-.01em}
 .ds-en{display:inline-block;direction:ltr;unicode-bidi:isolate;font-family:Arial}
 /* ===== PRINT ===== */
 @media print{
@@ -4295,7 +4296,7 @@ function dsRender(){
   if(DS.w.length){
     const nWB=cnt(don,r=>r.t==='WB'), nPLT=cnt(don,r=>r.t==='PLT'), nPLS=cnt(don,r=>r.t==='PLS'), nSO=cnt(Ws,r=>r.t==='SO');
     const nNeg=cnt(don,r=>r.neg), nSa=cnt(don,r=>r.sa), nF=cnt(don,r=>r.f);
-    h+=`<div class="card"><h3>🩸 <span class="ds-en">1) Donors</span></h3>
+    h+=`<div class="card"><h3 class="ds-sec">🩸 <span class="ds-en">1) Donors</span></h3>
     <div class="kpis">
       ${kpi('','إجمالي المتبرعين',fmtNum(don.length),days?`متوسط ${(don.length/days).toFixed(1)} يومياً<br>${days} يوم تبرع`:'—','donors')}
       ${kpi('n','Whole blood',fmtNum(nWB),pct(nWB,don.length),'wb')}
@@ -4331,14 +4332,14 @@ function dsRender(){
     const all=[...list].sort((a,b)=>b.col-a.col||a.name.localeCompare(b.name)), allDis=list.filter(p=>p.dis>0).sort((a,b)=>b.dis-a.dis||b.rate-a.rate);
     const totCol=list.reduce((t,p)=>t+p.col,0), totDis=list.reduce((t,p)=>t+p.dis,0), mx=all[0]?.col||1;
     const tb=(rows,cols)=>`<table class="rk"><thead><tr><th>#</th><th>Staff</th>${cols.map(c=>`<th>${c[0]}</th>`).join('')}</tr></thead><tbody>${rows.length?rows.map((p,i)=>`<tr><td>${i<3?['🥇','🥈','🥉'][i]:i+1}</td><td class="nm">${dsEsc(p.name)}</td>${cols.map(c=>`<td>${c[1](p)}</td>`).join('')}</tr>`).join(''):'<tr><td colspan="9" class="empty">No data</td></tr>'}</tbody></table>`;
-    h+=`<div class="card ds-ltr" dir="ltr"><h3>🏅 Draws and Discarded Bags per Staff — from Donation Reports</h3>
+    h+=`<div class="card ds-ltr" dir="ltr"><h3 class="ds-sec">🏅 Draws and Discarded Bags</h3>
       <div class="hint" style="margin:-6px 0 10px">Source: ${rep.src} <b>${rep.agg.label}</b>${rep.exact?'':' — ⚠️ Covers only part of the selected period; for a full match, upload the latest List of donations and Discarded products files on the 📥 upload page'}${bySite?` — Site: ${siteLblEn}`:''}. Discarded bags = the six collection-related discard reasons (${TRACKED_DISCARD_CODES.join(', ')}), attributed to the staff member who drew the bag.</div>
       <div class="kpis">${kpi('','Units Drawn',fmtNum(totCol),`${list.filter(p=>p.col>0).length} staff`)}${kpi('a','Discarded Bags (Collection Reasons)',fmtNum(totDis),pct(totDis,totCol)+' of drawn')}${bySite?'':kpi('n','Total Discarded (All Reasons)',fmtNum(rep.agg.totalDiscarded),'All red cell products')}</div>
       <div class="row" style="align-items:flex-start">
         <div style="flex:3;min-width:320px;overflow:auto;max-height:560px"><h3>🩸 Draws — All Staff (${all.length})</h3>${tb(all,[['Drawn',p=>`<b>${p.col}</b>`],['',p=>`<div class="bar"><i style="width:${p.col/mx*100}%"></i></div>`],['Discarded',p=>p.dis],['Rate',p=>p.col?p.rate.toFixed(1)+'%':'—']])}</div>
         <div style="flex:2;min-width:280px;overflow:auto;max-height:560px"><h3>🗑️ Discarded Bags (${allDis.length})</h3>${tb(allDis,[['Discarded',p=>`<b>${p.dis}</b>`],['Drawn',p=>p.col],['Rate',p=>p.col?p.rate.toFixed(1)+'%':'—']])}</div>
       </div></div>`;
-  } else h+=`<div class="card ds-ltr" dir="ltr"><h3>🏅 Top Draws and Discarded Bags</h3><div class="empty">No saved donation report within this period — upload List of donations and Discarded products on the 📥 upload page (they are filtered here automatically for any week or period during the session).</div></div>`;
+  } else h+=`<div class="card ds-ltr" dir="ltr"><h3 class="ds-sec">🏅 Draws and Discarded Bags</h3><div class="empty">No saved donation report within this period — upload List of donations and Discarded products on the 📥 upload page (they are filtered here automatically for any week or period during the session).</div></div>`;
   // ===== 2) الوحدات المستلمة والمحضّرة — بطاقات بنمط صفحة الإحصائيات (القيمة + مقارنة بالفترة السابقة المماثلة) =====
   if(DS.rec.length||DS.prep.length){
     const SC=['F','D','C','U'], rec=DS.rec.filter(r=>inR(r.dd)), prep=DS.prep.filter(r=>inR(r.dd));
@@ -4371,8 +4372,8 @@ function dsRender(){
       {g:3,id:'rbcnlr',c:'',lb:'RBC — Non Leuco-Reduced',cur:sel(P('RBCNLR')),prev:sel(PP('RBCNLR'))},
       {g:3,id:'cryo',c:'a',lb:'CRYOPRECIPITATE',cur:sel(P('CRYO')),prev:sel(PP('CRYO'))},
     ];
-    h+=`<div class="card ds-ltr" dir="ltr"><h3>🧪 2) Received and Prepared Units — List of Operations</h3>
-    <div class="hint" style="margin:-6px 0 10px">Site: <b>${siteLblEn}</b>${hasPrev?` — compared with the previous period of equal length ${fmtDMY(pf)} → ${fmtDMY(pt)}`:' — no previous period in the file to compare with'}</div>
+    h+=`<div class="card ds-ltr" dir="ltr"><h3 class="ds-sec">🧪 2) Received and Prepared Units</h3>
+    <div class="hint" style="margin:-6px 0 10px">Source: List of Operations — Site: <b>${siteLblEn}</b>${hasPrev?` — compared with the previous period of equal length ${fmtDMY(pf)} → ${fmtDMY(pt)}`:' — no previous period in the file to compare with'}</div>
     ${dsItemChips(items)}
     ${[1,2,3].map(g=>{ const v=items.filter(it=>it.g===g&&!dsHidden.has(it.id)); return v.length?`<div class="kpis">${v.map(it=>card(it.c,it.lb,it.cur,it.prev,it.id)).join('')}</div>`:''; }).join('')}
     ${items.every(it=>dsHidden.has(it.id))?'<div class="hint">No items selected — choose items from the buttons above.</div>':''}
@@ -4386,7 +4387,8 @@ function dsRender(){
     const ds=Object.keys(day).sort(), T=ds.reduce((t,d)=>{ ['out','in','tp','ta'].forEach(k=>t[k]+=day[d][k]); return t; },{out:0,in:0,tp:0,ta:0});
     const wd=iso=>DS_DAY[new Date(iso+'T12:00:00').getDay()];
     const aboP={}; Object.entries(aboOut).forEach(([a,n])=>{ const k=dsAboKey(a); aboP[k]=(aboP[k]||0)+n; });
-    h+=`<div class="card ds-ltr" dir="ltr"><h3>🟡 3) Platelets — Pooling 5 days (Iso Group) &amp; Treatment</h3>
+    h+=`<div class="card ds-ltr" dir="ltr"><h3 class="ds-sec">🟡 3) Platelets</h3>
+    <div class="hint" style="margin:-6px 0 10px">Source: List of Operations — Pooling 5 days (Iso Group) &amp; Treatment, by operation date.</div>
     <div class="kpis">
       ${kpi('','Pools Prepared',fmtNum(T.out),ds.length>1?`Average ${(T.out/ds.length).toFixed(1)} per day · ${ds.length} days`:'')}
       ${kpi('g','Platelet Units Pooled',fmtNum(T.in),T.out?`${(T.in/T.out).toFixed(1)} units per pool`:'')}
@@ -4426,9 +4428,9 @@ function dsRender(){
     const hosp={}; I.forEach(r=>{ const x=hosp[r.c]=hosp[r.c]||{c:r.c,cn:r.cn,n:0}; x.n++; if(!x.cn&&r.cn) x.cn=r.cn; });
     const hl=Object.values(hosp).sort((a,b)=>b.n-a.n), hmx=hl[0]?.n||1;
     const aboC={}; I.forEach(r=>aboC[r.abo]=(aboC[r.abo]||0)+1);
-    h+=`<div class="card ds-ltr" dir="ltr"><h3>🚚 4) Issuing Units — Delivered to Outside Hospitals</h3>
+    h+=`<div class="card ds-ltr" dir="ltr"><h3 class="ds-sec">🚚 4) Issuing Units</h3>
     <div class="noprint" style="margin:-4px 0 10px"><div class="hint" style="margin:0">Issuing sector (choose one or more):</div><div class="cmp-chips" id="dsSecChips" style="margin:5px 0 0">${Object.entries(ISSUE_CATS).map(([c,x])=>{ const on=dsSecs.has(c); return `<button class="cmp-chip${on?' on':''}" data-c="${c}" aria-pressed="${on}">${x.lb}</button>`; }).join('')}<button class="btn ghost sm" data-c="all">All</button></div></div>
-    <div class="hint" style="margin:0 0 10px">Sector: <b>${secLbl}</b> — by delivery date — not split by collection site.${hasPrev?` Compared with the previous period of equal length ${fmtDMY(pf)} → ${fmtDMY(pt)}.`:''} Every delivery row is counted: a unit returned and issued again to another hospital counts twice.</div>
+    <div class="hint" style="margin:0 0 10px">Source: Delivered to outside — Sector: <b>${secLbl}</b> — by delivery date — not split by collection site.${hasPrev?` Compared with the previous period of equal length ${fmtDMY(pf)} → ${fmtDMY(pt)}.`:''} Every delivery row is counted: a unit returned and issued again to another hospital counts twice.</div>
     ${unkAll.length?`<div class="iss-unk"><h4>⚠️ ${unkAll.length} client code${unkAll.length>1?'s are':' is'} not classified</h4>
       <div class="hint" style="margin:0 0 8px">These codes are new or missing from the GOV classification file, so their units appear under <b>Unclassified</b>. Choose a sector and save — it applies to everyone using the site.</div>
       <table class="rk"><thead><tr><th>Code</th><th>Hospital</th><th>Units (whole file)</th><th>Sector</th></tr></thead><tbody>
