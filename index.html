@@ -562,7 +562,7 @@ table.rk.iss-mx td.nm{text-align:left}table.rk.iss-mx td.tot,table.rk.iss-mx tr.
 .dsp-st{display:flex;align-items:center;gap:8px;width:fit-content;margin:0 0 8px auto;padding:4px 14px 4px 4px;border-radius:999px;background:var(--navy);color:#fff;font:900 14px Arial;box-shadow:inset 0 -2px 0 var(--amber)}
 .dsp-sec[dir=ltr] .dsp-st{margin:0 0 8px auto}
 .dsp-st .si{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--amber);font-size:13px}
-.dsp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.dsp-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}.dsp-break .dsp-grid{grid-template-columns:repeat(4,1fr)}
 .dsp-card{display:grid;grid-template-columns:minmax(0,1fr) 46px;column-gap:8px;align-items:center;background:#fff;border:1px solid #E1E8F0;border-top:3px solid var(--teal);border-radius:9px;padding:7px 10px;page-break-inside:avoid}
 .dsp-card.t-n{border-top-color:var(--navy)}.dsp-card.t-a{border-top-color:var(--amber)}.dsp-card.t-g{border-top-color:var(--gold)}.dsp-card.t-bad{border-top-color:var(--bad)}
 .dsp-card>:not(.ic){grid-column:1}.dsp-card .ic{grid-column:2;grid-row:1/span 3;width:46px;height:46px}.dsp-card .ic svg{display:block;width:100%;height:100%}
@@ -4196,12 +4196,12 @@ $('#dashOut').addEventListener('click',e=>{ const b=e.target.closest('#dsSecChip
 // مؤشر الأكثر سحباً والأكياس المتلفة من «تقارير التبرعات»: ملفات تلك الصفحة المرفوعة في الجلسة (فلترة دقيقة بالفترة)،
 // وإلا أكبر تقرير محفوظ يقع بالكامل داخل الفترة (لا يُستخدم تقرير أوسع منها — سنة كاملة لعرض أسبوع أرقام مضلّلة)
 function dsReportFor(f,t){
-  if(REP_RAW&&REP_RAW.from<=t&&REP_RAW.to>=f){
+  if(REP_RAW&&REP_RAW.don?.length&&REP_RAW.from<=t&&REP_RAW.to>=f){
     const r={from:f<REP_RAW.from?REP_RAW.from:f,to:t>REP_RAW.to?REP_RAW.to:t}, a=aggregateReport(REP_RAW.don,REP_RAW.dis,r);
-    if(a) return {agg:a,src:'Donation report files uploaded in this session',exact:r.from===f&&r.to===t};
+    if(a&&a.totalCollected>0) return {agg:a,src:'Donation report files uploaded in this session',exact:r.from===f&&r.to===t};
   }
   const span=r=>new Date(r.dateTo)-new Date(r.dateFrom);
-  const best=Object.values(REPORTS).filter(r=>r.dateFrom>=f&&r.dateTo<=t).sort((a,b)=>span(b)-span(a))[0];
+  const best=Object.values(REPORTS).filter(r=>r.dateFrom>=f&&r.dateTo<=t&&r.totalCollected>0).sort((a,b)=>span(b)-span(a))[0];
   return best?{agg:best,src:'Saved report',exact:best.dateFrom===f&&best.dateTo===t}:null;
 }
 // (2026-10-11، طلب حسن) مؤشرات بصرية بدل الرسوم البيانية: شريط توزيع النقاط، بطاقات الفصائل، شريط نسبة
@@ -4557,11 +4557,21 @@ function dsExportPdf(){
   const page=(rows,br)=>`<table class="dsp-page${br?' dsp-break':''}"><tfoot><tr><td><div class="dsp-foot">DONE BY : HASAN ALAGOUL</div></td></tr></tfoot><tbody>${rows.map(r=>`<tr><td>${r}</td></tr>`).join('')}</tbody></table>`;
   $('#dsPrint').innerHTML=page([dsPrintHead(M),...main.map(dsPrintSec)])
     +(dr?page([dsPrintHead(M),dsPrintSec(dr)+dsDrawsTable(DS_DRAWS||[])],true):'');
+  dsFitPages();
   document.body.classList.add('ds-printing');
   const o=document.title; document.title=dsFileName(M.R);
   window.print(); setTimeout(()=>document.title=o,700);
 }
 window.addEventListener('afterprint',()=>document.body.classList.remove('ds-printing'));
+// (2026-10-12، طلب حسن) التقرير في صفحتين: كل جزء يُقاس بعرض صفحة A4 أفقية ويُصغَّر (zoom) إن تجاوز ارتفاعها
+const DSP_W=1040, DSP_H=700; // ‎A4 أفقي بهوامش 10mm ≈ 1047×718px عند 96dpi (مع هامش أمان)
+function dsFitPages(){
+  const box=$('#dsPrint'), keep=box.getAttribute('style')||'';
+  box.setAttribute('style',`display:block;position:absolute;left:-99999px;top:0;width:${DSP_W}px`);
+  // التصغير يعيد توزيع المحتوى (البطاقات تتسع عرضاً) فيُقاس الارتفاع الفعلي بعد كل خطوة بدل تقدير واحد
+  $$('#dsPrint .dsp-page').forEach(t=>{ let z=1; t.style.zoom=''; while(t.getBoundingClientRect().height>DSP_H&&z>0.35){ z-=0.01; t.style.zoom=z.toFixed(2); } });
+  box.setAttribute('style',keep);
+}
 // SVG → PNG بأبعاد مطابقة لنسبة viewBox (لا تمطيط)، للـ PowerPoint
 async function dsSvgPng(svg,hPx){
   const vb=(/viewBox="([^"]+)"/.exec(svg)||[])[1]; if(!vb) return null;
@@ -4588,53 +4598,67 @@ async function dsExportPptx(){
   const addSl=()=>P.addSlide({masterName:'DS'});
   const head=sl=>{ // رأس كل شريحة: الشعار + الاسم بالعربي والإنجليزي + الفترة
     sl.background={color:'FFFFFF'};
-    const lh=0.95; sl.addImage({data:logo.data,x:MX,y:0.3,h:lh,w:lh*logo.ar});
-    const tx=MX+lh*logo.ar+0.25;
-    sl.addText('بنك الدم المركزي بالدمام',{x:tx,y:0.27,w:5.2,h:0.42,fontSize:19,bold:true,color:NAVY,fontFace:'Arial',lang:'ar-SA',align:'left'});
-    sl.addText('Dammam Central Blood Bank',{x:tx,y:0.66,w:5.2,h:0.32,fontSize:13,bold:true,color:'0D7377',fontFace:'Arial'});
-    sl.addText('Donors and Blood Components Report',{x:tx,y:0.95,w:5.2,h:0.28,fontSize:10,color:MUT,fontFace:'Arial'});
-    sl.addText([{text:'الفترة · Period',options:{fontSize:9,color:MUT,breakLine:true}},{text:dsPer(M.R),options:{fontSize:15,bold:true,color:NAVY,breakLine:true}},{text:`Collection sites: ${M.site}`,options:{fontSize:8.5,color:MUT}}],
-      {x:PW-MX-3.6,y:0.3,w:3.6,h:0.95,align:'right',fontFace:'Arial'});
-    sl.addShape(P.ShapeType.rect,{x:MX,y:1.38,w:PW-2*MX,h:0.05,fill:{color:AMB},line:{color:AMB}});
-    return 1.6;
+    const lh=0.8; sl.addImage({data:logo.data,x:MX,y:0.22,h:lh,w:lh*logo.ar});
+    const tx=MX+lh*logo.ar+0.22;
+    sl.addText('بنك الدم المركزي بالدمام',{x:tx,y:0.2,w:5.2,h:0.36,fontSize:17,bold:true,color:NAVY,fontFace:'Arial',lang:'ar-SA',align:'left',margin:0});
+    sl.addText('Dammam Central Blood Bank',{x:tx,y:0.55,w:5.2,h:0.26,fontSize:12,bold:true,color:'0D7377',fontFace:'Arial',margin:0});
+    sl.addText('Donors and Blood Components Report',{x:tx,y:0.8,w:5.2,h:0.22,fontSize:9,color:MUT,fontFace:'Arial',margin:0});
+    sl.addText([{text:'الفترة · Period',options:{fontSize:8.5,color:MUT,breakLine:true}},{text:dsPer(M.R),options:{fontSize:14,bold:true,color:NAVY,breakLine:true}},{text:`Collection sites: ${M.site}`,options:{fontSize:8,color:MUT}}],
+      {x:PW-MX-3.6,y:0.22,w:3.6,h:0.8,align:'right',fontFace:'Arial',margin:0});
+    sl.addShape(P.ShapeType.rect,{x:MX,y:1.1,w:PW-2*MX,h:0.04,fill:{color:AMB},line:{color:AMB}});
+    return 1.24;
   };
+  // (2026-10-12، طلب حسن) التقرير في صفحتين: كل الأقسام في شريحة واحدة (عدد الأعمدة وحجم البطاقة يُحسبان ليتسع الكل)، وDraws في الثانية
+  const TP=0.28;
   const secTitle=(sl,s,y)=>{
-    const w=Math.min(6,0.75+s.title.length*0.13);
-    sl.addShape(P.ShapeType.roundRect,{x:PW-MX-w,y,w,h:0.42,rectRadius:0.21,fill:{color:NAVY},line:{color:NAVY}});
-    sl.addShape(P.ShapeType.ellipse,{x:PW-MX-w+0.06,y:y+0.05,w:0.32,h:0.32,fill:{color:AMB},line:{color:AMB}});
-    sl.addText(s.icon,{x:PW-MX-w+0.06,y:y+0.05,w:0.32,h:0.32,fontSize:11,align:'center',valign:'middle'});
-    sl.addText(s.title,{x:PW-MX-w+0.44,y,w:w-0.5,h:0.42,fontSize:13.5,bold:true,color:'FFFFFF',fontFace:'Arial',valign:'middle'});
-    return y+0.55;
+    const w=Math.min(6,0.65+s.title.length*0.115);
+    sl.addShape(P.ShapeType.roundRect,{x:PW-MX-w,y,w,h:TP,rectRadius:TP/2,fill:{color:NAVY},line:{color:NAVY}});
+    sl.addShape(P.ShapeType.ellipse,{x:PW-MX-w+0.04,y:y+0.04,w:TP-0.08,h:TP-0.08,fill:{color:AMB},line:{color:AMB}});
+    sl.addText(s.icon,{x:PW-MX-w+0.04,y:y+0.04,w:TP-0.08,h:TP-0.08,fontSize:8,align:'center',valign:'middle',margin:0});
+    sl.addText(s.title,{x:PW-MX-w+TP+0.06,y,w:w-TP-0.1,h:TP,fontSize:11,bold:true,color:'FFFFFF',fontFace:'Arial',valign:'middle',margin:0});
+    return y+TP+0.06;
   };
-  const COLS=4, GAP=0.16, CW=(PW-2*MX-(COLS-1)*GAP)/COLS, CH=1.0;
-  const card=(sl,c,x,y)=>{
-    const col=TONE[dsTone(c.cls)], ic=icons[c.ic], IS=0.62;
-    sl.addShape(P.ShapeType.roundRect,{x,y,w:CW,h:CH,rectRadius:0.08,fill:{color:'FFFFFF'},line:{color:LINE,width:0.75}});
-    sl.addShape(P.ShapeType.rect,{x:x+0.05,y,w:CW-0.1,h:0.05,fill:{color:col},line:{color:col}});
-    const tw=CW-0.3-(ic?IS+0.12:0), tx=c.rtl?x+CW-0.15-tw:x+0.15, al=c.rtl?'right':'left';
-    if(ic){ const iw=ic.ar>=1?IS:IS*ic.ar, ih=ic.ar>=1?IS/ic.ar:IS; sl.addImage({data:ic.data,x:(c.rtl?x+0.15:x+CW-0.15-IS)+(IS-iw)/2,y:y+(CH-ih)/2+0.02,w:iw,h:ih}); }
-    const o={fontFace:'Arial',align:al,lang:c.rtl?'ar-SA':'en-US',rtlMode:c.rtl};
-    sl.addText(c.lb,{...o,x:tx,y:y+0.05,w:tw,h:0.32,fontSize:c.lb.length>22?7.5:8.5,bold:true,color:MUT,valign:'bottom'});
-    sl.addText(c.vl,{...o,x:tx,y:y+0.35,w:tw,h:0.38,fontSize:20,bold:true,color:/bad/.test(dsTone(c.cls))?'C0392B':NAVY});
-    const dt=strip(c.dt); if(dt) sl.addText(dt,{...o,x:tx,y:y+0.7,w:tw,h:0.3,fontSize:7.5,color:MUT,valign:'top'});
+  const GAP=0.08, TOP=1.24, BOT=PH-0.52;
+  const dims=cols=>({cols,CW:(PW-2*MX-(cols-1)*GAP)/cols});
+  const card=(sl,c,x,y,D)=>{
+    const {CW,CH}=D, k=Math.min(1,CH), col=TONE[dsTone(c.cls)], ic=icons[c.ic], IS=Math.min(0.62,CH*0.62,CW*0.27);
+    sl.addShape(P.ShapeType.roundRect,{x,y,w:CW,h:CH,rectRadius:0.07,fill:{color:'FFFFFF'},line:{color:LINE,width:0.75}});
+    sl.addShape(P.ShapeType.rect,{x:x+0.05,y,w:CW-0.1,h:0.04,fill:{color:col},line:{color:col}});
+    const pad=0.1, tw=CW-2*pad-(ic?IS+0.08:0), tx=c.rtl?x+CW-pad-tw:x+pad, al=c.rtl?'right':'left';
+    if(ic){ const iw=ic.ar>=1?IS:IS*ic.ar, ih=ic.ar>=1?IS/ic.ar:IS; sl.addImage({data:ic.data,x:(c.rtl?x+pad:x+CW-pad-IS)+(IS-iw)/2,y:y+(CH-ih)/2+0.02,w:iw,h:ih}); }
+    const o={fontFace:'Arial',align:al,lang:c.rtl?'ar-SA':'en-US',rtlMode:c.rtl,margin:0};
+    const cl=v=>Math.min(v[2],Math.max(v[0],v[1])), lf=cl([5.5,CH*(c.lb.length>22?11:13),8.5]), vf=cl([11,CH*24,20]), df=cl([5,CH*10,7.5]);
+    sl.addText(c.lb,{...o,x:tx,y:y+0.05,w:tw,h:CH*0.3,fontSize:lf,bold:true,color:MUT,valign:'bottom',fit:'shrink'});
+    sl.addText(c.vl,{...o,x:tx,y:y+0.05+CH*0.3,w:tw,h:CH*0.36,fontSize:vf,bold:true,color:/bad/.test(dsTone(c.cls))?'C0392B':NAVY,valign:'middle'});
+    let dt=strip(c.dt); if(CH<0.7) dt=dt.replace(/\n+/g,' · ');
+    if(dt) sl.addText(dt,{...o,x:tx,y:y+0.05+CH*0.66,w:tw,h:CH*0.32,fontSize:df,color:MUT,valign:'top'});
   };
-  const putSec=(state,s)=>{ // يضيف قسماً ويبدأ شريحة جديدة عند الحاجة
-    const rows=[]; for(let i=0;i<s.cards.length;i+=COLS) rows.push(s.cards.slice(i,i+COLS));
+  const putSec=(state,s,D)=>{ // يضيف قسماً، ويبدأ شريحة جديدة فقط إن لم يتسع (احتياط)
+    const rows=[]; for(let i=0;i<s.cards.length;i+=D.cols) rows.push(s.cards.slice(i,i+D.cols));
     let first=true;
     rows.forEach(r=>{
-      const need=(first?0.55:0)+CH+GAP;
-      if(!state.sl||state.y+need>PH-0.55){ state.sl=addSl(); state.y=head(state.sl); if(!first) state.y=secTitle(state.sl,{...s,title:s.title+' (cont.)'},state.y); }
+      const need=(first?TP+0.06:0)+D.CH;
+      if(!state.sl||state.y+need>BOT+0.01){ state.sl=addSl(); state.y=head(state.sl); if(!first) state.y=secTitle(state.sl,{...s,title:s.title+' (cont.)'},state.y); }
       if(first){ state.y=secTitle(state.sl,s,state.y); first=false; }
-      r.forEach((c,i)=>card(state.sl,c,s.rtl?PW-MX-CW-i*(CW+GAP):MX+i*(CW+GAP),state.y));
-      state.y+=CH+GAP;
+      r.forEach((c,i)=>card(state.sl,c,s.rtl?PW-MX-D.CW-i*(D.CW+GAP):MX+i*(D.CW+GAP),state.y,D));
+      state.y+=D.CH+GAP;
     });
-    state.y+=0.12;
+    state.y+=0.04;
   };
+  const main=M.secs.filter(s=>!s.draws);
+  // أقل عدد أعمدة (4→6) يتسع معه الكل في شريحة واحدة بارتفاع بطاقة مقروء؛ وإلا 6 أعمدة بأكبر ارتفاع ممكن
+  let D=null;
+  for(const cols of [4,5,6]){
+    const rows=main.reduce((t,s)=>t+Math.ceil(s.cards.length/cols),0);
+    const CH=(BOT-TOP-main.length*(TP+0.06+0.04)-rows*GAP)/Math.max(1,rows);
+    D={...dims(cols),CH:Math.min(1,CH)}; if(CH>=0.62) break;
+  }
+  if(D.CH<0.4) D.CH=0.4; // كثير جداً — يمتد لشريحة إضافية بدل بطاقات غير مقروءة
   const st={sl:null,y:0};
-  M.secs.filter(s=>!s.draws).forEach(s=>putSec(st,s));
+  main.forEach(s=>putSec(st,s,D));
   const dr=M.secs.find(s=>s.draws);
   if(dr){ // صفحة مستقلة: البطاقات + جدول الموظفين
-    const d={sl:null,y:0}; putSec(d,dr);
+    const d={sl:null,y:0}; putSec(d,dr,{...dims(4),CH:0.85});
     const list=DS_DRAWS||[], hdr=['#','Staff','Drawn','Discarded','Rate'].map(t=>({text:t,options:{bold:true,color:'FFFFFF',fill:{color:NAVY},align:'center'}}));
     const row=(x,n)=>[String(n+1),x.name,fmtNum(x.col),String(x.dis),x.col?x.rate.toFixed(1)+'%':'—'].map((t,k)=>({text:t,options:{align:k===1?'left':'center',bold:k===2}}));
     const topt={y:d.y,fontSize:8,fontFace:'Arial',color:INK,border:{type:'solid',pt:0.5,color:LINE},rowH:0.21,colW:[0.4,2.2,0.85,0.9,0.75]};
@@ -4643,7 +4667,7 @@ async function dsExportPptx(){
     else if(list.length<=2*fit){ const h=Math.ceil(list.length/2);
       d.sl.addTable([hdr,...list.slice(0,h).map(row)],{...topt,x:MX});
       d.sl.addTable([hdr,...list.slice(h).map((x,i)=>row(x,h+i))],{...topt,x:MX+5.2}); }
-    else d.sl.addTable([hdr,...list.map(row)],{...topt,x:MX,autoPage:true,autoPageRepeatHeader:true,autoPageSlideStartY:1.6,masterName:'DS',margin:[0.3,0.45,0.6,0.45]});
+    else d.sl.addTable([hdr,...list.map(row)],{...topt,x:MX,autoPage:true,autoPageRepeatHeader:true,autoPageSlideStartY:1.3,masterName:'DS',margin:[0.3,0.45,0.6,0.45]});
   }
   await P.writeFile({fileName:dsFileName(M.R)+'.pptx'});
 }
