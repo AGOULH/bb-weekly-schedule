@@ -136,8 +136,12 @@ table.res td.assignees{padding:8px}
 .kpi .dt{font-size:11.5px;font-weight:700}
 .kpi{position:relative;overflow:hidden}
 .kpi>:not(.kic){position:relative;z-index:1}
-.kpi .kic{position:absolute;z-index:0;top:8px;bottom:8px;inset-inline-end:8px;width:calc(50% - 8px);opacity:.22;pointer-events:none}
+/* الأيقونة في عمود مستقل بجانب النص — لا يقع أي نص فوقها (طلب حسن 2026-10-12) */
+.kpi:has(>.kic){display:grid;grid-template-columns:minmax(0,1fr) 54px;column-gap:12px;align-content:start}
+.kpi:has(>.kic)>:not(.kic){grid-column:1}
+.kpi>.kic{grid-column:2;grid-row:1/span 3;align-self:center;width:54px;height:54px;padding:6px;border-radius:14px;background:#F3F6FA;pointer-events:none}
 .kpi .kic svg{display:block;width:100%;height:100%}
+.kpi .dt{line-height:1.55}
 .up{color:var(--ok)}.down{color:var(--bad)}.flat{color:var(--muted)}
 .kpi.a{border-top-color:var(--amber)}.kpi.n{border-top-color:var(--navy)}.kpi.g{border-top-color:var(--gold)}
 
@@ -534,6 +538,11 @@ table.rk .ds-on,table.rk tr.ds-on td{background:var(--row-a);font-weight:800}
 .ds-det{margin-top:14px}.ds-det summary{cursor:pointer;font-weight:800;color:var(--navy);font-size:13px;padding:6px 0}
 .ds-ltr table.rk td.nm{text-align:left}
 .kpi.ds-bad{border-top-color:var(--bad)}.kpi.ds-bad .vl{color:var(--bad)}
+#dashOut .kpis{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.iss-unk{background:#FFF4F2;border:1px solid #F3C4BE;border-left:4px solid var(--bad);border-radius:10px;padding:12px 14px;margin-bottom:14px}
+.iss-unk h4{margin:0 0 6px;color:var(--bad);font-size:14px}
+.iss-unk table.rk td{background:#fff;padding:5px 8px}.iss-unk select{min-width:170px;padding:4px 8px;height:auto;font-size:12.5px}
+table.rk.iss-mx td.nm{text-align:left}table.rk.iss-mx td.tot,table.rk.iss-mx tr.tot td{font-weight:900;color:var(--navy);background:#EEF3F8}
 .ds-en{display:inline-block;direction:ltr;unicode-bidi:isolate;font-family:Arial}
 /* ===== PRINT ===== */
 @media print{
@@ -587,7 +596,7 @@ table.rk .ds-on,table.rk tr.ds-on td{background:var(--row-a);font-weight:800}
   <label class="up-drop" id="upDrop" for="upInput">
     <input type="file" id="upInput" multiple accept=".xls,.xlsx,.csv,.html,.htm" hidden>
     <b>📂 اسحب الملفات هنا أو اضغط للاختيار</b>
-    <span>List of donations · Wateen report · Staff productivity (عدة أسابيع) · Discarded products · List of Operations — كما تُنزَّل من النظام</span>
+    <span>List of donations · Wateen report · Staff productivity (عدة أسابيع) · Discarded products · List of Operations · Delivered to outside — كما تُنزَّل من النظام</span>
   </label>
   <div id="upLog" class="hint"></div>
   <div class="up-grid" id="upGrid"></div>
@@ -734,11 +743,11 @@ table.rk .ds-on,table.rk tr.ds-on td{background:var(--row-a);font-weight:800}
 <!-- ============ DASH (Wateen report + List of Operations) ============ -->
 <section class="page" id="pg-dash">
   <div class="pghead noprint">
-    <div><h2 tabindex="-1">Donors and Blood Components</h2><p>من Wateen report وList of Operations: لوحة المتبرعين (CENTER/DAMY/MOBILE)، الوحدات المحضّرة، والصفائح (Pooling/Treatment)</p></div>
+    <div><h2 tabindex="-1">Donors and Blood Components</h2><p>من Wateen report وList of Operations وDelivered to outside: لوحة المتبرعين (CENTER/DAMY/MOBILE)، الوحدات المحضّرة، الصفائح (Pooling/Treatment)، والوحدات المصروفة (Issuing Units)</p></div>
   </div>
   <div class="card noprint">
     <h3>📥 الملفات</h3>
-    <div class="upstat" data-need="wateen,ops,donations,discarded"></div>
+    <div class="upstat" data-need="wateen,ops,issue,donations,discarded"></div>
     <div class="hint">التحليل تلقائي من «📥 رفع الملفات» (يكفي أحد الملفين؛ List of donations وDiscarded products لمؤشر الأكثر سحباً والمتلف). الربط بين الملفين برقم الكيس: الوحدات المستلمة والمحضّرة تُنسب لتاريخ التبرع ونقطة السحب من Wateen report؛ وحدة غير موجودة فيه (تبرع خارج فترة الملف) تُحسب بتاريخ العملية تحت «غير مرتبطة». </div>
     <div id="dsLog" class="hint"></div>
     <div class="row" id="dsFilter" style="display:none;margin-top:12px;align-items:flex-end">
@@ -1210,6 +1219,7 @@ async function boot(){
   const SETTINGS=await cloudAll('settings');
   TARGET=SETTINGS.target||{monthly:0};
   LV_PRELIM_SETTINGS=SETTINGS.leavePrelim||{lastReq:'',reminderDays:90};
+  ISSUE_USER=SETTINGS.issueClients?.map||{};
   if(!Object.keys(STAFF).length){
     SEED.forEach((n,i)=>STAFF['s'+(i+1)]={name:n,active:true,role:RECEPTION_NAMES.includes(n)?'reception':'technical',order:i+1});
     for(const [k,v] of Object.entries(STAFF)) await cloudSet('staff',k,v);
@@ -4060,6 +4070,29 @@ function dsParseOps(rows){
   rec.forEach(r=>{ if(r.k==='WB') r.st=sepU.has(r.u)?'sep':wbDisc.has(r.u)?'disc':'pend'; });
   return {rec,prep,pool,tre};
 }
+// ===== 4) Issuing Units — ملف «Delivered to outside» (2026-10-12، طلب حسن) =====
+// تصنيف الجهات من ملف حسن GOV.xlsx (ورقة لكل تصنيف) حسب Client Code؛ كود غير موجود هنا ولا في settings/issueClients = «غير مصنّف» مع تنبيه
+const ISSUE_CATS={GOV:{lb:'GOVERNMENTAL',ic:'gov',c:'n'},PRIVATE:{lb:'PRIVATE',ic:'priv',c:''},NONGOV:{lb:'NON GOVERNMENTAL',ic:'nongov',c:'g'},OTHER:{lb:'Other Regions',ic:'region',c:'a'}};
+const ISSUE_CLASS=(()=>{ const o={}, src={GOV:'2011|2012|2013|2018|2020|2021|2022|2023|2024|2025|2026|2027|2028|2029|2030|2031|BATHAA|DMC',
+  PRIVATE:'9999|AMANAH|AMGH|AMGHK|AMGHZ|ARGH|CRMC|DAHD|DHK|DKHM|DSHMGH|FAKHH|GAMH|KHNH|KJO|MADH|MANJ|MUHK|MUWHD|MUWJ|MUWQ|PHK|SADH|SGHD|SHK|SHS|TGHD|YHK|ZGH',
+  NONGOV:'AIR BASE|KANBHJ|KFMMC|NAGU|NUGU|RCHJ|SFHD', OTHER:'2003|2006|2009|2010|3010|3024|4015|4025|5001|6050'};
+  Object.entries(src).forEach(([c,l])=>l.split('|').forEach(k=>o[k]=c)); return o; })();
+let ISSUE_USER={}; // تصنيفات أضافها المستخدم لأكواد جديدة — settings/issueClients {map}
+const issueCls=code=>ISSUE_USER[code]||ISSUE_CLASS[code]||null;
+const ISSUE_PRODS=[['Apheresis PLATELETS','aph'],['CRYOPRECIPITATE','cryo'],['FRESH FROZEN PLASMA','ffp'],['PLATELETS','plt'],['POOLED PLATELETS','pool'],['Red blood cell Non Leuco-Reduced','rbcnlr'],['RED BLOOD CELLS','rbclr']];
+function dsParseIssue(rows){
+  const H=dsHeader(rows,['deliv','unit number','product description','client code']); if(!H) return null;
+  const [iD,iU,iP,iB,iC,iN]=['deliv','unit number','product description','blood group','client code','client description'].map(H.idx);
+  const PK=Object.fromEntries(ISSUE_PRODS.map(([n])=>[n.toUpperCase(),n])), out=[];
+  for(let i=H.hi+1;i<rows.length;i++){
+    const c=rows[i], d=dsDate(String(c[iD]||'').trim().split(/\s+/)[0]); if(!d) continue;
+    const desc=String(c[iP]||'').trim();
+    out.push({d,u:String(c[iU]||'').trim(),p:PK[desc.toUpperCase()]||desc||'—',abo:dsAboKey(c[iB]),c:String(c[iC]||'').trim().toUpperCase(),cn:String(c[iN]||'').trim()});
+  }
+  return out;
+}
+// أكواد الجهات غير المصنّفة: [{c,cn,n}] بالأكثر صرفاً
+const issueUnknown=recs=>{ const m={}; recs.forEach(r=>{ if(!issueCls(r.c)){ const x=m[r.c]=m[r.c]||{c:r.c,cn:'',n:0}; x.n++; if(!x.cn&&r.cn) x.cn=r.cn; } }); return Object.values(m).sort((a,b)=>b.n-a.n); };
 let dsHidden=new Set(LS.get('bb_ds_items',[])); // عناصر قسم الوحدات المستلمة والمحضّرة المخفية
 function dsItemChips(items){
   return `<div class="noprint" style="margin:-2px 0 8px"><div class="hint" style="margin:0">Items shown in the report:</div><div class="cmp-chips" id="dsItemChips" style="margin:5px 0 4px">`
@@ -4073,20 +4106,21 @@ $('#dashOut').addEventListener('click',e=>{ const b=e.target.closest('#dsItemChi
   LS.set('bb_ds_items',[...dsHidden]); dsRender(); });
 let DS=null, dsMode='all', dsSites=new Set(['F','D','C']), dsCharts={}; // نقاط السحب المختارة (متعددة مثل مقارنة الأقسام)
 async function dsLoad(){
-  const fW=upFile('wateen'), fO=upFile('ops');
-  if(!fW&&!fO){ DS=null; $('#dsFilter').style.display='none'; $('#dashOut').innerHTML=''; $('#dsLog').textContent=''; return; }
+  const fW=upFile('wateen'), fO=upFile('ops'), fI=upFile('issue');
+  if(!fW&&!fO&&!fI){ DS=null; $('#dsFilter').style.display='none'; $('#dashOut').innerHTML=''; $('#dsLog').textContent=''; return; }
   $('#dsLog').textContent='⏳ جاري قراءة الملفات…';
   try{
     const errs=[]; let w=[], ops={rec:[],prep:[],pool:[],tre:[]};
     if(fW){ const r=dsParseWateen(await dsFileRows(fW)); if(r) w=r; else errs.push('تنسيق Wateen report غير معروف'); }
     if(fO){ const r=dsParseOps(await dsFileRows(fO)); if(r) ops=r; else errs.push('تنسيق List of Operations غير معروف'); }
+    let iss=[]; if(fI){ const r=dsParseIssue(await dsFileRows(fI)); if(r) iss=r; else errs.push('تنسيق Delivered to outside غير معروف'); }
     // الربط برقم الكيس: تاريخ التبرع ونقطة السحب من Wateen؛ غير الموجود فيه = غير مرتبط (U) بتاريخ العملية
     const um={}; w.forEach(r=>{ if(r.u) um[r.u]=r; });
     let unl=0; [...ops.rec,...ops.prep].forEach(r=>{ const x=um[r.u]; r.dd=x?x.d:r.d; r.s=x?x.s:'U'; if(!x) unl++; });
-    const dates=[...w.map(r=>r.d),...ops.rec.map(r=>r.dd),...ops.prep.map(r=>r.dd),...ops.pool.map(r=>r.d),...ops.tre.map(r=>r.d)].sort();
+    const dates=[...w.map(r=>r.d),...ops.rec.map(r=>r.dd),...ops.prep.map(r=>r.dd),...ops.pool.map(r=>r.d),...ops.tre.map(r=>r.d),...iss.map(r=>r.d)].sort();
     if(!dates.length){ $('#dsLog').innerHTML=errs.join('<br>')||'لا توجد سجلات صالحة'; toast('لا توجد سجلات صالحة'); return; }
-    DS={w,...ops,from:dates[0],to:dates[dates.length-1]}; dsMode='all';
-    $('#dsLog').innerHTML=(errs.length?errs.join('<br>')+'<br>':'')+`تمت قراءة ${fmtNum(w.length)} سجل تبرع و${fmtNum(ops.rec.length)} استلام و${fmtNum(ops.prep.length)} منتج محضّر`
+    DS={w,...ops,iss,from:dates[0],to:dates[dates.length-1]}; dsMode='all';
+    $('#dsLog').innerHTML=(errs.length?errs.join('<br>')+'<br>':'')+`تمت قراءة ${fmtNum(w.length)} سجل تبرع و${fmtNum(ops.rec.length)} استلام و${fmtNum(ops.prep.length)} منتج محضّر${iss.length?` و${fmtNum(iss.length)} وحدة مصروفة`:''}`
       +`${unl?` (${fmtNum(unl)} وحدة غير موجودة في Wateen report — تُحسب بتاريخ العملية تحت «غير مرتبطة»)`:''} — الفترة <span class="bidi-ltr">${fmtLbl(DS.from,DS.to)}</span>`;
     dsFillFilter();
   }catch(e){ console.error(e); $('#dsLog').textContent='تعذّرت قراءة الملفات: '+e.message; }
@@ -4215,7 +4249,22 @@ const DS_ICO=(()=>{
     // كريات حمراء مع كرية بيضاء
     rbcnlr:sv(rbc(11,11,7.5)+rbc(12.5,23.5,5.5)+'<circle cx="22.5" cy="18" r="6.5" fill="#F3EEF8" stroke="#B9A6D3" stroke-width="1"/><circle cx="20.8" cy="16.8" r="2.6" fill="#8E6BBF"/><circle cx="24" cy="19" r="2.6" fill="#8E6BBF"/><circle cx="21.8" cy="20.3" r="1.8" fill="#8E6BBF"/>'),
     // راسب بارد (كيس مجمّد)
-    cryo:sv(bag({plastic:'#EEF5FB',edge:'#7092B8',fluid:'#F4DE8E',shade:'#E6C858',level:18.5,label:false})+flake(16,13.2,4.2,'#1B3A6B',1.3))
+    cryo:sv(bag({plastic:'#EEF5FB',edge:'#7092B8',fluid:'#F4DE8E',shade:'#E6C858',level:18.5,label:false})+flake(16,13.2,4.2,'#1B3A6B',1.3)),
+    // ===== Issuing Units (2026-10-12) =====
+    // صفائح مجمّعة: كيسان صغيران خلف كيس صفائح
+    pool:sv(`<g transform="translate(-1.6 1) scale(.56)">${bag(AMB)}</g><g transform="translate(15.6 1) scale(.56)">${bag(AMB)}</g><g transform="translate(5.6 7.6) scale(.68)">${bag(Object.assign({},YEL,{extra:'<circle cx="11.6" cy="22.3" r=".9" fill="#FFF3D6"/><circle cx="16" cy="23.3" r=".9" fill="#FFF3D6"/><circle cx="20.4" cy="22.3" r=".9" fill="#FFF3D6"/>'}))}</g>`),
+    // سيارة نقل دم (الصرف للمستشفيات)
+    issue:sv('<path d="M2.5 9.5a1.5 1.5 0 0 1 1.5-1.5h14.5a1.5 1.5 0 0 1 1.5 1.5V23H2.5z" fill="#fff" stroke="#7092B8" stroke-width="1"/><path d="M20 12h4.6a1.6 1.6 0 0 1 1.3.7l3 4.2a1.6 1.6 0 0 1 .3.9V23H20z" fill="#1B3A6B"/><path d="M21.6 13.6h3l2.3 3.3h-5.3z" fill="#BFD3EA"/><rect x="2.5" y="20.6" width="27" height="2.6" fill="#1B3A6B"/><path d="M11.2 10.6c2.3 2.9 3.6 4.7 3.6 6.4a3.6 3.6 0 0 1-7.2 0c0-1.7 1.3-3.5 3.6-6.4z" fill="#C8322D"/><path d="M9.6 16.7c.1-1 .6-1.9 1.2-2.7" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width=".9" stroke-linecap="round"/><circle cx="8" cy="24.3" r="2.9" fill="#2E2A28"/><circle cx="8" cy="24.3" r="1.2" fill="#C9D4E2"/><circle cx="24" cy="24.3" r="2.9" fill="#2E2A28"/><circle cx="24" cy="24.3" r="1.2" fill="#C9D4E2"/><rect x="28.3" y="18.2" width="1.6" height="1.6" rx=".5" fill="#F0A500"/>'),
+    // مبنى حكومي بأعمدة وعلم
+    gov:sv('<path d="M16 3.2v4.4" stroke="#1B3A6B" stroke-width="1" stroke-linecap="round"/><path d="M16.2 3.3h5.2v3.1h-5.2z" fill="#006C35"/><path d="M17.4 4.9h2.8" stroke="#fff" stroke-width=".7" stroke-linecap="round"/><path d="M3.5 12.6L16 7.4l12.5 5.2z" fill="#1B3A6B"/><rect x="3.8" y="12.6" width="24.4" height="2" fill="#2E5590"/>'+[6.3,11.4,16.5,21.6].map(x=>`<rect x="${x}" y="15.4" width="3.6" height="9.4" rx=".5" fill="#E9EEF5" stroke="#7092B8" stroke-width=".8"/>`).join('')+'<rect x="3.8" y="24.8" width="24.4" height="2" fill="#7092B8"/><rect x="2.5" y="26.8" width="27" height="2.4" rx=".6" fill="#1B3A6B"/>'),
+    // مستشفى خاص: مبنى بنوافذ وصليب أحمر
+    priv:sv('<rect x="5" y="9" width="22" height="20.5" rx="1.5" fill="#E7F3F3" stroke="#0D7377" stroke-width="1"/><rect x="5" y="9" width="22" height="3.2" rx="1.2" fill="#0D7377"/><circle cx="16" cy="6.8" r="5" fill="#fff" stroke="#C8322D" stroke-width="1.1"/><path d="M14.6 3.9h2.8v2.2h2.2v2.8h-2.2v2.2h-2.8V8.9h-2.2V6.1h2.2z" fill="#C8322D"/>'+[[8,14.5],[19.6,14.5],[8,19.6],[19.6,19.6]].map(([x,y])=>`<rect x="${x}" y="${y}" width="4.4" height="3.4" rx=".5" fill="#9CC9CA"/>`).join('')+'<path d="M13.4 29.5v-5.6a.8.8 0 0 1 .8-.8h3.6a.8.8 0 0 1 .8.8v5.6z" fill="#0D7377"/>'),
+    // درع (جهات عسكرية/أمنية/الحرس — غير حكومي في تصنيف الملف)
+    nongov:sv('<path d="M16 2.6l11 4v8.2c0 6.9-4.6 12-11 14.6C9.6 26.8 5 21.7 5 14.8V6.6z" fill="#1B3A6B"/><path d="M16 4.6l9 3.3v6.9c0 5.8-3.8 10.2-9 12.5z" fill="#2E5590"/><path d="M16 2.6l11 4v8.2c0 6.9-4.6 12-11 14.6C9.6 26.8 5 21.7 5 14.8V6.6z" fill="none" stroke="#C8860A" stroke-width="1.3"/><path d="M14.3 9.6h3.4v3.8h3.8v3.4h-3.8v3.8h-3.4v-3.8h-3.8v-3.4h3.8z" fill="#fff"/>'),
+    // خريطة مطوية ودبوس موقع (مناطق أخرى)
+    region:sv('<path d="M3 8.5l7.6-2.8 10.8 3.3L29 6.2v18.3l-7.6 2.8-10.8-3.3L3 26.8z" fill="#DCE7F3" stroke="#7092B8" stroke-width="1" stroke-linejoin="round"/><path d="M10.6 5.7v18.3M21.4 9v18.3" stroke="#7092B8" stroke-width=".9"/><path d="M4.5 18c2.4-1.6 4.6-1 6.1.2v4.6l-6.1 2.2z" fill="#9CD6B8"/><path d="M21.4 21.6c2-1.8 4.5-2.2 6.1-1.6v3.6l-6.1 2.3z" fill="#9CD6B8"/><path d="M8 13.5c3 .4 5.4 4 9 4.5" fill="none" stroke="#F0A500" stroke-width="1.2" stroke-dasharray="1.6 1.4" stroke-linecap="round"/><path d="M21.5 2.6a5.3 5.3 0 0 1 5.3 5.3c0 3.8-5.3 9.6-5.3 9.6s-5.3-5.8-5.3-9.6a5.3 5.3 0 0 1 5.3-5.3z" fill="#C8322D"/><circle cx="21.5" cy="7.9" r="2" fill="#fff"/>'),
+    // غير مصنّف
+    unk:sv('<circle cx="16" cy="16" r="12.5" fill="#FDEDEA" stroke="#C8322D" stroke-width="1.6"/><path d="M12.4 12.6a3.7 3.7 0 1 1 5.6 3.2c-1.3.8-2 1.5-2 3v.6" fill="none" stroke="#C8322D" stroke-width="2.2" stroke-linecap="round"/><circle cx="16" cy="23.2" r="1.5" fill="#C8322D"/>')
   };
 })();
 const dsIc=k=>DS_ICO[k]?`<span class="kic" aria-hidden="true">${DS_ICO[k]}</span>`:'';
@@ -4242,10 +4291,10 @@ function dsRender(){
     const nNeg=cnt(don,r=>r.neg), nSa=cnt(don,r=>r.sa), nF=cnt(don,r=>r.f);
     h+=`<div class="card"><h3>🩸 <span class="ds-en">1) Donors</span></h3>
     <div class="kpis">
-      ${kpi('','إجمالي المتبرعين',fmtNum(don.length),days?`متوسط ${(don.length/days).toFixed(1)} يومياً (${days} يوم تبرع)`:'—','donors')}
+      ${kpi('','إجمالي المتبرعين',fmtNum(don.length),days?`متوسط ${(don.length/days).toFixed(1)} يومياً<br>${days} يوم تبرع`:'—','donors')}
       ${kpi('n','Whole blood',fmtNum(nWB),pct(nWB,don.length),'wb')}
-      ${kpi('g','Plateletpheresis',fmtNum(nPLT),nPLS?`+ Plasmapheresis ${nPLS}`:pct(nPLT,don.length),'aph')}
-      ${kpi('a','Rh Negative',fmtNum(nNeg),pct(nNeg,don.length)+' من المتبرعين','rhneg')}
+      ${kpi('g','Plateletpheresis',fmtNum(nPLT),nPLS?`${pct(nPLT,don.length)}<br>+ Plasmapheresis ${nPLS}`:pct(nPLT,don.length),'aph')}
+      ${kpi('a','Rh Negative',fmtNum(nNeg),pct(nNeg,don.length)+'<br>من المتبرعين','rhneg')}
       ${kpi('','Saudi',fmtNum(nSa),pct(nSa,don.length),'saudi')}
       ${kpi('','Non-Saudi',fmtNum(don.length-nSa),pct(don.length-nSa,don.length),'globe')}
       ${kpi('n','Male',fmtNum(don.length-nF),pct(don.length-nF,don.length),'male')}
@@ -4256,7 +4305,7 @@ function dsRender(){
     <h3 style="margin-top:16px">👥 <span class="ds-en">Gender × Nationality</span></h3>
     <div class="kpis" dir="ltr">
       ${[['Saudi Male',r=>!r.f&&r.sa,'n','male'],['Non-Saudi Male',r=>!r.f&&!r.sa,'n','male'],['Saudi Female',r=>r.f&&r.sa,'a','female'],['Non-Saudi Female',r=>r.f&&!r.sa,'a','female']]
-        .map(([lb,fn,c,ic])=>{ const n=cnt(don,fn), g=cnt(don,r=>!!r.f===(ic==='female')); return kpi(c,lb,fmtNum(n),`${pct(n,don.length)} of donors · ${pct(n,g)} of ${ic==='female'?'females':'males'}`,ic); }).join('')}
+        .map(([lb,fn,c,ic])=>{ const n=cnt(don,fn), g=cnt(don,r=>!!r.f===(ic==='female')); return kpi(c,lb,fmtNum(n),`${pct(n,don.length)} of donors<br>${pct(n,g)} of ${ic==='female'?'females':'males'}`,ic); }).join('')}
     </div>
     <h3 style="margin-top:16px">📍 Donors by Site</h3>
     ${dsSplit(['F','D','C'].filter(x=>dsSites.has(x)).map(x=>({lb:DS_SITES[x],n:cnt(don,r=>r.s===x),col:DS_SITE_COL[x]})))}
@@ -4351,7 +4400,57 @@ function dsRender(){
     </div>`;
     poolData={ds,day};
   }
+  // ===== 4) Issuing Units — Delivered to outside: الصرف حسب الجهة والمنتج والفصيلة، بتاريخ الصرف، بلا توزيع على نقاط السحب =====
+  if(DS.iss?.length){
+    const I=DS.iss.filter(r=>inR(r.d)), cats=Object.keys(ISSUE_CATS), catOf=r=>issueCls(r.c)||'UNK';
+    const iFrom=DS.iss.reduce((m,r)=>r.d<m?r.d:m,DS.iss[0].d);
+    const len=Math.round((new Date(R.to)-new Date(R.from))/864e5)+1, pf=addDays(R.from,-len), pt=addDays(R.from,-1), hasPrev=pf>=iFrom;
+    const P=hasPrev?DS.iss.filter(r=>r.d>=pf&&r.d<=pt):[];
+    const delta=(c,p)=>!hasPrev||!p?'<span class="flat">— No comparison</span>':(()=>{const d=Math.round((c-p)/p*100);return `<span class="${d>0?'up':d<0?'down':'flat'}">${d>0?'▲':d<0?'▼':'●'} ${Math.abs(d)}% vs previous period</span>`})();
+    const icard=(cls,lb,cur,prev,ic,share)=>`<div class="kpi ${cls}">${dsIc(ic)}<div class="lb">${lb}</div><div class="vl">${fmtNum(cur)}</div><div class="dt">${share?`<span class="flat">${share}</span><br>`:''}${delta(cur,prev)}</div></div>`;
+    const tot=I.length, unkAll=issueUnknown(DS.iss), unkR=I.filter(r=>catOf(r)==='UNK').length;
+    const colsC=[...cats,...(unkR?['UNK']:[])], cLb=c=>c==='UNK'?'Unclassified':ISSUE_CATS[c].lb;
+    const prods=[...ISSUE_PRODS.map(x=>x[0]),...[...new Set(I.map(r=>r.p))].filter(p=>!ISSUE_PRODS.some(x=>x[0]===p))];
+    const n=(a,fn)=>a.reduce((t,r)=>t+(fn(r)?1:0),0);
+    const mx=(rowsK,rowF,colsK,colF,colLb)=>`<div style="overflow:auto"><table class="rk iss-mx"><thead><tr><th>Product</th>${colsK.map(c=>`<th>${colLb(c)}</th>`).join('')}<th>Total</th></tr></thead><tbody>
+      ${rowsK.map(p=>{ const rr=I.filter(r=>rowF(r,p)); return `<tr><td class="nm">${dsEsc(p)}</td>${colsK.map(c=>{ const v=n(rr,r=>colF(r,c)); return `<td>${v?fmtNum(v):'<span style="color:#B8C2CE">—</span>'}</td>`; }).join('')}<td class="tot">${fmtNum(rr.length)}</td></tr>`; }).join('')}
+      <tr class="tot"><td class="nm">Total</td>${colsK.map(c=>`<td>${fmtNum(n(I,r=>colF(r,c)))}</td>`).join('')}<td>${fmtNum(tot)}</td></tr></tbody></table></div>`;
+    const hosp={}; I.forEach(r=>{ const x=hosp[r.c]=hosp[r.c]||{c:r.c,cn:r.cn,n:0}; x.n++; if(!x.cn&&r.cn) x.cn=r.cn; });
+    const hl=Object.values(hosp).sort((a,b)=>b.n-a.n), hmx=hl[0]?.n||1;
+    const aboC={}; I.forEach(r=>aboC[r.abo]=(aboC[r.abo]||0)+1);
+    h+=`<div class="card ds-ltr" dir="ltr"><h3>🚚 4) Issuing Units — Delivered to Outside Hospitals</h3>
+    <div class="hint" style="margin:-6px 0 10px">By delivery date — not split by collection site.${hasPrev?` Compared with the previous period of equal length ${fmtDMY(pf)} → ${fmtDMY(pt)}.`:''} Every delivery row is counted: a unit returned and issued again to another hospital counts twice.</div>
+    ${unkAll.length?`<div class="iss-unk"><h4>⚠️ ${unkAll.length} client code${unkAll.length>1?'s are':' is'} not classified</h4>
+      <div class="hint" style="margin:0 0 8px">These codes are new or missing from the GOV classification file, so their units appear under <b>Unclassified</b>. Choose a sector and save — it applies to everyone using the site.</div>
+      <table class="rk"><thead><tr><th>Code</th><th>Hospital</th><th>Units (whole file)</th><th>Sector</th></tr></thead><tbody>
+      ${unkAll.map(x=>`<tr><td><b>${dsEsc(x.c)}</b></td><td class="nm">${dsEsc(x.cn)||'—'}</td><td>${fmtNum(x.n)}</td><td><select class="inp" data-isscode="${dsEsc(x.c)}"><option value="">— choose —</option>${cats.map(c=>`<option value="${c}">${ISSUE_CATS[c].lb}</option>`).join('')}</select></td></tr>`).join('')}
+      </tbody></table><div style="margin-top:8px"><button class="btn sm" id="issSaveCls">💾 Save classification</button></div></div>`:''}
+    <div class="kpis">
+      ${icard('','Total Issued Units',tot,P.length,'issue',I.length?`${fmtNum(hl.length)} hospitals`:'')}
+      ${colsC.map(c=>icard(c==='UNK'?'ds-bad':ISSUE_CATS[c].c,cLb(c),n(I,r=>catOf(r)===c),n(P,r=>catOf(r)===c),c==='UNK'?'unk':ISSUE_CATS[c].ic,`${pct(n(I,r=>catOf(r)===c),tot)} of issued`)).join('')}
+    </div>
+    <h3 style="margin-top:6px">📦 By Product</h3>
+    <div class="kpis">
+      ${prods.map(p=>{ const ic=(ISSUE_PRODS.find(x=>x[0]===p)||[])[1]; return icard('',p,n(I,r=>r.p===p),n(P,r=>r.p===p),ic,`${pct(n(I,r=>r.p===p),tot)} of issued`); }).join('')}
+    </div>
+    ${tot?`<h3 style="margin-top:6px">🏥 Product × Sector</h3>
+    ${mx(prods,(r,p)=>r.p===p,colsC,(r,c)=>catOf(r)===c,cLb)}
+    <h3 style="margin-top:16px">🩸 Blood Group of Issued Units</h3>
+    ${dsAboTiles(aboC,true)}
+    <h3 style="margin-top:16px">🩸 Product × Blood Group</h3>
+    ${mx(prods,(r,p)=>r.p===p,[...DS_ABO,...(aboC['?']?['?']:[])],(r,g)=>r.abo===g,g=>g==='?'?'Unknown':g)}
+    <details class="ds-det"><summary>🏥 Hospitals (${hl.length})</summary><div style="overflow:auto;max-height:460px"><table class="rk"><thead><tr><th>#</th><th>Hospital</th><th>Code</th><th>Sector</th><th>Units</th><th></th><th>Share</th></tr></thead><tbody>
+      ${hl.map((x,i)=>{ const c=issueCls(x.c); return `<tr><td>${i+1}</td><td class="nm">${dsEsc(x.cn)||'—'}</td><td>${dsEsc(x.c)}</td><td>${c?ISSUE_CATS[c].lb:'<b style="color:var(--bad)">Unclassified</b>'}</td><td><b>${fmtNum(x.n)}</b></td><td><div class="bar"><i style="width:${x.n/hmx*100}%"></i></div></td><td>${pct(x.n,tot)}</td></tr>`; }).join('')}
+    </tbody></table></div></details>`:'<div class="empty">No issued units in this period.</div>'}
+    </div>`;
+  }
   $('#dashOut').innerHTML=h;
+  $('#issSaveCls')?.addEventListener('click',async()=>{
+    const add={}; $$('[data-isscode]').forEach(s=>{ if(s.value) add[s.dataset.isscode]=s.value; });
+    if(!Object.keys(add).length){ toast('اختر التصنيف أولاً'); return; }
+    ISSUE_USER={...ISSUE_USER,...add}; await cloudSet('settings','issueClients',{map:ISSUE_USER});
+    toast(`تم حفظ تصنيف ${Object.keys(add).length} كود ✓`); dsRender();
+  });
   // ===== الرسوم =====
   const line=(lb,data,col)=>({label:lb,data,borderColor:col,backgroundColor:col+'22',fill:true,tension:.35,pointRadius:2,borderWidth:2.5});
   const lineOpts={responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom',labels:{usePointStyle:true}}},scales:{y:{beginAtZero:true,grid:{color:'#EEF2F6'}},x:{grid:{display:false}}}};
@@ -4378,7 +4477,8 @@ const UP_TYPES={
   wateen:{name:'Wateen report',feeds:'📝 النتائج (Rh Negative) · 🧪 المتبرعون والوحدات المحضّرة'},
   prod:{name:'Staff productivity',feeds:'📝 النتائج (DR / DR Cover) — ملف لكل أسبوع',multi:true},
   discarded:{name:'Discarded products',feeds:'📊 تقارير التبرعات · 🏅 الأكياس المتلفة'},
-  ops:{name:'List of Operations',feeds:'🧪 الوحدات المحضّرة والصفائح (Pooling / Treatment)'}
+  ops:{name:'List of Operations',feeds:'🧪 الوحدات المحضّرة والصفائح (Pooling / Treatment)'},
+  issue:{name:'Delivered to outside',feeds:'🚚 Issuing Units — الوحدات المصروفة للمستشفيات حسب الجهة والمنتج والفصيلة'}
 };
 let UP={}, UP_VER=0; const UP_SEEN={};
 const upFile=t=>UP[t]?.file||null;
@@ -4400,7 +4500,7 @@ async function upLoadAll(){
 }
 async function upDetect(file){
   const pick=t=>/list of donations|hiig number/i.test(t)?'donations':/wateen|رقم كيس الدم/i.test(t)?'wateen':/staff productivity|screened per user/i.test(t)?'prod'
-    :/discarded products|discard code/i.test(t)?'discarded':/list of operations|operation code/i.test(t)?'ops':null;
+    :/discarded products|discard code/i.test(t)?'discarded':/list of operations|operation code/i.test(t)?'ops':/delivered to outside|client code/i.test(t)?'issue':null;
   const head=(await file.slice(0,20000).text()).replace(/^﻿/,'');
   let type=null, from=null, to=null;
   if(head.trimStart().startsWith('<')){
@@ -4425,6 +4525,11 @@ async function upAdd(files){
     UP[key]=v; n++;
     try{ await upSave(key,v); }catch(e){ log.push(`⚠️ ${dsEsc(f.name)}: لم يُحفظ في المتصفح (${dsEsc(e.message)}) — متاح في هذه الجلسة فقط`); }
     log.push(`✓ ${dsEsc(f.name)} ← <b>${UP_TYPES[d.type].name}</b>${d.from?` <span class="bidi-ltr">(${fmtDMY(d.from)} → ${fmtDMY(d.to)})</span>`:''}`);
+    if(d.type==='issue'){ // تنبيه فوري بأي كود جهة غير مصنّف (جديد أو غير مدرج في ملف GOV)
+      const unk=issueUnknown(dsParseIssue(await dsFileRows(f).catch(()=>[]))||[]);
+      if(unk.length){ log.push(`<span style="color:var(--bad)">⚠️ ${unk.length} كود جهة غير مصنّف (GOVERNMENTAL / PRIVATE / NON GOVERNMENTAL / Other Regions): ${unk.map(x=>`<b class="bidi-ltr">${dsEsc(x.c)}</b>${x.cn?` <span class="bidi-ltr">${dsEsc(x.cn)}</span>`:''} (${fmtNum(x.n)})`).join(' · ')} — صنّفها من صفحة Donors and Blood Components ← 4) Issuing Units</span>`);
+        setTimeout(()=>toast(`⚠️ ${unk.length} كود جهة غير مصنّف في ملف Delivered to outside`),2400); }
+    }
   }
   if(n) UP_VER++;
   $('#upLog').innerHTML=log.join('<br>'); upRender();
