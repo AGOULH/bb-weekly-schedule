@@ -539,6 +539,10 @@ table.rk .ds-on,table.rk tr.ds-on td{background:var(--row-a);font-weight:800}
 .ds-ltr table.rk td.nm{text-align:left}
 .kpi.ds-bad{border-top-color:var(--bad)}.kpi.ds-bad .vl{color:var(--bad)}
 #dashOut .kpis{grid-template-columns:repeat(auto-fit,minmax(235px,1fr))}
+.kpi:has(>.kic.mf){grid-template-columns:minmax(0,1fr) 112px}
+.kpi>.kic.mf{width:112px;height:auto;min-height:78px;display:flex;flex-direction:column;justify-content:center;gap:4px;padding:8px 10px}
+.kic.mf .r{display:flex;align-items:center;gap:8px;direction:ltr}.kic.mf svg{width:28px;height:28px;flex:none}
+.kic.mf b{font:900 16px Arial;color:var(--navy);font-variant-numeric:tabular-nums}
 .iss-unk{background:#FFF4F2;border:1px solid #F3C4BE;border-left:4px solid var(--bad);border-radius:10px;padding:12px 14px;margin-bottom:14px}
 .iss-unk h4{margin:0 0 6px;color:var(--bad);font-size:14px}
 .iss-unk table.rk td{background:#fff;padding:5px 8px}.iss-unk select{min-width:170px;padding:4px 8px;height:auto;font-size:12.5px}
@@ -4361,7 +4365,11 @@ function dsRender(){
       ${kpi('n','Male',fmtNum(don.length-nF),pct(don.length-nF,don.length),'male')}
       ${kpi('n','Female',fmtNum(nF),pct(nF,don.length),'female')}
       ${kpi('','Sample Only',fmtNum(nSO),'','sample')}
-      ${(()=>{ const all=cnt(W,r=>r.t!=='SO'&&r.t!=='OT'); return [['F','n'],['D',''],['C','a']].map(([x,c])=>{ const n=cnt(W,r=>r.s===x&&r.t!=='SO'&&r.t!=='OT'); return kpi(c,DS_SITES[x],fmtNum(n),pct(n,all),'donors'); }).join(''); })()}
+      ${(()=>{ const all=cnt(W,r=>r.t!=='SO'&&r.t!=='OT'); return [['F','n'],['D',''],['C','a']].map(([x,c])=>{ const n=cnt(W,r=>r.s===x&&r.t!=='SO'&&r.t!=='OT'); const f=cnt(W,r=>r.s===x&&r.f&&r.t!=='SO'&&r.t!=='OT');
+        // (2026-10-12، طلب حسن) مكان الأيقونة: تفصيل الرجال والنساء لكل نقطة سحب
+        return `<div class="kpi ${c}" data-m="${n-f}" data-f="${f}"><span class="kic mf" aria-label="Male ${n-f}, Female ${f}">`
+          +`<span class="r">${DS_ICO.male}<b>${fmtNum(n-f)}</b></span><span class="r">${DS_ICO.female}<b>${fmtNum(f)}</b></span></span>`
+          +`<div class="lb">${DS_SITES[x]}</div><div class="vl">${fmtNum(n)}</div><div class="dt flat">${pct(n,all)}</div></div>`; }).join(''); })()}
     </div>
     <h3 style="margin-top:16px">👥 <span class="ds-en">Gender × Nationality</span></h3>
     <div class="kpis" dir="ltr">
@@ -4548,7 +4556,8 @@ function dsExportModel(){
     const icon=h.querySelector('.si')?.textContent||'', title=h.textContent.replace(icon,'').trim();
     const cards=[...c.querySelectorAll('.kpi')].filter(k=>!k.closest('.noprint')).map(k=>({
       cls:k.className.replace('kpi','').trim(), lb:k.querySelector('.lb')?.textContent.trim()||'', vl:k.querySelector('.vl')?.textContent.trim()||'',
-      dt:k.querySelector('.dt')?.innerHTML||'', ic:k.querySelector('.kic svg')?.outerHTML||'', rtl:getComputedStyle(k).direction==='rtl'}));
+      dt:(k.querySelector('.dt')?.innerHTML||'')+(k.dataset.m!=null?`<br>Male ${fmtNum(+k.dataset.m)} · Female ${fmtNum(+k.dataset.f)}`:''),
+      ic:k.dataset.m!=null?DS_ICO.donors:(k.querySelector('.kic svg')?.outerHTML||''), rtl:getComputedStyle(k).direction==='rtl'}));
     return {title,icon,cards,draws:/^Draws/.test(title),rtl:getComputedStyle(c).direction==='rtl'};
   }).filter(s=>s&&s.cards.length);
   return {R,secs,site:allSites?'All sites':[...dsSites].map(x=>DS_SITES[x]).join(' + ')};
