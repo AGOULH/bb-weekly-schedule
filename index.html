@@ -4385,7 +4385,7 @@ function dsRender(){
       ${kpi('n','Male',fmtNum(don.length-nF),pct(don.length-nF,don.length),'male')}
       ${kpi('n','Female',fmtNum(nF),pct(nF,don.length),'female')}
       ${kpi('','Sample Only',fmtNum(nSO),'','sample')}
-      ${(()=>{ const all=cnt(W,r=>r.t!=='SO'&&r.t!=='OT'); return [['F','n'],['D',''],['C','a']].map(([x,c])=>{ const n=cnt(W,r=>r.s===x&&r.t!=='SO'&&r.t!=='OT'); const f=cnt(W,r=>r.s===x&&r.f&&r.t!=='SO'&&r.t!=='OT');
+      ${(()=>{ const all=cnt(W,r=>r.t!=='SO'&&r.t!=='OT'); return [['F','n'],['D',''],['C','a']].filter(([x])=>dsSites.has(x)).map(([x,c])=>{ /* نقطة غير مختارة من الأعلى لا تظهر بطاقتها (طلب حسن 2026-10-12) */ const n=cnt(W,r=>r.s===x&&r.t!=='SO'&&r.t!=='OT'); const f=cnt(W,r=>r.s===x&&r.f&&r.t!=='SO'&&r.t!=='OT');
         // (2026-10-12، طلب حسن) مكان الأيقونة: تفصيل الرجال والنساء لكل نقطة سحب
         return `<div class="kpi ${c}" data-m="${n-f}" data-f="${f}"><span class="kic mf" aria-label="Male ${n-f}, Female ${f}">`
           +`<span class="r">${DS_ICO.male}<b>${fmtNum(n-f)}</b></span><span class="r">${DS_ICO.female}<b>${fmtNum(f)}</b></span></span>`
