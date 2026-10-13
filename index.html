@@ -4641,7 +4641,7 @@ function dsFitPages(){
   const H=el=>el.getBoundingClientRect().height;
   $$('#dsPrint .dsp-sheet').forEach((sh,idx)=>{
     // المساحة الفعلية داخل الورقة (210mm − padding) تُقاس، وDSP_H حد أدنى مضمون؛ ناقص سطر DONE BY
-    const pd=parseFloat(getComputedStyle(sh).paddingTop)*2, inner=Math.max(DSP_H,H(sh)-pd);
+    const cs=getComputedStyle(sh), pd=parseFloat(cs.paddingTop)+parseFloat(cs.paddingBottom), inner=Math.max(DSP_H,H(sh)-pd);
     const b=sh.querySelector('.dsp-body'), f=sh.querySelector('.dsp-foot'), max=inner-H(f)-4;
     let z=1; b.style.zoom=''; const fill=sh.classList.contains('dsp-fill'); sh.classList.remove('dsp-fill');
     const shrink=()=>{ z=1; b.style.zoom=''; while(H(b)>max&&z>0.35){ z-=0.01; b.style.zoom=z.toFixed(2); } }; // التصغير يعيد توزيع المحتوى فيُقاس بعد كل خطوة
@@ -4652,6 +4652,8 @@ function dsFitPages(){
     if(fill){ // الفراغ الباقي يُوزَّع على صفوف البطاقات (وزن كل قسم = عدد صفوفه)
       sh.querySelectorAll('.dsp-sec').forEach(sec=>{ const g=sec.querySelector('.dsp-grid'); sec.style.flexGrow=Math.ceil(g.children.length/cols)||1; });
       sh.classList.add('dsp-fill');
+      // احتياط: بعد التمديد لا يتجاوز المحتوى الورقة (يُقاس فعلياً ويُصغَّر إن لزم)
+      while(b.scrollHeight>b.clientHeight+1&&z>0.35){ z-=0.01; b.style.zoom=z.toFixed(2); }
     }
     const tbls=[...sh.querySelectorAll('.dsp-tbl')]; if(!tbls.length) return;
     // خط أكبر إن اتسع
