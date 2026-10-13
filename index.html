@@ -585,14 +585,18 @@ table.rk.iss-mx td.nm{text-align:left}table.rk.iss-mx td.tot,table.rk.iss-mx tr.
 .dsp-st::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--s),transparent);opacity:.35}
 .dsp-st .si{display:none}
 .dsp-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}.dsp-sheet.dsp-draws .dsp-grid{grid-template-columns:repeat(4,1fr)}
-.dsp-card{display:grid;grid-template-columns:minmax(0,1fr) 44px;column-gap:8px;align-items:center;background:var(--card);border:1px solid var(--card-b);
+.dsp-card{display:grid;grid-template-columns:minmax(0,1fr) 62px;column-gap:8px;align-items:center;background:var(--card);border:1px solid var(--card-b);
   border-top:2px solid var(--s);border-radius:9px;box-shadow:0 1px 3px rgba(90,40,55,.06);padding:7px 10px;page-break-inside:avoid}
 .dsp-card.t-bad{border-top-color:#B3261E}
-.dsp-card>:not(.ic){grid-column:1}.dsp-card .ic{grid-column:2;grid-row:1/span 3;width:44px;height:44px}.dsp-card .ic svg{display:block;width:100%;height:100%}
-.dsp-card .lb{font:700 9px Arial;color:var(--muted);letter-spacing:.02em}
-.dsp-card .vl{font:900 19px Arial;color:var(--ink);margin:1px 0;font-variant-numeric:tabular-nums}.dsp-card.t-bad .vl{color:#B3261E}
-.dsp-card .dt{font:700 8.3px Arial;line-height:1.45;color:var(--muted)}
+.dsp-card>:not(.ic){grid-column:1}.dsp-card .ic{grid-column:2;grid-row:1/span 3;width:62px;height:62px}.dsp-card .ic svg{display:block;width:100%;height:100%}
+.dsp-card .lb{font:700 10px Arial;color:var(--muted);letter-spacing:.02em}
+.dsp-card .vl{font:900 22px Arial;color:var(--ink);margin:1px 0;font-variant-numeric:tabular-nums}.dsp-card.t-bad .vl{color:#B3261E}
+.dsp-card .dt{font:700 10.5px Arial;line-height:1.4;color:var(--muted)}
 .dsp-card .dt .up{color:#2E7D4F}.dsp-card .dt .down{color:#B3261E}.dsp-card .dt .flat{color:var(--muted)}
+/* (2026-10-13، طلب حسن) صفحات البطاقات تملأ الورقة: الفراغ المتبقي بعد التكبير يُوزَّع على صفوف البطاقات */
+.dsp-sheet.dsp-fill .dsp-body{flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
+.dsp-sheet.dsp-fill .dsp-sec{display:flex;flex-direction:column}
+.dsp-sheet.dsp-fill .dsp-grid{flex:1;grid-auto-rows:1fr}
 /* جدول الموظفين بنفس اللوحة */
 .dsp-tbls{display:flex;gap:14px;align-items:flex-start}
 .dsp-tbl{flex:1;border-collapse:separate;border-spacing:0;font-size:9.5px;border-radius:9px;overflow:hidden;border:1px solid var(--card-b);box-shadow:0 1px 3px rgba(90,40,55,.06)}
@@ -4611,10 +4615,11 @@ function dsExportPdf(plain){
   const M=dsExportModel(), main=M.secs.filter(s=>!s.draws).map(dsPrintEn), dr=M.secs.find(s=>s.draws);
   if(!M.secs.length){ toast('لا توجد بطاقات للتصدير'); return; }
   // كل جزء ورقة مستقلة: المحتوى (.dsp-body) ثم سطر DONE BY مثبّت أسفل الورقة مع رقم الصفحة وتاريخ الطباعة
-  const sheets=[[dsPrintHead(M),...main.map(dsPrintSec)].join('')], today=fmtDMY(new Date().toISOString().slice(0,10));
+  // (2026-10-13، طلب حسن) ثلاث صفحات: Donors + Received، ثم Platelets + Issuing، ثم Draws
+  const sheets=dsPageGroups(main).map(g=>[dsPrintHead(M),...g.map(dsPrintSec)].join('')), today=fmtDMY(new Date().toISOString().slice(0,10));
   if(dr) sheets.push(dsPrintHead(M)+dsPrintSec(dsPrintEn(dr))+dsDrawsTable(DS_DRAWS||[]));
   $('#dsPrint').classList.toggle('dsp-plain',!!plain);
-  $('#dsPrint').innerHTML=sheets.map((b,i)=>`<div class="dsp-sheet${dr&&i===sheets.length-1?' dsp-draws':''}"><div class="dsp-body">${b}</div>
+  $('#dsPrint').innerHTML=sheets.map((b,i)=>`<div class="dsp-sheet${dr&&i===sheets.length-1?' dsp-draws':' dsp-fill'}"><div class="dsp-body">${b}</div>
     <div class="dsp-foot" dir="ltr"><span>DONE BY : HASAN ALAGOUL</span><span class="pg">Page ${i+1} of ${sheets.length} · Printed ${today}</span></div></div>`).join('');
   dsFitPages();
   document.body.classList.add('ds-printing');
@@ -4622,7 +4627,12 @@ function dsExportPdf(plain){
   window.print(); setTimeout(()=>document.title=o,700);
 }
 window.addEventListener('afterprint',()=>document.body.classList.remove('ds-printing'));
-// (2026-10-12، طلب حسن) التقرير صفحتان: محتوى كل ورقة يُصغَّر (zoom) حتى يتسع فوق سطر DONE BY؛ الصفحة الأولى تُكبَّر حتى 1.25 إن قصُرت؛
+// تقسيم أقسام البطاقات (بلا Draws) على الصفحات: Donors + Received في الأولى، Platelets + Issuing في الثانية؛ الصفحة الفارغة تُحذف
+function dsPageGroups(main){
+  const p1=main.filter(s=>/^(Donors|Received)/.test(s.title)), p2=main.filter(s=>!p1.includes(s));
+  return [p1,p2].filter(g=>g.length);
+}
+// (2026-10-12، طلب حسن) محتوى كل ورقة يُصغَّر (zoom) حتى يتسع فوق سطر DONE BY؛ صفحات البطاقات تُكبَّر حتى 1.5 ثم تتمدد بطاقاتها لملء الورقة (2026-10-13)؛
 // والصفحة الثانية يُوزَّع فراغها على صفوف جدول الموظفين (خط 11.5px إن اتسع، وصف ≤ 34px) فينتهي الجدول فوق DONE BY مباشرة
 const DSP_W=1040, DSP_H=700; // ‎المساحة الداخلية للورقة بعد padding 10mm ≈ 1047×718px عند 96dpi (مع هامش أمان)
 function dsFitPages(){
@@ -4633,9 +4643,13 @@ function dsFitPages(){
     // المساحة الفعلية داخل الورقة (210mm − padding) تُقاس، وDSP_H حد أدنى مضمون؛ ناقص سطر DONE BY
     const pd=parseFloat(getComputedStyle(sh).paddingTop)*2, inner=Math.max(DSP_H,H(sh)-pd);
     const b=sh.querySelector('.dsp-body'), f=sh.querySelector('.dsp-foot'), max=inner-H(f)-4;
-    let z=1; b.style.zoom='';
+    let z=1; b.style.zoom=''; const fill=sh.classList.contains('dsp-fill'); sh.classList.remove('dsp-fill');
     while(H(b)>max&&z>0.35){ z-=0.01; b.style.zoom=z.toFixed(2); } // التصغير يعيد توزيع المحتوى فيُقاس بعد كل خطوة
-    if(idx===0&&z===1){ while(z<1.25){ b.style.zoom=(z+0.01).toFixed(2); if(H(b)>max){ b.style.zoom=z.toFixed(2); break; } z+=0.01; } }
+    if(fill&&z===1){ while(z<1.5){ b.style.zoom=(z+0.01).toFixed(2); if(H(b)>max){ b.style.zoom=z.toFixed(2); break; } z+=0.01; } }
+    if(fill){ // الفراغ الباقي يُوزَّع على صفوف البطاقات (وزن كل قسم = عدد صفوفه)
+      sh.querySelectorAll('.dsp-sec').forEach(sec=>{ const g=sec.querySelector('.dsp-grid'); sec.style.flexGrow=Math.ceil(g.children.length/6)||1; });
+      sh.classList.add('dsp-fill');
+    }
     const tbls=[...sh.querySelectorAll('.dsp-tbl')]; if(!tbls.length) return;
     // خط أكبر إن اتسع
     tbls.forEach(t=>t.style.fontSize='11.5px'); if(H(b)>max) tbls.forEach(t=>t.style.fontSize='');
@@ -4707,13 +4721,13 @@ async function dsExportPptx(){
   const GAP=0.08, TOP=1.24, BOT=PH-0.52;
   const dims=cols=>({cols,CW:(PW-2*MX-(cols-1)*GAP)/cols});
   const card=(sl,c,x,y,D)=>{
-    const {CW,CH}=D, k=Math.min(1,CH), bad=dsTone(c.cls)==='bad', col=bad?BAD:D.acc, ic=icons[c.ic], IS=Math.min(0.62,CH*0.62,CW*0.27);
+    const {CW,CH}=D, k=Math.min(1,CH), bad=dsTone(c.cls)==='bad', col=bad?BAD:D.acc, ic=icons[c.ic], IS=Math.min(1.1,CH*0.72,CW*0.3);
     sl.addShape(P.ShapeType.roundRect,{x,y,w:CW,h:CH,rectRadius:0.07,fill:{color:'FFFFFF',transparency:50},line:{color:'FFFFFF',width:0.75,transparency:30}});
     sl.addShape(P.ShapeType.rect,{x:x+0.07,y,w:CW-0.14,h:0.025,fill:{color:col},line:{color:col}});
     const pad=0.1, tw=CW-2*pad-(ic?IS+0.08:0), tx=c.rtl?x+CW-pad-tw:x+pad, al=c.rtl?'right':'left';
     if(ic){ const iw=ic.ar>=1?IS:IS*ic.ar, ih=ic.ar>=1?IS/ic.ar:IS; sl.addImage({data:ic.data,x:(c.rtl?x+pad:x+CW-pad-IS)+(IS-iw)/2,y:y+(CH-ih)/2+0.02,w:iw,h:ih}); }
     const o={fontFace:'Arial',align:al,lang:c.rtl?'ar-SA':'en-US',rtlMode:c.rtl,margin:0};
-    const cl=v=>Math.min(v[2],Math.max(v[0],v[1])), lf=cl([5.5,CH*(c.lb.length>22?11:13),8.5]), vf=cl([11,CH*24,20]), df=cl([5,CH*10,7.5]);
+    const cl=v=>Math.min(v[2],Math.max(v[0],v[1])), lf=cl([6,CH*(c.lb.length>22?12:14),12]), vf=cl([12,CH*28,30]), df=cl([6,CH*13,12]);
     sl.addText(c.lb,{...o,x:tx,y:y+0.05,w:tw,h:CH*0.3,fontSize:lf,bold:true,color:MUT,valign:'bottom',fit:'shrink'});
     sl.addText(c.vl,{...o,x:tx,y:y+0.05+CH*0.3,w:tw,h:CH*0.36,fontSize:vf,bold:true,color:bad?BAD:INK,valign:'middle'});
     let dt=strip(c.dt); if(CH<0.7) dt=dt.replace(/\n+/g,' · ');
@@ -4731,17 +4745,19 @@ async function dsExportPptx(){
     });
     state.y+=0.04;
   };
-  const main=M.secs.filter(s=>!s.draws);
-  // أقل عدد أعمدة (4→6) يتسع معه الكل في شريحة واحدة بارتفاع بطاقة مقروء؛ وإلا 6 أعمدة بأكبر ارتفاع ممكن
-  let D=null;
-  for(const cols of [4,5,6]){
-    const rows=main.reduce((t,s)=>t+Math.ceil(s.cards.length/cols),0);
-    const CH=(BOT-TOP-main.length*(TP+0.06+0.04)-rows*GAP)/Math.max(1,rows);
-    D={...dims(cols),CH:Math.min(1,CH)}; if(CH>=0.62) break;
-  }
-  if(D.CH<0.4) D.CH=0.4; // كثير جداً — يمتد لشريحة إضافية بدل بطاقات غير مقروءة
-  const st={sl:null,y:0};
-  main.forEach(s=>putSec(st,s,D));
+  // (2026-10-13، طلب حسن) شريحة لكل مجموعة (Donors + Received، ثم Platelets + Issuing): أقل عدد أعمدة (4→6) يتسع معه الكل
+  // بارتفاع بطاقة مقروء، والبطاقات تتمدد لتملأ الشريحة (بحد 1.5")
+  dsPageGroups(M.secs.filter(s=>!s.draws)).forEach(main=>{
+    let D=null;
+    for(const cols of [4,5,6]){
+      const rows=main.reduce((t,s)=>t+Math.ceil(s.cards.length/cols),0);
+      const CH=(BOT-TOP-main.length*(TP+0.06+0.04)-rows*GAP)/Math.max(1,rows);
+      D={...dims(cols),CH:Math.min(1.5,CH)}; if(CH>=0.62) break;
+    }
+    if(D.CH<0.4) D.CH=0.4; // كثير جداً — يمتد لشريحة إضافية بدل بطاقات غير مقروءة
+    const st={sl:null,y:0};
+    main.forEach(s=>putSec(st,s,D));
+  });
   const dr=M.secs.find(s=>s.draws);
   if(dr){ // صفحة مستقلة: البطاقات + جدول الموظفين
     const d={sl:null,y:0}; putSec(d,dr,{...dims(4),CH:0.85});
