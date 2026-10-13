@@ -584,7 +584,7 @@ table.rk.iss-mx td.nm{text-align:left}table.rk.iss-mx td.tot,table.rk.iss-mx tr.
 .dsp-st::before{content:'';width:4px;height:15px;border-radius:2px;background:var(--s)}
 .dsp-st::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--s),transparent);opacity:.35}
 .dsp-st .si{display:none}
-.dsp-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}.dsp-sheet.dsp-draws .dsp-grid{grid-template-columns:repeat(4,1fr)}
+.dsp-grid{display:grid;grid-template-columns:repeat(var(--cols,6),1fr);gap:7px}.dsp-sheet.dsp-draws .dsp-grid{grid-template-columns:repeat(4,1fr)}
 .dsp-card{display:grid;grid-template-columns:minmax(0,1fr) 62px;column-gap:8px;align-items:center;background:var(--card);border:1px solid var(--card-b);
   border-top:2px solid var(--s);border-radius:9px;box-shadow:0 1px 3px rgba(90,40,55,.06);padding:7px 10px;page-break-inside:avoid}
 .dsp-card.t-bad{border-top-color:#B3261E}
@@ -596,7 +596,7 @@ table.rk.iss-mx td.nm{text-align:left}table.rk.iss-mx td.tot,table.rk.iss-mx tr.
 /* (2026-10-13، طلب حسن) صفحات البطاقات تملأ الورقة: الفراغ المتبقي بعد التكبير يُوزَّع على صفوف البطاقات */
 .dsp-sheet.dsp-fill .dsp-body{flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
 .dsp-sheet.dsp-fill .dsp-sec{display:flex;flex-direction:column}
-.dsp-sheet.dsp-fill .dsp-grid{flex:1;grid-auto-rows:1fr}
+.dsp-sheet.dsp-fill .dsp-grid{flex:1;align-content:stretch}
 /* جدول الموظفين بنفس اللوحة */
 .dsp-tbls{display:flex;gap:14px;align-items:flex-start}
 .dsp-tbl{flex:1;border-collapse:separate;border-spacing:0;font-size:9.5px;border-radius:9px;overflow:hidden;border:1px solid var(--card-b);box-shadow:0 1px 3px rgba(90,40,55,.06)}
@@ -4644,10 +4644,13 @@ function dsFitPages(){
     const pd=parseFloat(getComputedStyle(sh).paddingTop)*2, inner=Math.max(DSP_H,H(sh)-pd);
     const b=sh.querySelector('.dsp-body'), f=sh.querySelector('.dsp-foot'), max=inner-H(f)-4;
     let z=1; b.style.zoom=''; const fill=sh.classList.contains('dsp-fill'); sh.classList.remove('dsp-fill');
-    while(H(b)>max&&z>0.35){ z-=0.01; b.style.zoom=z.toFixed(2); } // التصغير يعيد توزيع المحتوى فيُقاس بعد كل خطوة
+    const shrink=()=>{ z=1; b.style.zoom=''; while(H(b)>max&&z>0.35){ z-=0.01; b.style.zoom=z.toFixed(2); } }; // التصغير يعيد توزيع المحتوى فيُقاس بعد كل خطوة
+    // صفحات البطاقات: أقل عدد أعمدة (4→6) يتسع بلا تصغير يُذكر — بطاقات أعرض فلا تزدحم الأيقونة الكبيرة مع النص
+    const cols=fill?[4,5,6].find(c=>{ sh.style.setProperty('--cols',c); shrink(); return z>=0.97; })||6:6;
+    if(fill){ sh.style.setProperty('--cols',cols); } shrink();
     if(fill&&z===1){ while(z<1.5){ b.style.zoom=(z+0.01).toFixed(2); if(H(b)>max){ b.style.zoom=z.toFixed(2); break; } z+=0.01; } }
     if(fill){ // الفراغ الباقي يُوزَّع على صفوف البطاقات (وزن كل قسم = عدد صفوفه)
-      sh.querySelectorAll('.dsp-sec').forEach(sec=>{ const g=sec.querySelector('.dsp-grid'); sec.style.flexGrow=Math.ceil(g.children.length/6)||1; });
+      sh.querySelectorAll('.dsp-sec').forEach(sec=>{ const g=sec.querySelector('.dsp-grid'); sec.style.flexGrow=Math.ceil(g.children.length/cols)||1; });
       sh.classList.add('dsp-fill');
     }
     const tbls=[...sh.querySelectorAll('.dsp-tbl')]; if(!tbls.length) return;
