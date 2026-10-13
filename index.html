@@ -680,7 +680,8 @@ table.rk.iss-mx td.nm{text-align:left}table.rk.iss-mx td.tot,table.rk.iss-mx tr.
   </label>
   <div id="upLog" class="hint"></div>
   <div class="up-grid" id="upGrid"></div>
-  <div class="hint">الملفات تُحفظ في هذا المتصفح فقط (على هذا الجهاز) حتى تستبدلها بأحدث منها — لا تُرفع لأي خادم. رفع ملف من نفس النوع يستبدل السابق (Staff productivity: ملف لكل أسبوع، ونفس الأسبوع يُستبدل). اعتماد النتائج في «📝 النتائج» يبقى بضغطة «✅ اعتماد» بعد المعاينة.</div>
+  <div id="upCloud" class="hint" style="font-weight:700"></div>
+  <div class="hint">الملفات تُحفظ نهائياً في السحابة (وتظهر على كل الأجهزة) حتى تحذفها. رفع ملف من نفس النوع <b>يُدمج</b> مع السابق: السجلات المكررة داخل فترة الملف الجديد تُحذف وتُعتمد أرقام الملف الجديد، وما خارجها يبقى، والفترة تمتد من أقدم تاريخ لأحدثه (Staff productivity: ملف لكل أسبوع، ونفس الأسبوع يُستبدل). بيانات المتبرع الشخصية (الاسم، الهوية، الجوال، الميلاد، HIIG) تُحذف قبل الحفظ. اعتماد النتائج في «📝 النتائج» يبقى بضغطة «✅ اعتماد» بعد المعاينة.</div>
 </section>
 
 <!-- ============ SCHEDULE ============ -->
@@ -824,7 +825,7 @@ table.rk.iss-mx td.nm{text-align:left}table.rk.iss-mx td.tot,table.rk.iss-mx tr.
 <section class="page" id="pg-dash">
   <div class="pghead noprint">
     <div><h2 tabindex="-1">Donors and Blood Components</h2><p>من Wateen report وList of Operations وDelivered to outside: لوحة المتبرعين (CENTER/DAMY/MOBILE)، الوحدات المحضّرة، الصفائح (Pooling/Treatment)، والوحدات المصروفة (Issuing Units)</p></div>
-    <div class="row"><button class="btn ghost sm" id="dsPdfBtn" title="البطاقات الظاهرة فقط + صفحة مستقلة لـ Draws and Discarded Bags">🖨️ تصدير PDF</button><button class="btn ghost sm" id="dsPdfPlainBtn" title="نفس التقرير بخلفية بيضاء للطباعة الورقية (توفير الحبر)">🖨️ نسخة ورقية</button><button class="btn ghost sm" id="dsPptBtn" title="البطاقات الظاهرة فقط + صفحة مستقلة لـ Draws and Discarded Bags">📊 PowerPoint</button></div>
+    <div class="row"><button class="btn ghost sm" id="dsPdfBtn" title="البطاقات الظاهرة فقط + صفحة مستقلة لـ Draws and Discarded Bags">🖨️ تصدير PDF</button><button class="btn ghost sm" id="dsPdfPlainBtn" title="نفس التقرير بخلفية بيضاء للطباعة الورقية (توفير الحبر)">🖨️ نسخة ورقية</button><button class="btn ghost sm" id="dsPptBtn" title="البطاقات الظاهرة فقط + صفحة مستقلة لـ Draws and Discarded Bags">📊 PowerPoint</button><button class="btn sm" id="dsSaveBtn" title="يحفظ التقرير بالفترة والفلاتر الحالية لتصديره لاحقاً PDF/PowerPoint دون رفع الملفات">💾 حفظ التقرير</button></div>
   </div>
   <div class="card noprint">
     <h3>📥 الملفات</h3>
@@ -848,6 +849,11 @@ table.rk.iss-mx td.nm{text-align:left}table.rk.iss-mx td.tot,table.rk.iss-mx tr.
     </div>
   </div>
   <div id="dashOut"></div>
+  <div class="card noprint" id="dsSavedCard">
+    <h3>🗂️ التقارير المحفوظة</h3>
+    <div class="hint">كل تقرير محفوظ بأرقام بطاقاته الظاهرة وقت الحفظ (الفترة ونقاط السحب وجهات الصرف والعناصر المختارة) وجدول Draws — يُصدَّر PDF/PowerPoint في أي وقت من أي جهاز دون رفع الملفات.</div>
+    <div style="overflow-x:auto"><table class="rk"><thead><tr><th>الفترة</th><th>نقاط السحب</th><th>البطاقات</th><th>حُفظ</th><th>إجراء</th></tr></thead><tbody id="dsSavedBody"></tbody></table></div>
+  </div>
   <div id="dsPrint"></div>
 </section>
 
@@ -1292,8 +1298,9 @@ const sName=id=>STAFF[id]?.name||'';
 /* ---------- التحميل ---------- */
 async function boot(){
   await initCloud();
+  UP_SYNC=(UP_LOCAL||Promise.resolve()).then(upSync); // الملفات المرفوعة: السحابة ↔ هذا الجهاز
   STAFF=await cloudAll('staff'); WEEKS=await cloudAll('weeks'); APX=await cloudAll('apheresis'); DAMMI=await cloudAll('dammi');
-  REPORT_STAFF=await cloudAll('reportStaff'); REPORTS=await cloudAll('reports');
+  REPORT_STAFF=await cloudAll('reportStaff'); REPORTS=await cloudAll('reports'); DS_SAVED=await cloudAll('dsReports'); dsRenderSaved();
   await loadLeaves();
   for(const [id,name] of Object.entries(REPORT_STAFF_NAMES)){
     if(!REPORT_STAFF[id]){ REPORT_STAFF[id]={name}; await cloudSet('reportStaff',id,REPORT_STAFF[id]); }
@@ -4610,14 +4617,14 @@ function dsPrintEn(sec){
     if(c.lb==='إجمالي المتبرعين'){ const m=/متوسط ([\d.]+) يومياً<br>(\d+) يوم تبرع/.exec(c.dt); return {...c,rtl:false,lb:'Total Donors',dt:m?`Avg ${m[1]}/day · ${m[2]} days`:c.dt}; }
     return {...c,rtl:false,dt:c.dt.replace(/<br>\s*من المتبرعين/,' of donors').replace('من المتبرعين','of donors')}; })};
 }
-function dsExportPdf(plain){
-  if(!DS){ toast('ارفع الملفات أولاً'); return; }
-  const M=dsExportModel(), main=M.secs.filter(s=>!s.draws).map(dsPrintEn), dr=M.secs.find(s=>s.draws);
+function dsExportPdf(plain,saved){
+  if(!saved&&!DS){ toast('ارفع الملفات أولاً'); return; }
+  const M=saved?saved.M:dsExportModel(), DRW=saved?saved.draws:(DS_DRAWS||[]), main=M.secs.filter(s=>!s.draws).map(dsPrintEn), dr=M.secs.find(s=>s.draws);
   if(!M.secs.length){ toast('لا توجد بطاقات للتصدير'); return; }
   // كل جزء ورقة مستقلة: المحتوى (.dsp-body) ثم سطر DONE BY مثبّت أسفل الورقة مع رقم الصفحة وتاريخ الطباعة
   // (2026-10-13، طلب حسن) ثلاث صفحات: Donors + Received، ثم Platelets + Issuing، ثم Draws
   const sheets=dsPageGroups(main).map(g=>[dsPrintHead(M),...g.map(dsPrintSec)].join('')), today=fmtDMY(new Date().toISOString().slice(0,10));
-  if(dr) sheets.push(dsPrintHead(M)+dsPrintSec(dsPrintEn(dr))+dsDrawsTable(DS_DRAWS||[]));
+  if(dr) sheets.push(dsPrintHead(M)+dsPrintSec(dsPrintEn(dr))+dsDrawsTable(DRW));
   $('#dsPrint').classList.toggle('dsp-plain',!!plain);
   $('#dsPrint').innerHTML=sheets.map((b,i)=>`<div class="dsp-sheet${dr&&i===sheets.length-1?' dsp-draws':' dsp-fill'}"><div class="dsp-body">${b}</div>
     <div class="dsp-foot" dir="ltr"><span>DONE BY : HASAN ALAGOUL</span><span class="pg">Page ${i+1} of ${sheets.length} · Printed ${today}</span></div></div>`).join('');
@@ -4681,9 +4688,9 @@ async function dsSvgPng(svg,hPx){
   const c=document.createElement('canvas'); c.width=W; c.height=H; c.getContext('2d').drawImage(img,0,0,W,H);
   return {data:c.toDataURL('image/png'),ar};
 }
-async function dsExportPptx(){
-  if(!DS){ toast('ارفع الملفات أولاً'); return; }
-  const M=dsExportModel(); if(!M.secs.length){ toast('لا توجد بطاقات للتصدير'); return; }
+async function dsExportPptx(saved){
+  if(!saved&&!DS){ toast('ارفع الملفات أولاً'); return; }
+  const M=saved?{...saved.M}:dsExportModel(), DRW=saved?saved.draws:(DS_DRAWS||[]); if(!M.secs.length){ toast('لا توجد بطاقات للتصدير'); return; }
   M.secs=M.secs.map(dsPrintEn);
   toast('⏳ جاري تجهيز PowerPoint…');
   // نفس هوية الـ PDF المطبوع: خلفية وردية هادئة، حبر بنفسجي داكن، ولون واحد لكل قسم (طلب حسن 2026-10-12)
@@ -4766,7 +4773,7 @@ async function dsExportPptx(){
   const dr=M.secs.find(s=>s.draws);
   if(dr){ // صفحة مستقلة: البطاقات + جدول الموظفين
     const d={sl:null,y:0}; putSec(d,dr,{...dims(4),CH:0.85});
-    const list=DS_DRAWS||[], hdr=['#','Staff','Drawn','Discarded','Rate'].map(t=>({text:t,options:{bold:true,color:'FFFFFF',fill:{color:THEAD},align:'center'}}));
+    const list=DRW, hdr=['#','Staff','Drawn','Discarded','Rate'].map(t=>({text:t,options:{bold:true,color:'FFFFFF',fill:{color:THEAD},align:'center'}}));
     const MED=['D4A23A','9AA3AF','B0754A'];
     const row=(x,n)=>[String(n+1),x.name,fmtNum(x.col),String(x.dis),x.col?x.rate.toFixed(1)+'%':'—'].map((t,k)=>({text:t,options:{align:k===1?'left':'center',bold:k===2||(k===0&&n<3)||(k===4&&x.rate>10&&x.col>=10),
       color:k===0&&n<3?MED[n]:k===4&&x.rate>10&&x.col>=10?BAD:INK,fill:{color:n%2?'F7EEF1':'FBF6F8'}}}));
@@ -4780,6 +4787,37 @@ async function dsExportPptx(){
   }
   await P.writeFile({fileName:dsFileName(M.R)+'.pptx'});
 }
+/* 💾 (2026-10-13، طلب حسن) تقارير Donors and Blood Components المحفوظة: نموذج التصدير نفسه (البطاقات الظاهرة + Draws) في Firestore
+   dsReports/{من_إلى_النقاط} — الأيقونات (SVG) تُخزَّن مرة واحدة في icons ويشير لها كل بطاقة برقمها */
+let DS_SAVED={};
+function dsSavedPack(){
+  const M=dsExportModel(), icons=[], ix=svg=>{ if(!svg) return -1; let i=icons.indexOf(svg); if(i<0){ icons.push(svg); i=icons.length-1; } return i; };
+  const secs=M.secs.map(s=>({...s,cards:s.cards.map(c=>({...c,ic:ix(c.ic)}))}));
+  return JSON.parse(JSON.stringify({R:M.R,site:M.site,sites:[...dsSites].sort().join(''),secs,icons,draws:DS_DRAWS||[],
+    label:dsPer(M.R),cards:M.secs.reduce((t,s)=>t+s.cards.length,0),savedAt:new Date().toISOString()}));
+}
+const dsSavedUnpack=r=>({M:{R:r.R,site:r.site,secs:r.secs.map(s=>({...s,cards:s.cards.map(c=>({...c,ic:c.ic>=0?r.icons[c.ic]:''}))}))},draws:r.draws||[]});
+function dsRenderSaved(){
+  const ks=Object.keys(DS_SAVED).sort((a,b)=>(DS_SAVED[b].savedAt||'').localeCompare(DS_SAVED[a].savedAt||''));
+  $('#dsSavedBody').innerHTML=ks.length?ks.map(k=>{ const r=DS_SAVED[k];
+    return `<tr><td class="nm"><span class="bidi-ltr">${dsEsc(r.label)}</span></td><td><span class="bidi-ltr">${dsEsc(r.site)}</span></td><td>${r.cards}</td>
+      <td><span class="bidi-ltr">${new Date(r.savedAt).toLocaleString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}</span></td>
+      <td><button class="btn sm ghost" data-dsrpdf="${k}">🖨️ PDF</button> <button class="btn sm ghost" data-dsrppt="${k}">📊 PowerPoint</button> <button class="btn danger sm" data-dsrdel="${k}">🗑️ حذف</button></td></tr>`;
+  }).join(''):'<tr><td colspan="5" style="padding:18px;color:var(--faint)">لا توجد تقارير محفوظة بعد — اضغط «💾 حفظ التقرير» بعد اختيار الفترة والفلاتر</td></tr>';
+  $$('[data-dsrpdf]').forEach(b=>b.onclick=()=>dsExportPdf(false,dsSavedUnpack(DS_SAVED[b.dataset.dsrpdf])));
+  $$('[data-dsrppt]').forEach(b=>b.onclick=()=>dsExportPptx(dsSavedUnpack(DS_SAVED[b.dataset.dsrppt])).catch(e=>{ console.error(e); toast('تعذّر تصدير PowerPoint: '+e.message); }));
+  $$('[data-dsrdel]').forEach(b=>b.onclick=async()=>{ const k=b.dataset.dsrdel;
+    if(!confirm(`حذف التقرير المحفوظ ${DS_SAVED[k].label} نهائياً؟`)) return;
+    delete DS_SAVED[k]; await cloudDel('dsReports',k); dsRenderSaved(); toast('تم حذف التقرير ✓'); });
+}
+$('#dsSaveBtn').onclick=async()=>{
+  if(!DS){ toast('ارفع الملفات أولاً'); return; }
+  const r=dsSavedPack(); if(!r.cards){ toast('لا توجد بطاقات للحفظ'); return; }
+  const id=`${r.R.from}_${r.R.to}_${r.sites}`;
+  if(DS_SAVED[id]&&!confirm(`يوجد تقرير محفوظ لنفس الفترة (${r.label}) ونقاط السحب — استبداله بالأرقام الحالية؟`)) return;
+  try{ await cloudSet('dsReports',id,r); DS_SAVED[id]=r; dsRenderSaved(); toast('تم حفظ التقرير ✓'); }
+  catch(e){ console.error(e); toast('تعذّر حفظ التقرير: '+e.message); }
+};
 $('#dsPdfBtn').onclick=()=>dsExportPdf(false);
 $('#dsPdfPlainBtn').onclick=()=>dsExportPdf(true);
 $('#dsPptBtn').onclick=()=>dsExportPptx().catch(e=>{ console.error(e); toast('تعذّر تصدير PowerPoint: '+e.message); });
@@ -4795,7 +4833,7 @@ const UP_TYPES={
   ops:{name:'List of Operations',feeds:'🧪 الوحدات المحضّرة والصفائح (Pooling / Treatment)'},
   issue:{name:'Delivered to outside',feeds:'🚚 Issuing Units — الوحدات المصروفة للمستشفيات حسب الجهة والمنتج والفصيلة'}
 };
-let UP={}, UP_VER=0; const UP_SEEN={};
+let UP={}, UP_VER=0, UP_META={}, UP_LOCAL=null, UP_SYNC=Promise.resolve(); const UP_SEEN={};
 const upFile=t=>UP[t]?.file||null;
 const upProdFiles=()=>Object.keys(UP).filter(k=>k.startsWith('prod:')).sort().map(k=>UP[k].file);
 function upIdb(mode,fn){
@@ -4812,6 +4850,94 @@ async function upLoadAll(){
   try{ await upIdb('readonly',st=>{ st.openCursor().onsuccess=e=>{ const c=e.target.result; if(c){ all[c.key]=c.value; c.continue(); } }; }); }
   catch(e){ console.warn('IndexedDB',e); }
   UP=all; UP_VER++; upRender();
+}
+/* ☁️ (2026-10-13، طلب حسن) حفظ نهائي سحابي + دمج إعادة الرفع:
+   كل ملف يُحفظ في Firestore (مضغوطاً gzip ومقسّماً لأجزاء ≤ 900KB في uploadChunks، والوصف في uploads/{key}) فيظهر على كل الأجهزة،
+   وIndexedDB نسخة محلية سريعة. رفع ملف من نفس النوع يُدمج مع السابق: سجلات القديم داخل فترة الملف الجديد تُحذف (مكررة/محدّثة)
+   وتُعتمد سجلات الجديد، وما خارجها يبقى؛ الفترة = من أقدم تاريخ إلى أحدثه. الملف المحفوظ جدول HTML بنفس شكل ملف النظام
+   (العنوان + Start/End Date + سطر الرأس) فتقرؤه كل الصفحات كما هو. Staff productivity يبقى ملفاً لكل أسبوع (نفس الأسبوع يُستبدل). */
+const UP_MERGE={
+  donations:{keys:['hiig number','donation date'],date:'donation date',title:'List of donations'},
+  wateen:{keys:['donation type','donation date','collection point'],date:'donation date',title:'Wateen report'},
+  discarded:{keys:['site code','discard date'],date:'discard date',title:'Discarded products'},
+  ops:{keys:['operation code','operation date'],date:'operation date',title:'List of Operations'},
+  issue:{keys:['deliv','unit number','client code'],date:'deliv',title:'Delivered to outside'}
+};
+// بيانات المتبرع الشخصية لا تُحفظ أبداً (القراءة من Firestore عامة): الاسم، الميلاد، الهوية، الجوال تُحذف، وHIIG Number يُفرَّغ — لا تحتاجها أي صفحة
+const UP_PII=/^(first name|last name|dob|national id|phone)/i, UP_BLANK=/^hiig number/i, UP_CHUNK=900000;
+const upUnesc=x=>x.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'");
+const upEsc=x=>String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const upDMY=iso=>iso?`${iso.slice(8,10)}/${iso.slice(5,7)}/${iso.slice(0,4)}`:'';
+async function upTable(file,type){ // → {header, rows:[{d, c:[…]}]} بعد حذف البيانات الشخصية
+  const M=UP_MERGE[type], rows=await dsFileRows(file), H=dsHeader(rows,M.keys); if(!H) return null;
+  const hdr=rows[H.hi].map(h=>upUnesc(String(h)).replace(/\s+/g,' ').trim()), keep=hdr.map((h,i)=>UP_PII.test(h)?-1:i).filter(i=>i>=0), di=H.idx(M.date), out=[];
+  for(let i=H.hi+1;i<rows.length;i++){
+    const c=rows[i], d=dsDate(String(c[di]||'').trim().split(/\s+/)[0]); if(!d) continue;
+    out.push({d,c:keep.map(j=>UP_BLANK.test(hdr[j])?'':upUnesc(String(c[j]??'')))});
+  }
+  return {header:keep.map(j=>hdr[j]),rows:out};
+}
+async function upBuild(type,file,d,old){
+  const M=UP_MERGE[type], nw=await upTable(file,type); if(!nw||!nw.rows.length) return null;
+  const span=rs=>rs.reduce((a,r)=>[!a[0]||r.d<a[0]?r.d:a[0],!a[1]||r.d>a[1]?r.d:a[1]],[null,null]);
+  const ns=span(nw.rows), nf=d.from||ns[0], nt=d.to||ns[1];
+  let from=nf, to=nt, kept=[], replaced=0;
+  const ot=old?await upTable(old.file,type).catch(()=>null):null;
+  if(ot){
+    const lc=x=>x.toLowerCase(), map=nw.header.map(h=>ot.header.findIndex(x=>lc(x)===lc(h)));
+    ot.rows.forEach(r=>{ if(r.d>=nf&&r.d<=nt){ replaced++; return; } kept.push({d:r.d,c:map.map(j=>j<0?'':r.c[j])}); });
+    const os=span(ot.rows), of=old.from||os[0], ol=old.to||os[1];
+    if(of&&of<from) from=of; if(ol&&ol>to) to=ol;
+  }
+  const all=[...kept,...nw.rows], tr=c=>'<tr>'+c.map(x=>`<td>${upEsc(x)}</td>`).join('')+'</tr>';
+  const html=`<html><body><b>${M.title}</b><p>Start Date : ${upDMY(from)}</p><p>End date : ${upDMY(to)}</p><table>${tr(nw.header)}\n${all.map(r=>tr(r.c)).join('\n')}</table></body></html>`;
+  const name=`${M.title.replace(/ /g,'_')}_${from.replace(/-/g,'')}-${to.replace(/-/g,'')}.xls`;
+  const f=new File([html],name,{type:'text/html'});
+  return {file:f,name,type,from,to,size:f.size,added:new Date().toISOString(),rows:all.length,src:file.name,
+    info:ot?{kept:kept.length,replaced,added:nw.rows.length}:null};
+}
+const upGz=async b=>new Uint8Array(await new Response(b.stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer());
+const upGunz=u8=>new Response(new Blob([u8]).stream().pipeThrough(new DecompressionStream('gzip'))).blob();
+const upChunkId=(k,ver,i)=>`${k}~${ver}~${i}`;
+async function upCloudPut(key,v){
+  if(!CLOUD) return false;
+  const {fs}=db, u8=await upGz(v.file), n=Math.max(1,Math.ceil(u8.length/UP_CHUNK)), prev=UP_META[key];
+  for(let i=0;i<n;i++) await fs.setDoc(fs.doc(db.d,'uploadChunks',upChunkId(key,v.ver,i)),{d:fs.Bytes.fromUint8Array(u8.slice(i*UP_CHUNK,(i+1)*UP_CHUNK))});
+  const meta={name:v.name,type:v.type,from:v.from||null,to:v.to||null,size:v.size,added:v.added,rows:v.rows||null,src:v.src||null,info:v.info||null,ver:v.ver,n};
+  await fs.setDoc(fs.doc(db.d,'uploads',key),meta); UP_META[key]=meta;
+  if(prev&&prev.ver!==v.ver) for(let i=0;i<prev.n;i++) await fs.deleteDoc(fs.doc(db.d,'uploadChunks',upChunkId(key,prev.ver,i))).catch(()=>{});
+  return true;
+}
+async function upCloudDel(key){
+  const m=UP_META[key]; if(!CLOUD||!m) return; const {fs}=db;
+  await fs.deleteDoc(fs.doc(db.d,'uploads',key)); delete UP_META[key];
+  for(let i=0;i<m.n;i++) await fs.deleteDoc(fs.doc(db.d,'uploadChunks',upChunkId(key,m.ver,i))).catch(()=>{});
+}
+// عند فتح الموقع: ما في السحابة يتقدّم — ملف أحدث يُنزَّل لهذا الجهاز، وملف حُذف من جهاز آخر يُحذف هنا؛
+// وملفات محلية رُفعت قبل الحفظ السحابي تُرفع للسحابة (بعد حذف البيانات الشخصية) مرة واحدة
+async function upSync(){
+  if(!CLOUD) return;
+  const st=$('#upCloud'); if(st) st.textContent='☁️ جاري المزامنة مع السحابة…';
+  let ch=false;
+  try{
+    const {fs}=db, metas={}; (await fs.getDocs(fs.collection(db.d,'uploads'))).forEach(x=>metas[x.id]=x.data()); UP_META=metas;
+    for(const [k,m] of Object.entries(metas)){
+      if(UP[k]?.ver===m.ver) continue;
+      const parts=[]; for(let i=0;i<m.n;i++){ const x=await fs.getDoc(fs.doc(db.d,'uploadChunks',upChunkId(k,m.ver,i))); if(!x.exists()) throw new Error('جزء ناقص '+k); parts.push(x.data().d.toUint8Array()); }
+      const file=new File([await upGunz(await new Blob(parts).arrayBuffer())],m.name,{type:'text/html'});
+      UP[k]={...m,file,cloud:true}; await upSave(k,UP[k]).catch(()=>{}); ch=true;
+    }
+    for(const k of Object.keys(UP)){
+      if(metas[k]) continue;
+      if(UP[k].cloud){ delete UP[k]; await upSave(k,null).catch(()=>{}); ch=true; continue; } // حُذف من جهاز آخر
+      let v=UP[k]; // ملف محلي فقط (قبل الحفظ السحابي)
+      if(UP_MERGE[v.type]){ const b=await upBuild(v.type,v.file,v,null).catch(()=>null); if(!b) continue; v={...b,added:v.added}; }
+      v={...v,ver:v.ver||String(Date.now()),cloud:true};
+      if(await upCloudPut(k,v)){ UP[k]=v; await upSave(k,v).catch(()=>{}); ch=true; }
+    }
+  }catch(e){ console.warn('upSync',e); if(st) st.textContent='⚠️ تعذّرت المزامنة مع السحابة — الملفات المحلية متاحة'; }
+  if(ch){ UP_VER++; const pg=$('.navbtn.active')?.dataset.pg; if(pg) upAutoRun(pg); }
+  upRender();
 }
 async function upDetect(file){
   const pick=t=>/list of donations|hiig number/i.test(t)?'donations':/wateen|رقم كيس الدم/i.test(t)?'wateen':/staff productivity|screened per user/i.test(t)?'prod'
@@ -4831,17 +4957,26 @@ async function upDetect(file){
 async function upAdd(files){
   const log=[]; let n=0;
   $('#upLog').textContent='⏳ جاري التعرّف على الملفات…';
+  await UP_SYNC.catch(()=>{}); // الدمج يحتاج آخر نسخة من السحابة
   for(const f of files){
     const d=await upDetect(f).catch(()=>({type:null}));
     if(!d.type){ log.push(`⚠️ ${dsEsc(f.name)}: نوع ملف غير معروف — تُرك`); continue; }
     if(d.type==='prod'&&!d.from){ log.push(`⚠️ ${dsEsc(f.name)}: Staff productivity بلا Start/End Date — تُرك`); continue; }
     const key=d.type==='prod'?`prod:${d.from}_${d.to}`:d.type; // نفس النوع يستبدل السابق؛ Staff productivity: نفس الفترة تُستبدل
-    const v={file:f,name:f.name,type:d.type,from:d.from,to:d.to,size:f.size,added:new Date().toISOString()};
+    $('#upLog').textContent=`⏳ ${f.name}: قراءة ودمج وحفظ…`;
+    let v;
+    if(UP_MERGE[d.type]){ v=await upBuild(d.type,f,d,UP[key]).catch(e=>{ console.warn(e); return null; });
+      if(!v){ log.push(`⚠️ ${dsEsc(f.name)}: لم يُعثر على جدول البيانات — تُرك`); continue; } }
+    else v={file:f,name:f.name,type:d.type,from:d.from,to:d.to,size:f.size,added:new Date().toISOString()};
+    v.ver=String(Date.now());
+    try{ v.cloud=await upCloudPut(key,v); }catch(e){ console.warn(e); v.cloud=false; log.push(`⚠️ ${dsEsc(f.name)}: تعذّر الحفظ السحابي (${dsEsc(e.message)}) — محفوظ على هذا الجهاز فقط`); }
     UP[key]=v; n++;
-    try{ await upSave(key,v); }catch(e){ log.push(`⚠️ ${dsEsc(f.name)}: لم يُحفظ في المتصفح (${dsEsc(e.message)}) — متاح في هذه الجلسة فقط`); }
-    log.push(`✓ ${dsEsc(f.name)} ← <b>${UP_TYPES[d.type].name}</b>${d.from?` <span class="bidi-ltr">(${fmtDMY(d.from)} → ${fmtDMY(d.to)})</span>`:''}`);
+    try{ await upSave(key,v); }catch(e){ log.push(`⚠️ ${dsEsc(f.name)}: لم يُحفظ في المتصفح (${dsEsc(e.message)})`); }
+    const I=v.info;
+    log.push(`✓ ${dsEsc(f.name)} ← <b>${UP_TYPES[d.type].name}</b>${v.from?` <span class="bidi-ltr">(${fmtDMY(v.from)} → ${fmtDMY(v.to)})</span>`:''}${v.cloud?' ☁️':''}`
+      +(I?` — دُمج مع السابق: ${fmtNum(I.kept)} سجل قديم خارج فترة الملف بقي، ${fmtNum(I.replaced)} سجل مكرر/قديم داخلها حُذف واستُبدل بـ ${fmtNum(I.added)} من الملف الجديد`:v.rows?` — ${fmtNum(v.rows)} سجل`:''));
     if(d.type==='issue'){ // تنبيه فوري بأي كود جهة غير مصنّف (جديد أو غير مدرج في ملف GOV)
-      const unk=issueUnknown(dsParseIssue(await dsFileRows(f).catch(()=>[]))||[]);
+      const unk=issueUnknown(dsParseIssue(await dsFileRows(v.file).catch(()=>[]))||[]);
       if(unk.length){ log.push(`<span style="color:var(--bad)">⚠️ ${unk.length} كود جهة غير مصنّف (GOVERNMENTAL / PRIVATE / NON GOVERNMENTAL / Other Regions): ${unk.map(x=>`<b class="bidi-ltr">${dsEsc(x.c)}</b>${x.cn?` <span class="bidi-ltr">${dsEsc(x.cn)}</span>`:''} (${fmtNum(x.n)})`).join(' · ')} — صنّفها من صفحة Donors and Blood Components ← قسم Issuing Units</span>`);
         setTimeout(()=>toast(`⚠️ ${unk.length} كود جهة غير مصنّف في ملف Delivered to outside`),2400); }
     }
@@ -4859,12 +4994,15 @@ function upRender(){
     const items=T.multi?Object.keys(UP).filter(k=>k.startsWith(t+':')).sort().reverse():(UP[t]?[t]:[]);
     const body=T.multi
       ? items.slice(0,6).map(k=>`<div class="meta">${per(UP[k])} ${del(k)}</div>`).join('')+(items.length>6?`<div class="meta">+ ${items.length-6} ملفات أخرى</div>`:'')
-      : items.map(k=>`<div class="meta">${dsEsc(UP[k].name)} ${del(k)}<br>${per(UP[k])}${UP[k].from?' · ':''}${kb(UP[k].size)} · رُفع ${when(UP[k])}</div>`).join('');
+      : items.map(k=>`<div class="meta">${dsEsc(UP[k].name)} ${del(k)}<br>${per(UP[k])}${UP[k].from?' · ':''}${UP[k].rows?fmtNum(UP[k].rows)+' سجل · ':''}${kb(UP[k].size)} · ${UP[k].info?'آخر دمج':'رُفع'} ${when(UP[k])} · ${UP[k].cloud?'☁️ سحابي':'💾 هذا الجهاز فقط'}</div>`).join('');
     return `<div class="up-card ${items.length?'ok':''}"><h4>${T.name}</h4>
       <div class="st ${items.length?'':'no'}">${items.length?(T.multi?`✓ ${items.length} ملف`:'✓ مرفوع'):'— لم يُرفع'}</div>${body}
       <div class="feeds">${T.feeds}</div></div>`;
   }).join('');
-  $$('[data-updel]').forEach(b=>b.onclick=async()=>{ const k=b.dataset.updel; delete UP[k]; await upSave(k,null).catch(()=>{}); UP_VER++; upRender(); });
+  $$('[data-updel]').forEach(b=>b.onclick=async()=>{ const k=b.dataset.updel;
+    if(!confirm(`حذف ملف ${UP[k]?.name||k} نهائياً من كل الأجهزة؟`)) return;
+    delete UP[k]; await upSave(k,null).catch(()=>{}); await upCloudDel(k).catch(e=>toast('تعذّر الحذف من السحابة: '+e.message)); UP_VER++; upRender(); });
+  const cs=$('#upCloud'); if(cs) cs.textContent=CLOUD?`☁️ الملفات محفوظة سحابياً (${Object.keys(UP_META).length} ملف) — تظهر على كل الأجهزة`:'💾 بلا اتصال بالسحابة — الملفات على هذا الجهاز فقط';
   $$('.upstat').forEach(el=>{
     el.innerHTML=el.dataset.need.split(',').map(t=>{ const ok=t==='prod'?upProdFiles().length:!!UP[t];
       return `<span class="chip ${ok?'ok':''}">${ok?'✓':'✗'} ${UP_TYPES[t].name}${t==='prod'&&ok?` (${ok})`:''}</span>`; }).join('')
@@ -4886,10 +5024,12 @@ const upDropEl=$('#upDrop');
 upDropEl.addEventListener('drop',e=>upAdd([...e.dataTransfer.files]));
 $('#upInput').onchange=e=>{ const fs=[...e.target.files]; e.target.value=''; upAdd(fs); };
 $('#upClearAll').onclick=async()=>{
-  if(!confirm('مسح كل الملفات المرفوعة من هذا المتصفح؟')) return;
-  UP={}; await upIdb('readwrite',st=>st.clear()).catch(()=>{}); UP_VER++; $('#upLog').innerHTML=''; upRender();
+  if(!confirm('مسح كل الملفات المرفوعة نهائياً من كل الأجهزة (السحابة وهذا المتصفح)؟')) return;
+  UP={}; await upIdb('readwrite',st=>st.clear()).catch(()=>{});
+  for(const k of Object.keys(UP_META)) await upCloudDel(k).catch(()=>{});
+  UP_VER++; $('#upLog').innerHTML=''; upRender();
 };
-upLoadAll();
+UP_LOCAL=upLoadAll();
 
 
 boot();
