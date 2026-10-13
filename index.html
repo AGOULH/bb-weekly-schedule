@@ -4442,33 +4442,29 @@ function dsRender(){
     const donS=donOf(W);
     const P=k=>by(prep,k), Rc=by(rec);
     const sel=o=>SC.reduce((t,s)=>t+(dsSites.has(s)||(allSites&&s==='U')?o[s]:0),0); // «غير مرتبطة» تدخل فقط عند اختيار كل النقاط
-    // الفترة السابقة المماثلة (نفس عدد الأيام قبلها مباشرة) — فقط إن كانت داخل ما يغطيه الملف، وإلا «لا مقارنة»
-    const len=Math.round((new Date(R.to)-new Date(R.from))/864e5)+1, pf=addDays(R.from,-len), pt=addDays(R.from,-1), hasPrev=pf>=DS.from;
-    const inP=d=>d>=pf&&d<=pt, pRec=hasPrev?DS.rec.filter(r=>inP(r.dd)):[], pPrep=hasPrev?DS.prep.filter(r=>inP(r.dd)):[], pDon=donOf(hasPrev?DS.w.filter(r=>inP(r.d)):[]);
-    const delta=(c,p)=>!p?'<span class="flat">— No comparison</span>':(()=>{const d=Math.round((c-p)/p*100);return `<span class="${d>0?'up':d<0?'down':'flat'}">${d>0?'▲':d<0?'▼':'●'} ${Math.abs(d)}% vs previous period</span>`})();
-    const card=(cls,lb,cur,prev,ic)=>`<div class="kpi ${cls}">${dsIc(ic)}<div class="lb">${lb}</div><div class="vl">${fmtNum(cur)}</div><div class="dt">${delta(cur,prev)}</div></div>`;
-    const PP=k=>by(pPrep,k);
+    // بلا مقارنة بالفترة السابقة (أُزيلت 2026-10-13، طلب حسن)
+    const card=(cls,lb,cur,ic)=>`<div class="kpi ${cls}">${dsIc(ic)}<div class="lb">${lb}</div><div class="vl">${fmtNum(cur)}</div></div>`;
     // العناصر الظاهرة قابلة للاختيار (dsHidden، تُحفظ لكل متصفح في bb_ds_items) — id = أيقونة البطاقة
     const items=[
-      {g:1,id:'donors',c:'',lb:'Donors',cur:sel(donS),prev:sel(pDon)},
-      {g:1,id:'recv',c:'n',lb:'Reception',cur:sel(Rc),prev:sel(by(pRec))},
-      {g:1,id:'wb',c:'n',lb:'WHOLE BLOOD',cur:sel(by(rec,'WB')),prev:sel(by(pRec,'WB'))},
-      {g:1,id:'aph',c:'g',lb:'Apheresis PLATELETS',cur:sel(by(rec,'APH')),prev:sel(by(pRec,'APH'))},
-      {g:1,id:'norecv',c:'',lb:'Donors without Reception',cur:Math.max(0,sel(donS)-sel(Rc)),prev:hasPrev?Math.max(0,sel(pDon)-sel(by(pRec))):0},
-      {g:2,id:'sep',c:'',lb:'Separated — WHOLE BLOOD',cur:sel(wbSt(rec,'sep')),prev:sel(wbSt(pRec,'sep'))},
-      {g:2,id:'disc',c:'n ds-bad',lb:'Discarded before Separation — WHOLE BLOOD',cur:sel(wbSt(rec,'disc')),prev:sel(wbSt(pRec,'disc'))},
-      {g:2,id:'pend',c:'g',lb:'Pending Separation — WHOLE BLOOD',cur:sel(wbSt(rec,'pend')),prev:sel(wbSt(pRec,'pend'))},
-      {g:3,id:'total',c:'a',lb:'Total Prepared Units',cur:sel(P()),prev:sel(PP())},
-      {g:3,id:'ffp',c:'n',lb:'FRESH FROZEN PLASMA',cur:sel(P('FFP')),prev:sel(PP('FFP'))},
-      {g:3,id:'plt',c:'g',lb:'PLATELETS',cur:sel(P('PLT')),prev:sel(PP('PLT'))},
-      {g:3,id:'rbclr',c:'',lb:'RBC — Leuco-Reduced',cur:sel(P('RBCLR')),prev:sel(PP('RBCLR'))},
-      {g:3,id:'rbcnlr',c:'',lb:'RBC — Non Leuco-Reduced',cur:sel(P('RBCNLR')),prev:sel(PP('RBCNLR'))},
-      {g:3,id:'cryo',c:'a',lb:'CRYOPRECIPITATE',cur:sel(P('CRYO')),prev:sel(PP('CRYO'))},
+      {g:1,id:'donors',c:'',lb:'Donors',cur:sel(donS)},
+      {g:1,id:'recv',c:'n',lb:'Reception',cur:sel(Rc)},
+      {g:1,id:'wb',c:'n',lb:'WHOLE BLOOD',cur:sel(by(rec,'WB'))},
+      {g:1,id:'aph',c:'g',lb:'Apheresis PLATELETS',cur:sel(by(rec,'APH'))},
+      {g:1,id:'norecv',c:'',lb:'Donors without Reception',cur:Math.max(0,sel(donS)-sel(Rc))},
+      {g:2,id:'sep',c:'',lb:'Separated — WHOLE BLOOD',cur:sel(wbSt(rec,'sep'))},
+      {g:2,id:'disc',c:'n ds-bad',lb:'Discarded before Separation — WHOLE BLOOD',cur:sel(wbSt(rec,'disc'))},
+      {g:2,id:'pend',c:'g',lb:'Pending Separation — WHOLE BLOOD',cur:sel(wbSt(rec,'pend'))},
+      {g:3,id:'total',c:'a',lb:'Total Prepared Units',cur:sel(P())},
+      {g:3,id:'ffp',c:'n',lb:'FRESH FROZEN PLASMA',cur:sel(P('FFP'))},
+      {g:3,id:'plt',c:'g',lb:'PLATELETS',cur:sel(P('PLT'))},
+      {g:3,id:'rbclr',c:'',lb:'RBC — Leuco-Reduced',cur:sel(P('RBCLR'))},
+      {g:3,id:'rbcnlr',c:'',lb:'RBC — Non Leuco-Reduced',cur:sel(P('RBCNLR'))},
+      {g:3,id:'cryo',c:'a',lb:'CRYOPRECIPITATE',cur:sel(P('CRYO'))},
     ];
     h+=`<div class="card ds-ltr" dir="ltr"><h3 class="ds-sec"><span class="si">🧪</span>Received and Prepared Units</h3>
-    <div class="hint" style="margin:-6px 0 10px">Source: List of Operations — Site: <b>${siteLblEn}</b>${hasPrev?` — compared with the previous period of equal length ${fmtDMY(pf)} → ${fmtDMY(pt)}`:' — no previous period in the file to compare with'}</div>
+    <div class="hint" style="margin:-6px 0 10px">Source: List of Operations — Site: <b>${siteLblEn}</b></div>
     ${dsItemChips(items)}
-    ${[1,2,3].map(g=>{ const v=items.filter(it=>it.g===g&&!dsHidden.has(it.id)); return v.length?`<div class="kpis">${v.map(it=>card(it.c,it.lb,it.cur,it.prev,it.id)).join('')}</div>`:''; }).join('')}
+    ${[1,2,3].map(g=>{ const v=items.filter(it=>it.g===g&&!dsHidden.has(it.id)); return v.length?`<div class="kpis">${v.map(it=>card(it.c,it.lb,it.cur,it.id)).join('')}</div>`:''; }).join('')}
     ${items.every(it=>dsHidden.has(it.id))?'<div class="hint">No items selected — choose items from the buttons above.</div>':''}
     <div class="hint">Reception and preparation are attributed to the donation date and collection site through the bag number in the Wateen report. Units donated outside the period of the uploaded Wateen report (e.g. CRYO from older plasma) are counted by operation date and included only when all sites are selected. Use the site buttons above for a per-site breakdown. Prepared = products of separation operations (SEP/SEP2/SEPR/SEPC), each product counted once per bag. <b>WHOLE BLOOD received = Separated (= RBC Leuco-Reduced + Non Leuco-Reduced) + Discarded before Separation (DISC operation on WHOLE BLOOD) + Pending Separation.</b></div></div>`;
   } else h+=`<div class="card ds-ltr" dir="ltr"><h3 class="ds-sec"><span class="si">🧪</span>Received and Prepared Units</h3><div class="empty">Upload <b>List of Operations</b> on the 📥 upload page to show this section.</div></div>`;
@@ -4506,11 +4502,7 @@ function dsRender(){
     const allSec=dsSecs.size===Object.keys(ISSUE_CATS).length, cats=Object.keys(ISSUE_CATS).filter(c=>dsSecs.has(c)), catOf=r=>issueCls(r.c)||'UNK';
     const secOk=r=>{ const c=catOf(r); return c==='UNK'?allSec:dsSecs.has(c); };
     const I=DS.iss.filter(r=>inR(r.d)&&secOk(r)), secLbl=allSec?'All sectors':cats.map(c=>ISSUE_CATS[c].lb).join(' + ');
-    const iFrom=DS.iss.reduce((m,r)=>r.d<m?r.d:m,DS.iss[0].d);
-    const len=Math.round((new Date(R.to)-new Date(R.from))/864e5)+1, pf=addDays(R.from,-len), pt=addDays(R.from,-1), hasPrev=pf>=iFrom;
-    const P=hasPrev?DS.iss.filter(r=>r.d>=pf&&r.d<=pt&&secOk(r)):[];
-    const delta=(c,p)=>!hasPrev||!p?'<span class="flat">— No comparison</span>':(()=>{const d=Math.round((c-p)/p*100);return `<span class="${d>0?'up':d<0?'down':'flat'}">${d>0?'▲':d<0?'▼':'●'} ${Math.abs(d)}% vs previous period</span>`})();
-    const icard=(cls,lb,cur,prev,ic,share)=>`<div class="kpi ${cls}">${dsIc(ic)}<div class="lb">${lb}</div><div class="vl">${fmtNum(cur)}</div><div class="dt">${share?`<span class="flat">${share}</span><br>`:''}${delta(cur,prev)}</div></div>`;
+    const icard=(cls,lb,cur,ic,share)=>`<div class="kpi ${cls}">${dsIc(ic)}<div class="lb">${lb}</div><div class="vl">${fmtNum(cur)}</div>${share?`<div class="dt"><span class="flat">${share}</span></div>`:''}</div>`;
     const tot=I.length, unkAll=allSec?issueUnknown(DS.iss):[], unkR=I.filter(r=>catOf(r)==='UNK').length;
     const colsC=[...cats,...(unkR?['UNK']:[])], cLb=c=>c==='UNK'?'Unclassified':ISSUE_CATS[c].lb;
     const prods=[...ISSUE_PRODS.map(x=>x[0]),...[...new Set(I.map(r=>r.p))].filter(p=>!ISSUE_PRODS.some(x=>x[0]===p))];
@@ -4523,19 +4515,19 @@ function dsRender(){
     const aboC={}; I.forEach(r=>aboC[r.abo]=(aboC[r.abo]||0)+1);
     h+=`<div class="card ds-ltr" dir="ltr"><h3 class="ds-sec"><span class="si">🚚</span>Issuing Units</h3>
     <div class="noprint" style="margin:-4px 0 10px"><div class="hint" style="margin:0">Issuing sector (choose one or more):</div><div class="cmp-chips" id="dsSecChips" style="margin:5px 0 0">${Object.entries(ISSUE_CATS).map(([c,x])=>{ const on=dsSecs.has(c); return `<button class="cmp-chip${on?' on':''}" data-c="${c}" aria-pressed="${on}">${x.lb}</button>`; }).join('')}<button class="btn ghost sm" data-c="all">All</button></div></div>
-    <div class="hint" style="margin:0 0 10px">Source: Delivered to outside — Sector: <b>${secLbl}</b> — by delivery date — not split by collection site.${hasPrev?` Compared with the previous period of equal length ${fmtDMY(pf)} → ${fmtDMY(pt)}.`:''} Every delivery row is counted: a unit returned and issued again to another hospital counts twice.</div>
+    <div class="hint" style="margin:0 0 10px">Source: Delivered to outside — Sector: <b>${secLbl}</b> — by delivery date — not split by collection site. Every delivery row is counted: a unit returned and issued again to another hospital counts twice.</div>
     ${unkAll.length?`<div class="iss-unk"><h4>⚠️ ${unkAll.length} client code${unkAll.length>1?'s are':' is'} not classified</h4>
       <div class="hint" style="margin:0 0 8px">These codes are new or missing from the GOV classification file, so their units appear under <b>Unclassified</b>. Choose a sector and save — it applies to everyone using the site.</div>
       <table class="rk"><thead><tr><th>Code</th><th>Hospital</th><th>Units (whole file)</th><th>Sector</th></tr></thead><tbody>
       ${unkAll.map(x=>`<tr><td><b>${dsEsc(x.c)}</b></td><td class="nm">${dsEsc(x.cn)||'—'}</td><td>${fmtNum(x.n)}</td><td><select class="inp" data-isscode="${dsEsc(x.c)}"><option value="">— choose —</option>${cats.map(c=>`<option value="${c}">${ISSUE_CATS[c].lb}</option>`).join('')}</select></td></tr>`).join('')}
       </tbody></table><div style="margin-top:8px"><button class="btn sm" id="issSaveCls">💾 Save classification</button></div></div>`:''}
     <div class="kpis">
-      ${icard('','Total Issued Units',tot,P.length,'issue',I.length?`${fmtNum(hl.length)} hospitals`:'')}
-      ${colsC.map(c=>icard(c==='UNK'?'ds-bad':ISSUE_CATS[c].c,cLb(c),n(I,r=>catOf(r)===c),n(P,r=>catOf(r)===c),c==='UNK'?'unk':ISSUE_CATS[c].ic,`${pct(n(I,r=>catOf(r)===c),tot)} of issued`)).join('')}
+      ${icard('','Total Issued Units',tot,'issue',I.length?`${fmtNum(hl.length)} hospitals`:'')}
+      ${colsC.map(c=>icard(c==='UNK'?'ds-bad':ISSUE_CATS[c].c,cLb(c),n(I,r=>catOf(r)===c),c==='UNK'?'unk':ISSUE_CATS[c].ic,`${pct(n(I,r=>catOf(r)===c),tot)} of issued`)).join('')}
     </div>
     <h3 style="margin-top:6px">📦 By Product</h3>
     <div class="kpis">
-      ${prods.map(p=>{ const ic=(ISSUE_PRODS.find(x=>x[0]===p)||[])[1]; return icard('',p,n(I,r=>r.p===p),n(P,r=>r.p===p),ic,`${pct(n(I,r=>r.p===p),tot)} of issued`); }).join('')}
+      ${prods.map(p=>{ const ic=(ISSUE_PRODS.find(x=>x[0]===p)||[])[1]; return icard('',p,n(I,r=>r.p===p),ic,`${pct(n(I,r=>r.p===p),tot)} of issued`); }).join('')}
     </div>
     ${tot?`<h3 style="margin-top:6px">🏥 Product × Sector</h3>
     ${mx(prods,(r,p)=>r.p===p,colsC,(r,c)=>catOf(r)===c,cLb)}
@@ -4611,10 +4603,13 @@ function dsDrawsTable(list){
     ${p.map((x,i)=>{ const n=j*half+i, hi=x.rate>10&&x.col>=10; // أحمر غامق فقط لنسبة > 10% من 10 أكياس فأكثر
       return `<tr><td>${n<3?`<span class="dsp-med m${n+1}">${n+1}</span>`:n+1}</td><td class="nm">${dsEsc(x.name)}</td><td><b>${fmtNum(x.col)}</b></td><td>${x.dis}</td><td${hi?' class="hi"':''}>${x.col?x.rate.toFixed(1)+'%':'—'}</td></tr>`; }).join('')}</tbody></table>`).join('')}</div>`;
 }
+// تقارير محفوظة قبل إزالة المقارنة: حذف «vs previous period / No comparison» من نص البطاقة
+const dsNoPrev=dt=>(dt||'').replace(/(<br>)?\s*<span class="(up|down|flat)">[^<]*(vs previous period|No comparison)<\/span>/g,'').replace(/<br>\s*$/,'');
 // لغة موحّدة في التقرير المطبوع: بطاقات Donors العربية بالإنجليزية، وكل الأقسام LTR
 function dsPrintEn(sec){
   return {...sec,rtl:false,cards:sec.cards.map(c=>{
     if(c.lb==='إجمالي المتبرعين'){ const m=/متوسط ([\d.]+) يومياً<br>(\d+) يوم تبرع/.exec(c.dt); return {...c,rtl:false,lb:'Total Donors',dt:m?`Avg ${m[1]}/day · ${m[2]} days`:c.dt}; }
+    c={...c,dt:dsNoPrev(c.dt)};
     return {...c,rtl:false,dt:c.dt.replace(/<br>\s*من المتبرعين/,' of donors').replace('من المتبرعين','of donors')}; })};
 }
 function dsExportPdf(plain,saved){
