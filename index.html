@@ -4253,7 +4253,7 @@ async function dsLoad(){
     let iss=[]; if(fI){ const r=dsParseIssue(await dsFileRows(fI)); if(r) iss=r; else errs.push('تنسيق Delivered to outside غير معروف'); }
     // الربط برقم الكيس: تاريخ التبرع ونقطة السحب من Wateen؛ غير الموجود فيه = غير مرتبط (U) بتاريخ العملية
     const um={}; w.forEach(r=>{ if(r.u) um[r.u]=r; });
-    let unl=0; [...ops.rec,...ops.prep].forEach(r=>{ const x=um[r.u]; r.dd=x?x.d:r.d; r.s=x?x.s:'U'; if(!x) unl++; });
+    let unl=0; [...ops.rec,...ops.prep].forEach(r=>{ const x=um[r.u]; r.dd=x?x.d:r.d; r.s=x?x.s:'U'; r.f=x?x.f:null; if(!x) unl++; });
     const dates=[...w.map(r=>r.d),...ops.rec.map(r=>r.dd),...ops.prep.map(r=>r.dd),...ops.pool.map(r=>r.d),...ops.tre.map(r=>r.d),...iss.map(r=>r.d)].sort();
     if(!dates.length){ $('#dsLog').innerHTML=errs.join('<br>')||'لا توجد سجلات صالحة'; toast('لا توجد سجلات صالحة'); return; }
     DS={w,...ops,iss,from:dates[0],to:dates[dates.length-1]}; dsMode='all';
@@ -4490,7 +4490,7 @@ function dsRender(){
   if(DS.rec.length||DS.prep.length){
     const SC=['F','D','C','U'], rec=DS.rec.filter(r=>inR(r.dd)), prep=DS.prep.filter(r=>inR(r.dd));
     const by=(a,k)=>{ const o={F:0,D:0,C:0,U:0}; a.forEach(r=>{ if(!k||r.k===k||(Array.isArray(k)&&k.includes(r.k))) o[r.s]++; }); return o; };
-    const wbSt=(a,st)=>by(a.filter(r=>r.k==='WB'&&r.st===st));
+    const wbSt=(a,st,f)=>by(a.filter(r=>r.k==='WB'&&r.st===st&&(f==null||r.f===f))); // f: جنس المتبرع من Wateen (2026-10-15)
     const donOf=a=>{ const o={F:0,D:0,C:0,U:0}; a.forEach(r=>{ if(r.t!=='SO'&&r.t!=='OT') o[r.s]++; }); return o; };
     const donS=donOf(W);
     const P=k=>by(prep,k), Rc=by(rec);
@@ -4506,6 +4506,9 @@ function dsRender(){
       {g:1,id:'norecv',c:'',lb:'Donors without Reception',cur:Math.max(0,sel(donS)-sel(Rc))},
       {g:2,id:'sep',c:'',lb:'Separated — WHOLE BLOOD',cur:sel(wbSt(rec,'sep'))},
       {g:2,id:'disc',c:'n ds-bad',lb:'Discarded before Separation — WHOLE BLOOD',cur:sel(wbSt(rec,'disc'))},
+      // (2026-10-15، طلب حسن) المتلف قبل الفصل للمتبرعات لوحده، وهو جزء من الإجمالي أعلاه (Female + Male + غير مرتبط بـ Wateen)
+      {g:2,id:'discF',ic:'female',c:'a ds-bad',lb:'Discarded before Separation — Female',cur:sel(wbSt(rec,'disc',true))},
+      {g:2,id:'discM',ic:'male',c:'n',lb:'Discarded before Separation — Male',cur:sel(wbSt(rec,'disc',false))},
       {g:2,id:'pend',c:'g',lb:'Pending Separation — WHOLE BLOOD',cur:sel(wbSt(rec,'pend'))},
       {g:3,id:'total',c:'a',lb:'Total Prepared Units',cur:sel(P())},
       {g:3,id:'ffp',c:'n',lb:'FRESH FROZEN PLASMA',cur:sel(P('FFP'))},
@@ -4517,9 +4520,9 @@ function dsRender(){
     h+=`<div class="card ds-ltr" dir="ltr"><h3 class="ds-sec"><span class="si">🧪</span>Received and Prepared Units</h3>
     <div class="hint" style="margin:-6px 0 10px">Source: List of Operations — Site: <b>${siteLblEn}</b></div>
     ${dsItemChips(items)}
-    ${[1,2,3].map(g=>{ const v=items.filter(it=>it.g===g&&!dsHidden.has(it.id)); return v.length?`<div class="kpis">${v.map(it=>card(it.c,it.lb,it.cur,it.id)).join('')}</div>`:''; }).join('')}
+    ${[1,2,3].map(g=>{ const v=items.filter(it=>it.g===g&&!dsHidden.has(it.id)); return v.length?`<div class="kpis">${v.map(it=>card(it.c,it.lb,it.cur,it.ic||it.id)).join('')}</div>`:''; }).join('')}
     ${items.every(it=>dsHidden.has(it.id))?'<div class="hint">No items selected — choose items from the buttons above.</div>':''}
-    <div class="hint">Reception and preparation are attributed to the donation date and collection site through the bag number in the Wateen report. Units donated outside the period of the uploaded Wateen report (e.g. CRYO from older plasma) are counted by operation date and included only when all sites are selected. Use the site buttons above for a per-site breakdown. Prepared = products of separation operations (SEP/SEP2/SEPR/SEPC), each product counted once per bag. <b>WHOLE BLOOD received = Separated (= RBC Leuco-Reduced + Non Leuco-Reduced) + Discarded before Separation (DISC operation on WHOLE BLOOD) + Pending Separation.</b></div></div>`;
+    <div class="hint">Reception and preparation are attributed to the donation date and collection site through the bag number in the Wateen report. Units donated outside the period of the uploaded Wateen report (e.g. CRYO from older plasma) are counted by operation date and included only when all sites are selected. Use the site buttons above for a per-site breakdown. Prepared = products of separation operations (SEP/SEP2/SEPR/SEPC), each product counted once per bag. <b>WHOLE BLOOD received = Separated (= RBC Leuco-Reduced + Non Leuco-Reduced) + Discarded before Separation (DISC operation on WHOLE BLOOD) + Pending Separation.</b> Discarded before Separation — Female / Male: donor gender from the Wateen report via the bag number; both are part of the total (bags not found in Wateen have no gender).</div></div>`;
   } else h+=`<div class="card ds-ltr" dir="ltr"><h3 class="ds-sec"><span class="si">🧪</span>Received and Prepared Units</h3><div class="empty">Upload <b>List of Operations</b> on the 📥 upload page to show this section.</div></div>`;
   // ===== 3) الصفائح: Pooling 5 days (Iso Group) و Treatment — يومي، بلا توزيع على نقاط السحب =====
   if(DS.pool.length||DS.tre.length){
