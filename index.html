@@ -2516,12 +2516,12 @@ function parseDonationsRows(rows){
   const hi=findHeaderRow(rows,'HIIG Number');
   if(hi<0) return null;
   const header=rows[hi].map(h=>String(h).trim());
-  const iDate=hIdx(header,'Donation Date'), iCP=hIdx(header,'Collection Point'), iType=hIdx(header,'Donation Type'), iStaff=hIdx(header,'STAFFID'), iUnit=hIdx(header,'Donation Number');
+  const iDate=hIdx(header,'Donation Date'), iCP=hIdx(header,'Collection Point'), iType=hIdx(header,'Donation Type'), iStaff=hIdx(header,'STAFFID'), iUnit=hIdx(header,'Donation Number'), iSex=hIdx(header,'GENDER');
   if([iDate,iCP,iType,iStaff,iUnit].some(i=>i<0)) return null;
   const out=[];
   for(let i=hi+1;i<rows.length;i++){
     const c=rows[i], dt=parseSlashDate(String(c[iDate]||'').trim()); if(!dt) continue;
-    out.push({date:dt, cp:String(c[iCP]||'').trim(), type:String(c[iType]||'').trim(), staffId:normSid(c[iStaff]), unit:String(c[iUnit]||'').trim()}); // normSid: الملف يكتب بعض الأرقام بصفر بادئ (0124961)
+    out.push({date:dt, cp:String(c[iCP]||'').trim(), type:String(c[iType]||'').trim(), staffId:normSid(c[iStaff]), unit:String(c[iUnit]||'').trim(), f:iSex<0?null:/^f/i.test(String(c[iSex]||'').trim())}); // normSid: الملف يكتب بعض الأرقام بصفر بادئ (0124961)
   }
   return out;
 }
@@ -2562,14 +2562,19 @@ function aggregateReport(allDon,allDis,range){
   const dateFrom=range?range.from:allDates[0], dateTo=range?range.to:allDates[allDates.length-1];
   const bySite={}, byType={}, perStaff={}, discardReasons={}, bloodGroups={}, monthly={}, unitToRecord={};
   const blankStaff=()=>({collected:0,discarded:0,bySite:{},byReason:{},discardBySite:{},drawBySite:{}});
+  // (2026-10-15، طلب حسن) إحصائية Female مستقلة: تبرعات المتبرعات وأكياسهن المتلفة (عبر رقم الوحدة)، تبقى على حساب الموظف الساحب
+  // وجزءاً من الإجمالي العام (العام = Female + Male + غير المطابَق). تُحسب فقط إن كان في ملف التبرعات عمود GENDER
+  const hasSex=allDon.some(r=>r.f!=null), blankSex=()=>({collected:0,discarded:0,bySite:{},byReason:{},drawBySite:{}});
+  const female=hasSex?blankSex():null, male=hasSex?blankSex():null, sexOf=f=>f?female:male;
   donRows.forEach(r=>{
     const site=IMPORT_SITES.includes(r.cp)?r.cp:'OTHER';
+    if(hasSex){ const g=sexOf(r.f); g.collected++; g.bySite[site]=(g.bySite[site]||0)+1; }
     bySite[site]=(bySite[site]||0)+1; byType[r.type]=(byType[r.type]||0)+1;
     const mk=r.date.slice(0,7); monthly[mk]=monthly[mk]||{collected:0,discarded:0}; monthly[mk].collected++;
     if(r.staffId){ perStaff[r.staffId]=perStaff[r.staffId]||blankStaff(); perStaff[r.staffId].collected++;
       perStaff[r.staffId].bySite[site]=(perStaff[r.staffId].bySite[site]||0)+1; }
   });
-  allDon.forEach(r=>{ if(r.unit) unitToRecord[r.unit]={staffId:r.staffId,site:IMPORT_SITES.includes(r.cp)?r.cp:'OTHER'}; });
+  allDon.forEach(r=>{ if(r.unit) unitToRecord[r.unit]={staffId:r.staffId,site:IMPORT_SITES.includes(r.cp)?r.cp:'OTHER',f:r.f}; });
   // ملاحظة مهمة: عمود "Staff id" في ملف Discarded products هو من سجّل/نفّذ إجراء الاستبعاد (فحص/جودة)،
   // وليس بالضرورة من سحب الوحدة أصلاً — لذا لا يُستخدم إطلاقاً. الربط الصحيح بالموظف الذي سحب الوحدة
   // يتم عبر "Unit Number" (يطابق "Donation Number" في ملف List of donations)، فتُنسب كل وحدة مستبعدة
@@ -2580,6 +2585,8 @@ function aggregateReport(allDon,allDis,range){
     if(r.abo) bloodGroups[r.abo]=(bloodGroups[r.abo]||0)+1;
     const mk=r.date.slice(0,7); monthly[mk]=monthly[mk]||{collected:0,discarded:0}; monthly[mk].discarded++;
     const rec=unitToRecord[r.unit];
+    if(hasSex&&rec){ const g=sexOf(rec.f); g.discarded++; g.byReason[r.code]=(g.byReason[r.code]||0)+1;
+      if(TRACKED_DISCARD_CODES.includes(r.code)) g.drawBySite[rec.site]=(g.drawBySite[rec.site]||0)+1; }
     if(!rec||!rec.staffId){ unmatchedDiscard++; return; }
     const p=perStaff[rec.staffId]=perStaff[rec.staffId]||blankStaff();
     p.discarded++; p.byReason[r.code]=(p.byReason[r.code]||0)+1;
@@ -2588,7 +2595,7 @@ function aggregateReport(allDon,allDis,range){
   });
   return {dateFrom,dateTo,label:fmtLbl(dateFrom,dateTo),
     totalCollected:donRows.length, totalDiscarded:disRows.length, unmatchedDiscard,
-    bySite,byType,perStaff,discardReasons,bloodGroups,monthly,generatedAt:new Date().toISOString()};
+    bySite,byType,perStaff,discardReasons,bloodGroups,monthly,...(hasSex?{female,male}:{}),generatedAt:new Date().toISOString()};
 }
 async function repAnalyze(quiet){
   const fDon=upFile('donations'), fDis=upFile('discarded');
@@ -2636,7 +2643,13 @@ function reportDerive(agg){
   // (2026-10-10، طلب حسن) من سحب أقل من العتبة يظهر أيضاً أسفل الجدول، باهتاً ومفصولاً، ولا يدخل ترتيب المعدّلات الرئيسي
   const smallRows=omitted.map(p=>({...p,disc:discardInTop(p),rate:p.collected?discardInTop(p)/p.collected*100:0,small:true})).sort((a,b)=>b.collected-a.collected);
   const unmapped=[...new Set(Object.keys(agg.perStaff).filter(id=>reportStaffName(id)===`#${id}`))];
-  return {staffList,byCollected,byDiscarded,siteAll,topReasons,topCodes,trackedDiscarded,discardInTop,
+  // (2026-10-15، طلب حسن) Female مستقلة + Male، والباقي من المتلف = وحدات بلا تبرع مطابق (جنسها غير معروف) — المجموع = العام
+  const sexRow=(lb,g)=>{ const disc=topCodes.reduce((t,c)=>t+(g.byReason[c]||0),0); return {lb,collected:g.collected,byReason:g.byReason,disc,rate:g.collected?disc/g.collected*100:0}; };
+  const sex=agg.female?(()=>{ const F=sexRow('Female',agg.female), M=sexRow('Male',agg.male||{collected:0,byReason:{}});
+    const U={lb:'Unmatched',collected:Math.max(0,agg.totalCollected-F.collected-M.collected),byReason:{},disc:0,rate:0};
+    topCodes.forEach(c=>{ U.byReason[c]=Math.max(0,(agg.discardReasons[c]?.count||0)-(F.byReason[c]||0)-(M.byReason[c]||0)); U.disc+=U.byReason[c]; });
+    return {F,M,U,T:{lb:'Total',collected:agg.totalCollected,byReason:Object.fromEntries(topCodes.map(c=>[c,agg.discardReasons[c]?.count||0])),disc:trackedDiscarded,rate:overallRate}}; })():null;
+  return {sex,staffList,byCollected,byDiscarded,siteAll,topReasons,topCodes,trackedDiscarded,discardInTop,
     officeCount,fieldCount,overallRate,offsitePct,rateRows,omitted,smallRows,unmapped};
 }
 function reportFindings(agg,d){
@@ -2676,7 +2689,7 @@ function reportFindings(agg,d){
 }
 function renderReportPage(agg){
   const d=reportDerive(agg);
-  const {byCollected,byDiscarded,topReasons,trackedDiscarded,discardInTop,overallRate,offsitePct,rateRows,omitted,smallRows,unmapped}=d;
+  const {sex,byCollected,byDiscarded,topReasons,trackedDiscarded,discardInTop,overallRate,offsitePct,rateRows,omitted,smallRows,unmapped}=d;
   const monthsSpan=Math.max(1,Object.keys(agg.monthly).length);
   const staffCount=byCollected.length;
   const siteRows=[['2001F',agg.bySite['2001F']||0],['2001D',agg.bySite['2001D']||0],['Other',agg.bySite.OTHER||0]];
@@ -2772,6 +2785,23 @@ function renderReportPage(agg){
       ${calloutHtml}
     </section>`:''}
 
+    ${sex?`<section class="rpt-page">
+      <div class="rpt-eyebrow"><span class="rpt-rule"></span>03·F —— FEMALE DONORS</div>
+      <div class="rpt-headrow"><h2 class="rpt-h2">Female discards, counted on their own</h2><p class="rpt-ar-h">الوحدات المتلفة للمتبرعات تُحسب لوحدها ثم تُضاف للعام — وتبقى على حساب الموظف الذي سحبها</p></div>
+      <div class="rpt-kpirow">
+        <div class="rpt-kpi"><div class="rpt-kpi-lb">Female donations</div><div class="rpt-kpi-val">${fmtNum(sex.F.collected)}</div><div class="rpt-kpi-sub">${agg.totalCollected?(sex.F.collected/agg.totalCollected*100).toFixed(1):0}% of all donations</div></div>
+        <div class="rpt-kpi"><div class="rpt-kpi-lb">Female discarded</div><div class="rpt-kpi-val">${fmtNum(sex.F.disc)}</div><div class="rpt-kpi-sub">${trackedDiscarded?(sex.F.disc/trackedDiscarded*100).toFixed(1):0}% of ${fmtNum(trackedDiscarded)} discarded</div></div>
+        <div class="rpt-kpi"><div class="rpt-kpi-lb">Female discard rate</div><div class="rpt-kpi-val">${sex.F.rate.toFixed(2)}%</div><div class="rpt-kpi-sub">of female donations</div></div>
+        <div class="rpt-kpi"><div class="rpt-kpi-lb">Male discard rate</div><div class="rpt-kpi-val">${sex.M.rate.toFixed(2)}%</div><div class="rpt-kpi-sub">overall ${overallRate.toFixed(2)}%</div></div>
+      </div>
+      <div class="rpt-tablewrap"><table class="rpt-rate"><thead><tr><th></th><th>Drawn</th>${topReasons.map(([c,v])=>`<th title="${v.desc.replace(/"/g,'&quot;')}">${c}</th>`).join('')}<th>Discarded</th><th>Rate</th></tr></thead><tbody>
+        ${[sex.F,sex.M,...(sex.U.disc||sex.U.collected?[sex.U]:[]),sex.T].map(r=>`<tr${r.lb==='Total'?' style="border-top:2px solid var(--rink,#15181C)"':''}><td><b>${r.lb}</b></td><td class="rtot">${r.lb==='Unmatched'&&!r.collected?'–':fmtNum(r.collected)}</td>
+          ${topReasons.map(([c])=>`<td class="${r.byReason[c]?'':'rmuted'}">${r.byReason[c]?fmtNum(r.byReason[c]):'·'}</td>`).join('')}
+          <td class="rtot">${fmtNum(r.disc)}</td><td class="rtot">${r.collected&&r.lb!=='Unmatched'?r.rate.toFixed(2)+'%':'–'}</td></tr>`).join('')}
+      </tbody></table></div>
+      <p class="rpt-foot-row"><span>Female + Male${sex.U.disc?' + Unmatched':''} = Total · Discarded = the six draw-related causes · gender from the GENDER column of List of donations, linked to each discarded bag by its unit number</span><span>${sex.U.disc?`Unmatched = discarded bags with no donation record in the uploaded file (gender unknown)`:''}</span></p>
+    </section>`:''}
+
     <section class="rpt-page">
       <div class="rpt-eyebrow"><span class="rpt-rule"></span>04 —— RATE BY STAFF</div>
       <div class="rpt-headrow"><h2 class="rpt-h2">Discards per collector</h2><p class="rpt-ar-h">ربط كل وحدة مستبعدة بالموظف الذي سحبها — مرتّبة بنسبة الاستبعاد</p></div>
@@ -2821,7 +2851,7 @@ function renderReportPage(agg){
 }
 async function exportReportPptx(agg,d){
   d=d||reportDerive(agg);
-  const {byCollected,byDiscarded,topReasons,trackedDiscarded,overallRate,offsitePct,rateRows}=d;
+  const {sex,byCollected,byDiscarded,topReasons,trackedDiscarded,overallRate,offsitePct,rateRows}=d;
   const DARK='122036',INK='15181C',MUT='6E7580',BLUE='48688F',LINE='DBD8D2';
   const P=new PptxGenJS(); P.defineLayout({name:'A4L',width:11.69,height:8.27}); P.layout='A4L';
 
@@ -2879,6 +2909,23 @@ async function exportReportPptx(agg,d){
       s.addShape('rect',{x:6.2,y:y+0.05,w:Math.max(0.05,4.0*r[1].count/maxR),h:0.28,fill:{color:'8AA6C4'},line:{type:'none'}});
       s.addText(`${fmtNum(r[1].count)}  ${pct.toFixed(1)}%`,{x:10.3,y,w:0.9,fontSize:11,bold:true,color:INK,align:'right'});
     });
+  }
+  if(sex){
+    s=P.addSlide(); s.background={color:'F2F1EE'};
+    s.addText('03·F —— FEMALE DONORS',{x:0.5,y:0.35,fontSize:11,color:MUT,charSpacing:2});
+    s.addText('Female discards, counted on their own',{x:0.5,y:0.65,fontSize:24,bold:true,color:INK});
+    [['Female donations',fmtNum(sex.F.collected)],['Female discarded',fmtNum(sex.F.disc)],['Female discard rate',sex.F.rate.toFixed(2)+'%'],['Male discard rate',sex.M.rate.toFixed(2)+'%']].forEach((k,i)=>{
+      const x=0.5+i*2.75;
+      s.addShape('line',{x,y:1.5,w:0,h:1.3,line:{color:LINE,width:1}});
+      s.addText(k[0].toUpperCase(),{x:x+0.12,y:1.55,w:2.5,fontSize:9,color:BLUE,bold:true});
+      s.addText(k[1],{x:x+0.12,y:1.85,w:2.5,fontSize:24,bold:true,color:INK});
+    });
+    const H=t=>({text:t,options:{bold:true,fill:{color:INK},color:'FFFFFF'}});
+    const rows=[[H(''),H('Drawn'),...topReasons.map(([c])=>H(c)),H('Discarded'),H('Rate')]];
+    [sex.F,sex.M,...(sex.U.disc||sex.U.collected?[sex.U]:[]),sex.T].forEach(r=>rows.push([{text:r.lb,options:{bold:true}},r.lb==='Unmatched'&&!r.collected?'–':fmtNum(r.collected),
+      ...topReasons.map(([c])=>r.byReason[c]?fmtNum(r.byReason[c]):'·'),{text:fmtNum(r.disc),options:{bold:true}},r.collected&&r.lb!=='Unmatched'?r.rate.toFixed(2)+'%':'–']));
+    s.addTable(rows,{x:0.5,y:3.2,w:10.7,fontSize:11,border:{type:'solid',color:LINE,pt:0.5}});
+    s.addText(`Female + Male${sex.U.disc?' + Unmatched (no donation record)':''} = Total · six draw-related causes · female discards stay on the collector's account`,{x:0.5,y:7.4,w:10.7,fontSize:9,color:MUT});
   }
   if(rateRows.length){
     s=P.addSlide(); s.background={color:'F2F1EE'};
@@ -4426,8 +4473,14 @@ function dsRender(){
     const totCol=list.reduce((t,p)=>t+p.col,0), totDis=list.reduce((t,p)=>t+p.dis,0), mx=all[0]?.col||1;
     const tb=(rows,cols)=>`<table class="rk"><thead><tr><th>#</th><th>Staff</th>${cols.map(c=>`<th>${c[0]}</th>`).join('')}</tr></thead><tbody>${rows.length?rows.map((p,i)=>`<tr><td>${i<3?['🥇','🥈','🥉'][i]:i+1}</td><td class="nm">${dsEsc(p.name)}</td>${cols.map(c=>`<td>${c[1](p)}</td>`).join('')}</tr>`).join(''):'<tr><td colspan="9" class="empty">No data</td></tr>'}</tbody></table>`;
     h+=`<div class="card ds-ltr" dir="ltr"><h3 class="ds-sec"><span class="si">🏅</span>Draws and Discarded Bags</h3>
-      <div class="hint" style="margin:-6px 0 10px">Source: ${rep.src} <b>${rep.agg.label}</b>${rep.exact?'':' — ⚠️ Covers only part of the selected period; for a full match, upload the latest List of donations and Discarded products files on the 📥 upload page'}${bySite?` — Site: ${siteLblEn}`:''}. Discarded bags = the six collection-related discard reasons (${TRACKED_DISCARD_CODES.join(', ')}), attributed to the staff member who drew the bag.</div>
-      <div class="kpis">${kpi('','Units Drawn',fmtNum(totCol),`${list.filter(p=>p.col>0).length} staff`)}${kpi('a','Discarded Bags (Collection Reasons)',fmtNum(totDis),pct(totDis,totCol)+' of drawn')}${bySite?'':kpi('n','Total Discarded (All Reasons)',fmtNum(rep.agg.totalDiscarded),'All red cell products')}</div>
+      <div class="hint" style="margin:-6px 0 10px">Source: ${rep.src} <b>${rep.agg.label}</b>${rep.exact?'':' — ⚠️ Covers only part of the selected period; for a full match, upload the latest List of donations and Discarded products files on the 📥 upload page'}${bySite?` — Site: ${siteLblEn}`:''}. Discarded bags = the six collection-related discard reasons (${TRACKED_DISCARD_CODES.join(', ')}), attributed to the staff member who drew the bag.${rep.agg.female?' Female discarded bags are counted on their own and are also part of the total (Female + Male = total) — they stay on the collector\'s account.':' (Female split unavailable: the saved report predates it — re-upload List of donations.)'}</div>
+      <div class="kpis">${kpi('','Units Drawn',fmtNum(totCol),`${list.filter(p=>p.col>0).length} staff`)}${kpi('a','Discarded Bags (Collection Reasons)',fmtNum(totDis),pct(totDis,totCol)+' of drawn')}${bySite?'':kpi('n','Total Discarded (All Reasons)',fmtNum(rep.agg.totalDiscarded),'All red cell products')}${(()=>{
+        // (2026-10-15، طلب حسن) المتلف للمتبرعات يُحسب لوحده ويبقى ضمن الإجمالي وعلى حساب الساحب — Female + Male = العام
+        const G=rep.agg.female, M=rep.agg.male; if(!G) return '';
+        const gc=g=>sum(g.bySite), gd=g=>sum(g.drawBySite), fC=gc(G), fD=gd(G), mC=gc(M||{}), mD=gd(M||{}), all=fD+mD;
+        return kpi('a','Female Drawn',fmtNum(fC),pct(fC,fC+mC)+' of drawn','female')
+          +kpi('a ds-bad','Female Discarded Bags',fmtNum(fD),`${pct(fD,fC)} of female drawn<br>${pct(fD,all)} of discarded`,'female')
+          +kpi('n','Male Discarded Bags',fmtNum(mD),`${pct(mD,mC)} of male drawn<br>${pct(mD,all)} of discarded`,'male'); })()}</div>
       <div class="row" style="align-items:flex-start">
         <div style="flex:3;min-width:320px;overflow:auto;max-height:560px"><h3>🩸 Draws — All Staff (${all.length})</h3>${tb(all,[['Drawn',p=>`<b>${p.col}</b>`],['',p=>`<div class="bar"><i style="width:${p.col/mx*100}%"></i></div>`],['Discarded',p=>p.dis],['Rate',p=>p.col?p.rate.toFixed(1)+'%':'—']])}</div>
         <div style="flex:2;min-width:280px;overflow:auto;max-height:560px"><h3>🗑️ Discarded Bags (${allDis.length})</h3>${tb(allDis,[['Discarded',p=>`<b>${p.dis}</b>`],['Drawn',p=>p.col],['Rate',p=>p.col?p.rate.toFixed(1)+'%':'—']])}</div>
