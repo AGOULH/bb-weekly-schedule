@@ -4482,8 +4482,8 @@ function dsRender(){
     // كل الموظفين الذين سحبوا (طلب حسن 2026-10-11) — لا أعلى ١٠ فقط
     const all=[...list].sort((a,b)=>b.col-a.col||a.name.localeCompare(b.name)); const allDis=list.filter(p=>p.dis>0).sort((a,b)=>b.dis-a.dis||b.rate-a.rate);
     // (2026-10-16، طلب حسن) اختيار العناصر الظاهرة في Draws and Discarded Bags مثل قسم Received (نفس dsHidden، معرّفات dr*)
-    const on=id=>!dsHidden.has(id), showFC=d.hasFC&&on('drFC'), showFD=d.hasFD&&on('drFD');
-    DS_DRAWS=on('drTbl')?all.map(p=>({...p,...(showFC?{}:{fc:null,mc:null}),...(showFD?{}:{fd:null,md:null})})):[]; // التصدير يتبع الاختيار
+    const on=id=>!dsHidden.has(id), showFC=d.hasFC&&on('drFC'), showFD=d.hasFD&&on('drFD'), showDis=on('drDisCol');
+    DS_DRAWS=on('drTbl')?all.map(p=>({...p,...(showFC?{}:{fc:null,mc:null}),...(showFD?{}:{fd:null,md:null}),...(showDis?{}:{dis:null})})):[]; // التصدير يتبع الاختيار
     const fmCols=showFD?[['Female Disc.',p=>p.fd??'–'],['Male Disc.',p=>p.md??'–']]:[], fcCols=showFC?[['Female Drawn',p=>p.fc??'–'],['Male Drawn',p=>p.mc??'–']]:[];
     const totCol=list.reduce((t,p)=>t+p.col,0), totDis=list.reduce((t,p)=>t+p.dis,0), mx=all[0]?.col||1;
     const tb=(rows,cols)=>`<table class="rk"><thead><tr><th>#</th><th>Staff</th>${cols.map(c=>`<th>${c[0]}</th>`).join('')}</tr></thead><tbody>${rows.length?rows.map((p,i)=>`<tr><td>${i<3?['🥇','🥈','🥉'][i]:i+1}</td><td class="nm">${dsEsc(p.name)}</td>${cols.map(c=>`<td>${c[1](p)}</td>`).join('')}</tr>`).join(''):'<tr><td colspan="9" class="empty">No data</td></tr>'}</tbody></table>`;
@@ -4499,13 +4499,13 @@ function dsRender(){
           cards.push({id:'drFDrawn',lb:'Female Drawn',h:kpi('a','Female Drawn',fmtNum(fC),pct(fC,fC+mC)+' of drawn','female')},
             {id:'drFDisc',lb:'Female Discarded',h:kpi('a ds-bad','Female Discarded Bags',fmtNum(fD),`${pct(fD,fC)} of female drawn<br>${pct(fD,all)} of discarded`,'female')},
             {id:'drMDisc',lb:'Male Discarded',h:kpi('n','Male Discarded Bags',fmtNum(mD),`${pct(mD,mC)} of male drawn<br>${pct(mD,all)} of discarded`,'male')}); }
-        const items=[...cards,{id:'drTbl',lb:'Draws table'},{id:'drDisTbl',lb:'Discarded Bags table'},
+        const items=[...cards,{id:'drTbl',lb:'Draws table'},{id:'drDisTbl',lb:'Discarded Bags table'},{id:'drDisCol',lb:'Discarded column (Draws table)'},
           ...(d.hasFC?[{id:'drFC',lb:'Female / Male Drawn columns'}]:[]),...(d.hasFD?[{id:'drFD',lb:'Female / Male Discarded columns'}]:[])];
         const vis=cards.filter(c=>on(c.id));
         return dsItemChips(items,'dsDrawChips')+(vis.length?`<div class="kpis">${vis.map(c=>c.h).join('')}</div>`:'')
           +(items.every(it=>!on(it.id))?'<div class="hint">No items selected — choose items from the buttons above.</div>':''); })()}
       <div class="row" style="align-items:flex-start">
-        ${on('drTbl')?`<div style="flex:3;min-width:320px;overflow:auto;max-height:560px"><h3>🩸 Draws — All Staff (${all.length})</h3>${tb(all,[['Drawn',p=>`<b>${p.col}</b>`],['',p=>`<div class="bar"><i style="width:${p.col/mx*100}%"></i></div>`],...fcCols,['Discarded',p=>p.dis],...fmCols,['Rate',p=>p.col?p.rate.toFixed(1)+'%':'—']])}</div>`:''}
+        ${on('drTbl')?`<div style="flex:3;min-width:320px;overflow:auto;max-height:560px"><h3>🩸 Draws — All Staff (${all.length})</h3>${tb(all,[['Drawn',p=>`<b>${p.col}</b>`],['',p=>`<div class="bar"><i style="width:${p.col/mx*100}%"></i></div>`],...fcCols,...(showDis?[['Discarded',p=>p.dis]]:[]),...fmCols,['Rate',p=>p.col?p.rate.toFixed(1)+'%':'—']])}</div>`:''}
         ${on('drDisTbl')?`<div style="flex:2;min-width:280px;overflow:auto;max-height:560px"><h3>🗑️ Discarded Bags (${allDis.length})</h3>${tb(allDis,[['Discarded',p=>`<b>${p.dis}</b>`],...fmCols,['Drawn',p=>p.col],...fcCols,['Rate',p=>p.col?p.rate.toFixed(1)+'%':'—']])}</div>`:''}
       </div></div>`;
   } else h+=`<div class="card ds-ltr" dir="ltr"><h3 class="ds-sec"><span class="si">🏅</span>Draws and Discarded Bags</h3><div class="empty">No saved donation report within this period — upload List of donations and Discarded products on the 📥 upload page (they are filtered here automatically for any week or period during the session).</div></div>`;
@@ -4678,10 +4678,10 @@ function dsPrintSec(s){
 function dsDrawsTable(list){
   if(!list.length) return '';
   const half=list.length>22?Math.ceil(list.length/2):list.length, parts=[list.slice(0,half),list.slice(half)].filter(p=>p.length);
-  const fm=list.some(x=>x.fd!=null), fc=list.some(x=>x.fc!=null); // Female / Male للسحب والمتلف (2026-10-16)؛ تقرير محفوظ قبلها بلا الأعمدة
-  return `<div class="dsp-tbls" dir="ltr">${parts.map((p,j)=>`<table class="dsp-tbl"><thead><tr><th>#</th><th>Staff</th><th>Drawn</th>${fc?'<th>Female Drawn</th><th>Male Drawn</th>':''}<th>Discarded</th>${fm?'<th>Female Disc.</th><th>Male Disc.</th>':''}<th>Rate</th></tr></thead><tbody>
+  const fm=list.some(x=>x.fd!=null), fc=list.some(x=>x.fc!=null), dc=list.some(x=>x.dis!=null); // Female / Male للسحب والمتلف (2026-10-16)؛ تقرير محفوظ قبلها بلا الأعمدة
+  return `<div class="dsp-tbls" dir="ltr">${parts.map((p,j)=>`<table class="dsp-tbl"><thead><tr><th>#</th><th>Staff</th><th>Drawn</th>${fc?'<th>Female Drawn</th><th>Male Drawn</th>':''}${dc?'<th>Discarded</th>':''}${fm?'<th>Female Disc.</th><th>Male Disc.</th>':''}<th>Rate</th></tr></thead><tbody>
     ${p.map((x,i)=>{ const n=j*half+i, hi=x.rate>10&&x.col>=10; // أحمر غامق فقط لنسبة > 10% من 10 أكياس فأكثر
-      return `<tr><td>${n<3?`<span class="dsp-med m${n+1}">${n+1}</span>`:n+1}</td><td class="nm">${dsEsc(x.name)}</td><td><b>${fmtNum(x.col)}</b></td>${fc?`<td>${x.fc??'–'}</td><td>${x.mc??'–'}</td>`:''}<td>${x.dis}</td>${fm?`<td>${x.fd??'–'}</td><td>${x.md??'–'}</td>`:''}<td${hi?' class="hi"':''}>${x.col?x.rate.toFixed(1)+'%':'—'}</td></tr>`; }).join('')}</tbody></table>`).join('')}</div>`;
+      return `<tr><td>${n<3?`<span class="dsp-med m${n+1}">${n+1}</span>`:n+1}</td><td class="nm">${dsEsc(x.name)}</td><td><b>${fmtNum(x.col)}</b></td>${fc?`<td>${x.fc??'–'}</td><td>${x.mc??'–'}</td>`:''}${dc?`<td>${x.dis}</td>`:''}${fm?`<td>${x.fd??'–'}</td><td>${x.md??'–'}</td>`:''}<td${hi?' class="hi"':''}>${x.col?x.rate.toFixed(1)+'%':'—'}</td></tr>`; }).join('')}</tbody></table>`).join('')}</div>`;
 }
 // تقارير محفوظة قبل إزالة المقارنة: حذف «vs previous period / No comparison» من نص البطاقة
 const dsNoPrev=dt=>(dt||'').replace(/(<br>)?\s*<span class="(up|down|flat)">[^<]*(vs previous period|No comparison)<\/span>/g,'').replace(/<br>\s*$/,'');
@@ -4849,12 +4849,12 @@ async function dsExportPptx(saved){
   if(dr){ // صفحة مستقلة: البطاقات + جدول الموظفين
     const d={sl:null,y:0}; putSec(d,dr,{...dims(4),CH:0.85});
     if(!d.sl){ d.sl=addSl(); d.y=secTitle(d.sl,dr,head(d.sl)); } // كل البطاقات مخفية والجدول ظاهر (2026-10-16)
-    const list=DRW, fm=list.some(x=>x.fd!=null), fc=list.some(x=>x.fc!=null), hdr=['#','Staff','Drawn',...(fc?['F Drawn','M Drawn']:[]),'Discarded',...(fm?['F Disc.','M Disc.']:[]),'Rate'].map(t=>({text:t,options:{bold:true,color:'FFFFFF',fill:{color:THEAD},align:'center'}}));
+    const list=DRW, fm=list.some(x=>x.fd!=null), fc=list.some(x=>x.fc!=null), dc=list.some(x=>x.dis!=null), hdr=['#','Staff','Drawn',...(fc?['F Drawn','M Drawn']:[]),...(dc?['Discarded']:[]),...(fm?['F Disc.','M Disc.']:[]),'Rate'].map(t=>({text:t,options:{bold:true,color:'FFFFFF',fill:{color:THEAD},align:'center'}}));
     const MED=['D4A23A','9AA3AF','B0754A'];
-    const RK=4+(fm?2:0)+(fc?2:0); // عمود Rate
-    const row=(x,n)=>[String(n+1),x.name,fmtNum(x.col),...(fc?[String(x.fc??'–'),String(x.mc??'–')]:[]),String(x.dis),...(fm?[String(x.fd??'–'),String(x.md??'–')]:[]),x.col?x.rate.toFixed(1)+'%':'—'].map((t,k)=>({text:t,options:{align:k===1?'left':'center',bold:k===2||(k===0&&n<3)||(k===RK&&x.rate>10&&x.col>=10),
+    const RK=3+(dc?1:0)+(fm?2:0)+(fc?2:0); // عمود Rate
+    const row=(x,n)=>[String(n+1),x.name,fmtNum(x.col),...(fc?[String(x.fc??'–'),String(x.mc??'–')]:[]),...(dc?[String(x.dis)]:[]),...(fm?[String(x.fd??'–'),String(x.md??'–')]:[]),x.col?x.rate.toFixed(1)+'%':'—'].map((t,k)=>({text:t,options:{align:k===1?'left':'center',bold:k===2||(k===0&&n<3)||(k===RK&&x.rate>10&&x.col>=10),
       color:k===0&&n<3?MED[n]:k===RK&&x.rate>10&&x.col>=10?BAD:INK,fill:{color:n%2?'F7EEF1':'FBF6F8'}}}));
-    const topt={y:d.y,fontSize:8,fontFace:'Arial',color:INK,border:{type:'solid',pt:0.5,color:LINE},rowH:0.21,colW:fm&&fc?[0.3,1.3,0.5,0.5,0.5,0.6,0.5,0.5,0.45]:fm||fc?[0.35,1.6,0.65,0.75,0.6,0.55,0.6]:[0.4,2.2,0.85,0.9,0.75]};
+    const topt={y:d.y,fontSize:8,fontFace:'Arial',color:INK,border:{type:'solid',pt:0.5,color:LINE},rowH:0.21,colW:(n=>n===9?[0.3,1.3,0.5,0.5,0.5,0.6,0.5,0.5,0.45]:n===8?[0.3,1.45,0.55,0.55,0.55,0.55,0.55,0.55]:n===7?[0.35,1.6,0.65,0.75,0.6,0.55,0.6]:n===6?[0.35,1.9,0.7,0.7,0.7,0.65]:n===5?[0.4,2.2,0.85,0.9,0.75]:[0.45,2.6,1.0,1.0])(hdr.length)};
     const fit=Math.floor((PH-0.6-d.y)/0.21)-1;
     if(!list.length);
     else if(list.length<=fit) d.sl.addTable([hdr,...list.map(row)],{...topt,x:MX});
