@@ -4239,14 +4239,14 @@ function dsParseIssue(rows){
 // أكواد الجهات غير المصنّفة: [{c,cn,n}] بالأكثر صرفاً
 const issueUnknown=recs=>{ const m={}; recs.forEach(r=>{ if(!issueCls(r.c)){ const x=m[r.c]=m[r.c]||{c:r.c,cn:'',n:0}; x.n++; if(!x.cn&&r.cn) x.cn=r.cn; } }); return Object.values(m).sort((a,b)=>b.n-a.n); };
 let dsHidden=new Set(LS.get('bb_ds_items',[])); // عناصر قسم الوحدات المستلمة والمحضّرة المخفية
-function dsItemChips(items){
-  return `<div class="noprint" style="margin:-2px 0 8px"><div class="hint" style="margin:0">Items shown in the report:</div><div class="cmp-chips" id="dsItemChips" style="margin:5px 0 4px">`
+function dsItemChips(items,cid='dsItemChips'){
+  return `<div class="noprint" style="margin:-2px 0 8px"><div class="hint" style="margin:0">Items shown in the report:</div><div class="cmp-chips ds-items" id="${cid}" style="margin:5px 0 4px">`
     +`<button class="cmp-chip" data-i="all">All</button><button class="cmp-chip" data-i="none">None</button>`
     +items.map(it=>{ const on=!dsHidden.has(it.id); return `<button class="cmp-chip${on?' on':''}" data-i="${it.id}" aria-pressed="${on}">${it.lb}</button>`; }).join('')+`</div></div>`;
 }
-$('#dashOut').addEventListener('click',e=>{ const b=e.target.closest('#dsItemChips button'); if(!b) return; const i=b.dataset.i;
-  if(i==='all') dsHidden.clear();
-  else if(i==='none') $$('#dsItemChips button[data-i]').forEach(x=>{ if(!['all','none'].includes(x.dataset.i)) dsHidden.add(x.dataset.i); });
+$('#dashOut').addEventListener('click',e=>{ const b=e.target.closest('.ds-items button'); if(!b) return; const i=b.dataset.i, grp=[...b.parentElement.querySelectorAll('button[data-i]')];
+  if(i==='all') grp.forEach(x=>dsHidden.delete(x.dataset.i)); // All / None داخل القسم نفسه فقط
+  else if(i==='none') grp.forEach(x=>{ if(!['all','none'].includes(x.dataset.i)) dsHidden.add(x.dataset.i); });
   else dsHidden.has(i)?dsHidden.delete(i):dsHidden.add(i);
   LS.set('bb_ds_items',[...dsHidden]); dsRender(); });
 let DS_DRAWS=null; // قائمة السحب لكل موظف في الفترة — لصفحة Draws في التقرير المُصدَّر
@@ -4480,22 +4480,33 @@ function dsRender(){
       const fc=p.femBySite?(bySite?sum(p.femBySite):p.fc):null; // (2026-10-16) سحب النساء / الرجال
       return {name:p.name,col,dis,fd,md:fd==null?null:dis-fd,fc,mc:fc==null?null:col-fc,rate:col?dis/col*100:0}; }).filter(p=>p.col>0||p.dis>0);
     // كل الموظفين الذين سحبوا (طلب حسن 2026-10-11) — لا أعلى ١٠ فقط
-    const all=[...list].sort((a,b)=>b.col-a.col||a.name.localeCompare(b.name)); DS_DRAWS=all; const allDis=list.filter(p=>p.dis>0).sort((a,b)=>b.dis-a.dis||b.rate-a.rate);
-    const fmCols=d.hasFD?[['Female Disc.',p=>p.fd??'–'],['Male Disc.',p=>p.md??'–']]:[], fcCols=d.hasFC?[['Female Drawn',p=>p.fc??'–'],['Male Drawn',p=>p.mc??'–']]:[];
+    const all=[...list].sort((a,b)=>b.col-a.col||a.name.localeCompare(b.name)); const allDis=list.filter(p=>p.dis>0).sort((a,b)=>b.dis-a.dis||b.rate-a.rate);
+    // (2026-10-16، طلب حسن) اختيار العناصر الظاهرة في Draws and Discarded Bags مثل قسم Received (نفس dsHidden، معرّفات dr*)
+    const on=id=>!dsHidden.has(id), showFC=d.hasFC&&on('drFC'), showFD=d.hasFD&&on('drFD');
+    DS_DRAWS=on('drTbl')?all.map(p=>({...p,...(showFC?{}:{fc:null,mc:null}),...(showFD?{}:{fd:null,md:null})})):[]; // التصدير يتبع الاختيار
+    const fmCols=showFD?[['Female Disc.',p=>p.fd??'–'],['Male Disc.',p=>p.md??'–']]:[], fcCols=showFC?[['Female Drawn',p=>p.fc??'–'],['Male Drawn',p=>p.mc??'–']]:[];
     const totCol=list.reduce((t,p)=>t+p.col,0), totDis=list.reduce((t,p)=>t+p.dis,0), mx=all[0]?.col||1;
     const tb=(rows,cols)=>`<table class="rk"><thead><tr><th>#</th><th>Staff</th>${cols.map(c=>`<th>${c[0]}</th>`).join('')}</tr></thead><tbody>${rows.length?rows.map((p,i)=>`<tr><td>${i<3?['🥇','🥈','🥉'][i]:i+1}</td><td class="nm">${dsEsc(p.name)}</td>${cols.map(c=>`<td>${c[1](p)}</td>`).join('')}</tr>`).join(''):'<tr><td colspan="9" class="empty">No data</td></tr>'}</tbody></table>`;
     h+=`<div class="card ds-ltr" dir="ltr"><h3 class="ds-sec"><span class="si">🏅</span>Draws and Discarded Bags</h3>
       <div class="hint" style="margin:-6px 0 10px">Source: ${rep.src} <b>${rep.agg.label}</b>${rep.exact?'':' — ⚠️ Covers only part of the selected period; for a full match, upload the latest List of donations and Discarded products files on the 📥 upload page'}${bySite?` — Site: ${siteLblEn}`:''}. Discarded bags = the six collection-related discard reasons (${TRACKED_DISCARD_CODES.join(', ')}), attributed to the staff member who drew the bag.${rep.agg.female?' Female discarded bags are counted on their own and are also part of the total (Female + Male = total) — they stay on the collector\'s account.':' (Female split unavailable: the saved report predates it — re-upload List of donations.)'}</div>
-      <div class="kpis">${kpi('','Units Drawn',fmtNum(totCol),`${list.filter(p=>p.col>0).length} staff`)}${kpi('a','Discarded Bags (Collection Reasons)',fmtNum(totDis),pct(totDis,totCol)+' of drawn')}${bySite?'':kpi('n','Total Discarded (All Reasons)',fmtNum(rep.agg.totalDiscarded),'All red cell products')}${(()=>{
+      ${(()=>{
+        const cards=[{id:'drUnits',lb:'Units Drawn',h:kpi('','Units Drawn',fmtNum(totCol),`${list.filter(p=>p.col>0).length} staff`)},
+          {id:'drDisc',lb:'Discarded Bags',h:kpi('a','Discarded Bags (Collection Reasons)',fmtNum(totDis),pct(totDis,totCol)+' of drawn')}];
+        if(!bySite) cards.push({id:'drAll',lb:'Total Discarded',h:kpi('n','Total Discarded (All Reasons)',fmtNum(rep.agg.totalDiscarded),'All red cell products')});
         // (2026-10-15، طلب حسن) المتلف للمتبرعات يُحسب لوحده ويبقى ضمن الإجمالي وعلى حساب الساحب — Female + Male = العام
-        const G=rep.agg.female, M=rep.agg.male; if(!G) return '';
-        const gc=g=>sum(g.bySite), gd=g=>sum(g.drawBySite), fC=gc(G), fD=gd(G), mC=gc(M||{}), mD=gd(M||{}), all=fD+mD;
-        return kpi('a','Female Drawn',fmtNum(fC),pct(fC,fC+mC)+' of drawn','female')
-          +kpi('a ds-bad','Female Discarded Bags',fmtNum(fD),`${pct(fD,fC)} of female drawn<br>${pct(fD,all)} of discarded`,'female')
-          +kpi('n','Male Discarded Bags',fmtNum(mD),`${pct(mD,mC)} of male drawn<br>${pct(mD,all)} of discarded`,'male'); })()}</div>
+        const G=rep.agg.female, M=rep.agg.male;
+        if(G){ const gc=g=>sum(g.bySite), gd=g=>sum(g.drawBySite), fC=gc(G), fD=gd(G), mC=gc(M||{}), mD=gd(M||{}), all=fD+mD;
+          cards.push({id:'drFDrawn',lb:'Female Drawn',h:kpi('a','Female Drawn',fmtNum(fC),pct(fC,fC+mC)+' of drawn','female')},
+            {id:'drFDisc',lb:'Female Discarded',h:kpi('a ds-bad','Female Discarded Bags',fmtNum(fD),`${pct(fD,fC)} of female drawn<br>${pct(fD,all)} of discarded`,'female')},
+            {id:'drMDisc',lb:'Male Discarded',h:kpi('n','Male Discarded Bags',fmtNum(mD),`${pct(mD,mC)} of male drawn<br>${pct(mD,all)} of discarded`,'male')}); }
+        const items=[...cards,{id:'drTbl',lb:'Draws table'},{id:'drDisTbl',lb:'Discarded Bags table'},
+          ...(d.hasFC?[{id:'drFC',lb:'Female / Male Drawn columns'}]:[]),...(d.hasFD?[{id:'drFD',lb:'Female / Male Discarded columns'}]:[])];
+        const vis=cards.filter(c=>on(c.id));
+        return dsItemChips(items,'dsDrawChips')+(vis.length?`<div class="kpis">${vis.map(c=>c.h).join('')}</div>`:'')
+          +(items.every(it=>!on(it.id))?'<div class="hint">No items selected — choose items from the buttons above.</div>':''); })()}
       <div class="row" style="align-items:flex-start">
-        <div style="flex:3;min-width:320px;overflow:auto;max-height:560px"><h3>🩸 Draws — All Staff (${all.length})</h3>${tb(all,[['Drawn',p=>`<b>${p.col}</b>`],['',p=>`<div class="bar"><i style="width:${p.col/mx*100}%"></i></div>`],...fcCols,['Discarded',p=>p.dis],...fmCols,['Rate',p=>p.col?p.rate.toFixed(1)+'%':'—']])}</div>
-        <div style="flex:2;min-width:280px;overflow:auto;max-height:560px"><h3>🗑️ Discarded Bags (${allDis.length})</h3>${tb(allDis,[['Discarded',p=>`<b>${p.dis}</b>`],...fmCols,['Drawn',p=>p.col],...fcCols,['Rate',p=>p.col?p.rate.toFixed(1)+'%':'—']])}</div>
+        ${on('drTbl')?`<div style="flex:3;min-width:320px;overflow:auto;max-height:560px"><h3>🩸 Draws — All Staff (${all.length})</h3>${tb(all,[['Drawn',p=>`<b>${p.col}</b>`],['',p=>`<div class="bar"><i style="width:${p.col/mx*100}%"></i></div>`],...fcCols,['Discarded',p=>p.dis],...fmCols,['Rate',p=>p.col?p.rate.toFixed(1)+'%':'—']])}</div>`:''}
+        ${on('drDisTbl')?`<div style="flex:2;min-width:280px;overflow:auto;max-height:560px"><h3>🗑️ Discarded Bags (${allDis.length})</h3>${tb(allDis,[['Discarded',p=>`<b>${p.dis}</b>`],...fmCols,['Drawn',p=>p.col],...fcCols,['Rate',p=>p.col?p.rate.toFixed(1)+'%':'—']])}</div>`:''}
       </div></div>`;
   } else h+=`<div class="card ds-ltr" dir="ltr"><h3 class="ds-sec"><span class="si">🏅</span>Draws and Discarded Bags</h3><div class="empty">No saved donation report within this period — upload List of donations and Discarded products on the 📥 upload page (they are filtered here automatically for any week or period during the session).</div></div>`;
   // ===== 2) الوحدات المستلمة والمحضّرة — بطاقات بنمط صفحة الإحصائيات (القيمة + مقارنة بالفترة السابقة المماثلة) =====
@@ -4650,7 +4661,7 @@ function dsExportModel(){
       dt:(k.querySelector('.dt')?.innerHTML||'')+(k.dataset.m!=null?`<br>Male ${fmtNum(+k.dataset.m)} · Female ${fmtNum(+k.dataset.f)}`:''),
       ic:k.dataset.m!=null?DS_ICO.donors:(k.querySelector('.kic svg')?.outerHTML||''), rtl:getComputedStyle(k).direction==='rtl'}));
     return {title,icon,cards,draws:/^Draws/.test(title),rtl:getComputedStyle(c).direction==='rtl'};
-  }).filter(s=>s&&s.cards.length);
+  }).filter(s=>s&&(s.cards.length||(s.draws&&DS_DRAWS?.length)));
   return {R,secs,site:allSites?'All sites':[...dsSites].map(x=>DS_SITES[x]).join(' + ')};
 }
 const dsTone=cls=>/ds-bad/.test(cls)?'bad':/\ba\b/.test(cls)?'a':/\bg\b/.test(cls)?'g':/\bn\b/.test(cls)?'n':'t';
@@ -4837,6 +4848,7 @@ async function dsExportPptx(saved){
   const dr=M.secs.find(s=>s.draws);
   if(dr){ // صفحة مستقلة: البطاقات + جدول الموظفين
     const d={sl:null,y:0}; putSec(d,dr,{...dims(4),CH:0.85});
+    if(!d.sl){ d.sl=addSl(); d.y=secTitle(d.sl,dr,head(d.sl)); } // كل البطاقات مخفية والجدول ظاهر (2026-10-16)
     const list=DRW, fm=list.some(x=>x.fd!=null), fc=list.some(x=>x.fc!=null), hdr=['#','Staff','Drawn',...(fc?['F Drawn','M Drawn']:[]),'Discarded',...(fm?['F Disc.','M Disc.']:[]),'Rate'].map(t=>({text:t,options:{bold:true,color:'FFFFFF',fill:{color:THEAD},align:'center'}}));
     const MED=['D4A23A','9AA3AF','B0754A'];
     const RK=4+(fm?2:0)+(fc?2:0); // عمود Rate
@@ -4844,7 +4856,8 @@ async function dsExportPptx(saved){
       color:k===0&&n<3?MED[n]:k===RK&&x.rate>10&&x.col>=10?BAD:INK,fill:{color:n%2?'F7EEF1':'FBF6F8'}}}));
     const topt={y:d.y,fontSize:8,fontFace:'Arial',color:INK,border:{type:'solid',pt:0.5,color:LINE},rowH:0.21,colW:fm&&fc?[0.3,1.3,0.5,0.5,0.5,0.6,0.5,0.5,0.45]:fm||fc?[0.35,1.6,0.65,0.75,0.6,0.55,0.6]:[0.4,2.2,0.85,0.9,0.75]};
     const fit=Math.floor((PH-0.6-d.y)/0.21)-1;
-    if(list.length<=fit) d.sl.addTable([hdr,...list.map(row)],{...topt,x:MX});
+    if(!list.length);
+    else if(list.length<=fit) d.sl.addTable([hdr,...list.map(row)],{...topt,x:MX});
     else if(list.length<=2*fit){ const h=Math.ceil(list.length/2);
       d.sl.addTable([hdr,...list.slice(0,h).map(row)],{...topt,x:MX});
       d.sl.addTable([hdr,...list.slice(h).map((x,i)=>row(x,h+i))],{...topt,x:MX+5.2}); }
