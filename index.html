@@ -439,6 +439,15 @@ table.rpt-rate .rratebar{display:inline-block;height:6px;background:var(--rblue2
 .upstat{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px}
 .upstat .chip{font-size:11.5px;padding:4px 10px;border-radius:20px;background:#EEF3F8;color:var(--muted);font-weight:700;font-family:Arial}
 .upstat .chip.ok{background:#dff3e6;color:#15693f}
+.upstat .chip.warn{background:#FFF3D6;color:#8A5A00}
+.upstat .chip.bad{background:#FBE3E2;color:var(--bad)}
+.upwarn{flex-basis:100%;font-size:12px;line-height:1.7;padding:8px 12px;border-radius:10px;background:#FFF6E5;color:#6B4600;border-inline-start:4px solid var(--amber);margin:4px 0}
+.upwarn.bad{background:#FDECEB;color:#7A1C19;border-inline-start-color:var(--bad)}
+.up-card.miss{border-top-color:var(--bad)}.up-card.miss .st{color:var(--bad)}
+.up-trash{background:#fff;border-radius:12px;padding:12px 14px;box-shadow:var(--shadow-card);margin:12px 0;border-top:3px solid var(--amber)}
+.up-trash h4{font-size:13.5px;color:var(--navy);margin-bottom:6px}
+.up-trash .r{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12px;padding:6px 0;border-top:1px dashed var(--line-strong)}
+.up-hist{font-size:11.5px;color:var(--muted);line-height:1.8;margin-top:6px}
 /* مقارنة الأقسام والموظفين (صفحة الإحصائيات) */
 .cmp-lbl{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;font-weight:800;color:var(--navy);font-size:13px}
 .cmp-lbl .lnk{display:flex;flex-wrap:wrap;gap:2px}
@@ -679,8 +688,11 @@ table.rk.iss-mx td.nm{text-align:left}table.rk.iss-mx td.tot,table.rk.iss-mx tr.
     <span>List of donations · Wateen report · Staff productivity (عدة أسابيع) · Discarded products · List of Operations · Delivered to outside — كما تُنزَّل من النظام</span>
   </label>
   <div id="upLog" class="hint"></div>
+  <div id="upWarnAll"></div>
   <div class="up-grid" id="upGrid"></div>
+  <div id="upTrash"></div>
   <div id="upCloud" class="hint" style="font-weight:700"></div>
+  <details class="hint" id="upHistBox"><summary>🕘 سجل الرفع والحذف (آخر العمليات من كل الأجهزة)</summary><div class="up-hist" id="upHist"></div></details>
   <div class="hint">الملفات تُحفظ نهائياً في السحابة (وتظهر على كل الأجهزة) حتى تحذفها. رفع ملف من نفس النوع <b>يُدمج</b> مع السابق: السجلات المكررة داخل فترة الملف الجديد تُحذف وتُعتمد أرقام الملف الجديد، وما خارجها يبقى، والفترة تمتد من أقدم تاريخ لأحدثه (Staff productivity: ملف لكل أسبوع، ونفس الأسبوع يُستبدل). بيانات المتبرع الشخصية (الاسم، الهوية، الجوال، الميلاد، HIIG) تُحذف قبل الحفظ. اعتماد النتائج في «📝 النتائج» يبقى بضغطة «✅ اعتماد» بعد المعاينة.</div>
 </section>
 
@@ -2849,6 +2861,7 @@ function renderReportPage(agg){
     REPORT_STAFF[id]={name:n}; await cloudSet('reportStaff',id,REPORT_STAFF[id]); toast('تم الحفظ ✓'); renderReportPage(agg);
   });
   $('#repSaveBtn').onclick=async()=>{
+    if(!agg.totalCollected){ toast('⚠️ لا يُحفظ تقرير بلا تبرعات — ارفع List of donations أولاً من «📥 رفع الملفات»'); return; }
     const id=`${agg.dateFrom}_${agg.dateTo}`; REPORTS[id]=agg; await cloudSet('reports',id,agg);
     toast('تم حفظ التقرير ✓'); renderReportArchive();
   };
@@ -4912,6 +4925,7 @@ const UP_TYPES={
   issue:{name:'Delivered to outside',feeds:'🚚 Issuing Units — الوحدات المصروفة للمستشفيات حسب الجهة والمنتج والفصيلة'}
 };
 let UP={}, UP_VER=0, UP_META={}, UP_LOCAL=null, UP_SYNC=Promise.resolve(); const UP_SEEN={};
+let UP_TRASH={}, UP_HIST=[]; // (2026-10-17) سلة المحذوفات السحابية + سجل العمليات
 const upFile=t=>UP[t]?.file||null;
 const upProdFiles=()=>Object.keys(UP).filter(k=>k.startsWith('prod:')).sort().map(k=>UP[k].file);
 function upIdb(mode,fn){
@@ -4986,10 +5000,57 @@ async function upCloudPut(key,v){
   if(prev&&prev.ver!==v.ver) for(let i=0;i<prev.n;i++) await fs.deleteDoc(fs.doc(db.d,'uploadChunks',upChunkId(key,prev.ver,i))).catch(()=>{});
   return true;
 }
+/* 🗑️ (2026-10-17، طلب حسن — اختفى List of donations من الرفع فصارت تقارير التبرعات بلا تبرعات) الحذف لم يعد نهائياً:
+   ✕ و«مسح كل الملفات» ينقلان الوصف إلى uploadsTrash/{key} مع إبقاء أجزائه، فيُستعاد بضغطة (يُدمج مع ملف أحدث من نفس النوع إن وُجد).
+   كل رفع/حذف/استعادة يُسجَّل في uploadLog لمعرفة متى وماذا تغيّر. */
 async function upCloudDel(key){
-  const m=UP_META[key]; if(!CLOUD||!m) return; const {fs}=db;
+  const m=UP_META[key]; if(!CLOUD||!m) return; const {fs}=db, old=UP_TRASH[key];
+  const t={...m,deletedAt:new Date().toISOString()};
+  await fs.setDoc(fs.doc(db.d,'uploadsTrash',key),t); UP_TRASH[key]=t;
   await fs.deleteDoc(fs.doc(db.d,'uploads',key)); delete UP_META[key];
-  for(let i=0;i<m.n;i++) await fs.deleteDoc(fs.doc(db.d,'uploadChunks',upChunkId(key,m.ver,i))).catch(()=>{});
+  if(old&&old.ver!==m.ver) await upChunksDel(key,old);
+  upLogAdd('delete',key,m);
+}
+async function upChunksDel(key,m){ const {fs}=db; for(let i=0;i<m.n;i++) await fs.deleteDoc(fs.doc(db.d,'uploadChunks',upChunkId(key,m.ver,i))).catch(()=>{}); }
+async function upChunksGet(key,m){
+  const {fs}=db, parts=[];
+  for(let i=0;i<m.n;i++){ const x=await fs.getDoc(fs.doc(db.d,'uploadChunks',upChunkId(key,m.ver,i))); if(!x.exists()) throw new Error('جزء ناقص '+key); parts.push(x.data().d.toUint8Array()); }
+  return new File([await upGunz(await new Blob(parts).arrayBuffer())],m.name,{type:'text/html'});
+}
+function upLogAdd(act,key,m){
+  if(!CLOUD) return; const e={at:new Date().toISOString(),act,key,name:m?.name||null,from:m?.from||null,to:m?.to||null,rows:m?.rows||null};
+  UP_HIST.unshift(e); UP_HIST=UP_HIST.slice(0,30);
+  db.fs.setDoc(db.fs.doc(db.d,'uploadLog',e.at.replace(/[:.]/g,'-')+'_'+act+'_'+String(key).replace(/[\/]/g,'-')),e).catch(e=>console.warn('uploadLog',e));
+}
+async function upTrashLoad(){
+  if(!CLOUD) return; const {fs}=db, t={};
+  (await fs.getDocs(fs.collection(db.d,'uploadsTrash'))).forEach(x=>t[x.id]=x.data()); UP_TRASH=t;
+  try{ const h=[]; (await fs.getDocs(fs.query(fs.collection(db.d,'uploadLog'),fs.orderBy('at','desc'),fs.limit(30)))).forEach(x=>h.push(x.data())); UP_HIST=h; }catch(e){ console.warn('uploadLog',e); }
+}
+async function upRestore(key){
+  const t=UP_TRASH[key]; if(!CLOUD||!t) return; const {fs}=db, cur=UP[key];
+  if(cur&&!UP_MERGE[t.type]&&!confirm(`يوجد ملف حالي ${cur.name} — استبداله بالمحذوف ${t.name}؟`)) return;
+  toast('⏳ جاري الاستعادة…');
+  try{
+    const m={...t}; delete m.deletedAt; let v;
+    if(!cur){ // لا ملف حالي: يعود الوصف كما هو (الأجزاء لم تُحذف)
+      const file=await upChunksGet(key,m);
+      await fs.setDoc(fs.doc(db.d,'uploads',key),m); UP_META[key]=m; v={...m,file,cloud:true};
+    } else { // ملف أحدث موجود: يُدمج المحذوف معه — سجلات الحالي داخل فترته تبقى، وما خارجها يُكمَّل من المحذوف
+      const file=await upChunksGet(key,m);
+      v=UP_MERGE[t.type]?await upBuild(t.type,cur.file,{from:cur.from,to:cur.to},{file,from:t.from,to:t.to}):{...m,file};
+      if(!v) throw new Error('تعذّر الدمج'); v.ver=String(Date.now()); v.cloud=await upCloudPut(key,v); await upChunksDel(key,m);
+    }
+    await fs.deleteDoc(fs.doc(db.d,'uploadsTrash',key)); delete UP_TRASH[key];
+    UP[key]=v; await upSave(key,v).catch(()=>{}); upLogAdd('restore',key,v);
+    UP_VER++; upRender(); toast(`تمت استعادة ${v.name} ✓`);
+  }catch(e){ console.warn(e); toast('تعذّرت الاستعادة: '+e.message); }
+}
+async function upPurge(key){
+  const t=UP_TRASH[key]; if(!CLOUD||!t) return;
+  if(!confirm(`حذف ${t.name} نهائياً؟ لا يمكن استعادته بعدها.`)) return;
+  await db.fs.deleteDoc(db.fs.doc(db.d,'uploadsTrash',key)); await upChunksDel(key,t); delete UP_TRASH[key];
+  upLogAdd('purge',key,t); upRender();
 }
 // عند فتح الموقع: ما في السحابة يتقدّم — ملف أحدث يُنزَّل لهذا الجهاز، وملف حُذف من جهاز آخر يُحذف هنا؛
 // وملفات محلية رُفعت قبل الحفظ السحابي تُرفع للسحابة (بعد حذف البيانات الشخصية) مرة واحدة
@@ -4999,10 +5060,10 @@ async function upSync(){
   let ch=false;
   try{
     const {fs}=db, metas={}; (await fs.getDocs(fs.collection(db.d,'uploads'))).forEach(x=>metas[x.id]=x.data()); UP_META=metas;
+    await upTrashLoad().catch(e=>console.warn('uploadsTrash',e));
     for(const [k,m] of Object.entries(metas)){
       if(UP[k]?.ver===m.ver) continue;
-      const parts=[]; for(let i=0;i<m.n;i++){ const x=await fs.getDoc(fs.doc(db.d,'uploadChunks',upChunkId(k,m.ver,i))); if(!x.exists()) throw new Error('جزء ناقص '+k); parts.push(x.data().d.toUint8Array()); }
-      const file=new File([await upGunz(await new Blob(parts).arrayBuffer())],m.name,{type:'text/html'});
+      const file=await upChunksGet(k,m);
       UP[k]={...m,file,cloud:true}; await upSave(k,UP[k]).catch(()=>{}); ch=true;
     }
     for(const k of Object.keys(UP)){
@@ -5048,7 +5109,7 @@ async function upAdd(files){
     else v={file:f,name:f.name,type:d.type,from:d.from,to:d.to,size:f.size,added:new Date().toISOString()};
     v.ver=String(Date.now());
     try{ v.cloud=await upCloudPut(key,v); }catch(e){ console.warn(e); v.cloud=false; log.push(`⚠️ ${dsEsc(f.name)}: تعذّر الحفظ السحابي (${dsEsc(e.message)}) — محفوظ على هذا الجهاز فقط`); }
-    UP[key]=v; n++;
+    UP[key]=v; n++; if(v.cloud) upLogAdd('add',key,v);
     try{ await upSave(key,v); }catch(e){ log.push(`⚠️ ${dsEsc(f.name)}: لم يُحفظ في المتصفح (${dsEsc(e.message)})`); }
     const I=v.info;
     log.push(`✓ ${dsEsc(f.name)} ← <b>${UP_TYPES[d.type].name}</b>${v.from?` <span class="bidi-ltr">(${fmtDMY(v.from)} → ${fmtDMY(v.to)})</span>`:''}${v.cloud?' ☁️':''}`
@@ -5063,6 +5124,20 @@ async function upAdd(files){
   $('#upLog').innerHTML=log.join('<br>'); upRender();
   if(n) toast(`تم رفع ${n} ملف ✓ — كل صفحة تُحسب منها تلقائياً`);
 }
+/* ⚠️ (2026-10-17) تنبيه صريح بدل نتائج ناقصة بصمت: ملف مطلوب غير مرفوع، أو ملف ينتهي قبل بقية الملفات (الأيام بعده ناقصة) */
+const UP_MISS={donations:'لا تبرعات، ولا يمكن نسب الأكياس المتلفة لمن سحبها (Draws / تقارير التبرعات)',discarded:'لا أكياس متلفة',
+  wateen:'لا متبرعين ولا Rh Negative',ops:'لا وحدات محضّرة ولا صفائح',issue:'لا وحدات مصروفة',prod:'لا أرقام DR / DR Cover'};
+function upWarnings(need){
+  const miss=need.filter(t=>t==='prod'?!upProdFiles().length:!UP[t]);
+  const ends=need.filter(t=>t!=='prod'&&UP[t]?.to).map(t=>({t,to:UP[t].to})), max=ends.reduce((a,x)=>x.to>a?x.to:a,'');
+  return {miss,late:ends.filter(x=>x.to<max),max};
+}
+function upWarnHtml(W){
+  let h='';
+  if(W.miss.length) h+=`<div class="upwarn bad">✗ ملفات غير مرفوعة: ${W.miss.map(t=>`<b dir="ltr">${UP_TYPES[t].name}</b> (${UP_MISS[t]})`).join(' · ')}${W.miss.some(t=>UP_TRASH[t])?' — <b>يوجد نسخة محذوفة يمكن استعادتها من «📥 رفع الملفات»</b>':' — ارفعها من «📥 رفع الملفات»'}</div>`;
+  if(W.late.length) h+=`<div class="upwarn">⚠️ ملفات تنتهي قبل غيرها: ${W.late.map(x=>`<b dir="ltr">${UP_TYPES[x.t].name}</b> حتى <span dir="ltr">${fmtDMY(x.to)}</span>`).join(' · ')} بينما أحدث ملف حتى <span dir="ltr">${fmtDMY(W.max)}</span> — الأيام بعدها ناقصة في الحساب؛ صدّر الملف من جديد وارفعه (يُدمج تلقائياً).</div>`;
+  return h;
+}
 function upRender(){
   const kb=n=>n>1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB';
   const per=v=>v.from?`<span class="bidi-ltr">${fmtDMY(v.from)} → ${fmtDMY(v.to)}</span>`:'';
@@ -5073,19 +5148,30 @@ function upRender(){
     const body=T.multi
       ? items.slice(0,6).map(k=>`<div class="meta">${per(UP[k])} ${del(k)}</div>`).join('')+(items.length>6?`<div class="meta">+ ${items.length-6} ملفات أخرى</div>`:'')
       : items.map(k=>`<div class="meta">${dsEsc(UP[k].name)} ${del(k)}<br>${per(UP[k])}${UP[k].from?' · ':''}${UP[k].rows?fmtNum(UP[k].rows)+' سجل · ':''}${kb(UP[k].size)} · ${UP[k].info?'آخر دمج':'رُفع'} ${when(UP[k])} · ${UP[k].cloud?'☁️ سحابي':'💾 هذا الجهاز فقط'}</div>`).join('');
-    return `<div class="up-card ${items.length?'ok':''}"><h4>${T.name}</h4>
-      <div class="st ${items.length?'':'no'}">${items.length?(T.multi?`✓ ${items.length} ملف`:'✓ مرفوع'):'— لم يُرفع'}</div>${body}
+    const tr=!items.length&&UP_TRASH[t]?` <button class="btn ghost sm" data-uprest="${t}" style="padding:1px 8px">♻️ استعادة المحذوف</button>`:'';
+    return `<div class="up-card ${items.length?'ok':'miss'}"><h4>${T.name}</h4>
+      <div class="st">${items.length?(T.multi?`✓ ${items.length} ملف`:'✓ مرفوع'):'✗ غير مرفوع'+tr}</div>${body}
       <div class="feeds">${T.feeds}</div></div>`;
   }).join('');
   $$('[data-updel]').forEach(b=>b.onclick=async()=>{ const k=b.dataset.updel;
-    if(!confirm(`حذف ملف ${UP[k]?.name||k} نهائياً من كل الأجهزة؟`)) return;
+    if(!confirm(`حذف ملف ${UP[k]?.name||k} من كل الأجهزة؟\nيُنقل إلى «🗑️ المحذوفات» ويمكن استعادته.`)) return;
     delete UP[k]; await upSave(k,null).catch(()=>{}); await upCloudDel(k).catch(e=>toast('تعذّر الحذف من السحابة: '+e.message)); UP_VER++; upRender(); });
   const cs=$('#upCloud'); if(cs) cs.textContent=CLOUD?`☁️ الملفات محفوظة سحابياً (${Object.keys(UP_META).length} ملف) — تظهر على كل الأجهزة`:'💾 بلا اتصال بالسحابة — الملفات على هذا الجهاز فقط';
   $$('.upstat').forEach(el=>{
-    el.innerHTML=el.dataset.need.split(',').map(t=>{ const ok=t==='prod'?upProdFiles().length:!!UP[t];
-      return `<span class="chip ${ok?'ok':''}">${ok?'✓':'✗'} ${UP_TYPES[t].name}${t==='prod'&&ok?` (${ok})`:''}</span>`; }).join('')
-      +`<button class="btn ghost sm" data-goup>📥 رفع / تحديث الملفات</button>`;
+    const need=el.dataset.need.split(','), W=upWarnings(need), late=new Set(W.late.map(x=>x.t));
+    el.innerHTML=need.map(t=>{ const ok=t==='prod'?upProdFiles().length:!!UP[t], cls=!ok?'bad':late.has(t)?'warn':'ok';
+      return `<span class="chip ${cls}">${!ok?'✗':late.has(t)?'⚠️':'✓'} ${UP_TYPES[t].name}${t==='prod'&&ok?` (${ok})`:''}${ok&&t!=='prod'&&UP[t].to?` · <span dir="ltr">${fmtDMY(UP[t].to).slice(0,5)}</span>`:''}</span>`; }).join('')
+      +`<button class="btn ghost sm" data-goup>📥 رفع / تحديث الملفات</button>`+upWarnHtml(W);
   });
+  $('#upWarnAll').innerHTML=upWarnHtml(upWarnings(Object.keys(UP_TYPES)));
+  const tk=Object.keys(UP_TRASH).sort((a,b)=>(UP_TRASH[b].deletedAt||'').localeCompare(UP_TRASH[a].deletedAt||''));
+  $('#upTrash').innerHTML=tk.length?`<div class="up-trash"><h4>🗑️ المحذوفات — يمكن استعادتها</h4>${tk.map(k=>{ const t=UP_TRASH[k];
+    return `<div class="r"><b dir="ltr">${dsEsc(UP_TYPES[t.type]?.name||k)}</b> <span class="bidi-ltr">${dsEsc(t.name)}</span> ${per(t)} · ${t.rows?fmtNum(t.rows)+' سجل · ':''}حُذف ${when({added:t.deletedAt})}
+      <button class="btn ghost sm" data-uprest="${dsEsc(k)}">♻️ استعادة${UP[k]?' (دمج مع الحالي)':''}</button><button class="btn ghost sm" data-uppurge="${dsEsc(k)}">حذف نهائي</button></div>`; }).join('')}</div>`:'';
+  const AN={add:'رفع',delete:'حذف',clear:'مسح كل الملفات',restore:'استعادة',purge:'حذف نهائي'};
+  $('#upHist').innerHTML=UP_HIST.length?UP_HIST.map(h=>`${when({added:h.at})} — <b>${AN[h.act]||h.act}</b> ${h.key!=='*'?`<span dir="ltr">${dsEsc(UP_TYPES[(h.key||'').split(':')[0]]?.name||h.key)}</span>`:''} ${h.name&&h.key!=='*'?`<span class="bidi-ltr">${dsEsc(h.name)}</span>`:''} ${h.from?per(h):''}`).join('<br>'):'لا توجد عمليات مسجّلة بعد';
+  $$('[data-uprest]').forEach(b=>b.onclick=()=>upRestore(b.dataset.uprest));
+  $$('[data-uppurge]').forEach(b=>b.onclick=()=>upPurge(b.dataset.uppurge));
   $$('[data-goup]').forEach(b=>b.onclick=()=>$('.navbtn[data-pg=upload]').click());
 }
 // كل صفحة تُعاد حسابها مرة واحدة فقط لكل تغيير في الملفات (UP_VER) — عند فتحها
@@ -5102,9 +5188,10 @@ const upDropEl=$('#upDrop');
 upDropEl.addEventListener('drop',e=>upAdd([...e.dataTransfer.files]));
 $('#upInput').onchange=e=>{ const fs=[...e.target.files]; e.target.value=''; upAdd(fs); };
 $('#upClearAll').onclick=async()=>{
-  if(!confirm('مسح كل الملفات المرفوعة نهائياً من كل الأجهزة (السحابة وهذا المتصفح)؟')) return;
+  if(!confirm('مسح كل الملفات المرفوعة من كل الأجهزة؟\nتُنقل إلى «🗑️ المحذوفات» في هذه الصفحة ويمكن استعادتها.')) return;
   UP={}; await upIdb('readwrite',st=>st.clear()).catch(()=>{});
   for(const k of Object.keys(UP_META)) await upCloudDel(k).catch(()=>{});
+  upLogAdd('clear','*',{name:'كل الملفات'});
   UP_VER++; $('#upLog').innerHTML=''; upRender();
 };
 UP_LOCAL=upLoadAll();
