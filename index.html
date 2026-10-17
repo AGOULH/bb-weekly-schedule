@@ -309,6 +309,7 @@ table.rpt-rate .rratebar{display:inline-block;height:6px;background:var(--rblue2
 .lv-b-sick_ext{background:#fbe0e8;color:#be123c}
 .lv-b-compassionate{background:#e5e4fb;color:#4338ca}
 .lv-b-remote{background:#e0f5e6;color:#15803d}
+.lv-b-exceptional{background:#fce7f3;color:#be185d}
 
 .lv-legend{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:14px}
 .lv-leg-item{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--muted)}
@@ -1264,8 +1265,8 @@ const STAFF_JOB_IDS={FAHED:'2649451',SULTAN:'3506824',DOHA:'3821573',MARDEEF:'38
 // نظام الإجازات مدمج بالكامل الآن (مجموعتا Firestore: leaves/prelim) — لا نظام خارجي منفصل بعد اليوم.
 // ARABIC_ALIAS للعرض الاحتياطي ومطابقة أسماء ملفات إكسل HR فقط (نفس فلسفة REPORT_STAFF_NAMES) — المعرّف الفعلي المخزَّن دائماً هو staffId، لا الاسم.
 const ARABIC_ALIAS={FAHED:'فهد',AQEELHA:'عقيلة',DOHA:'ضحى',AFNAN:'افنان',ALASEED:'السعيد',IBRIH:'ابريه',MARDEEF:'مراضيف',SULTAN:'سلطان',ABDJALIL:'عبدالجليل',REDA:'رضا',MATWHA:'المطوع',AWTIF:'عواطف',HAMED:'حمد',ALANOUD:'العنود'};
-const LV_TYPES={annual:'سنوية',sick:'مرضية',emergency:'اضطراري',maternity:'أمومة',study:'دراسية',unpaid:'بدون راتب',shift:'بدل مناوبة',assignment:'بدل تكليف',hajj:'إجازة حج',sick_ext:'إجازة مرضية مطولة',compassionate:'إجازة وفاة',remote:'عمل عن بُعد',compensatory:'تعويضية',patient_escort:'مرافقة مريض',absence_comp:'بدل أيام غياب'};
-const LV_TCLASS={annual:'annual',sick:'sick',emergency:'emergency',maternity:'maternity',study:'study',unpaid:'unpaid',shift:'shift',assignment:'assignment',hajj:'hajj',sick_ext:'sick_ext',compassionate:'compassionate',remote:'remote',compensatory:'shift',patient_escort:'maternity',absence_comp:'unpaid'};
+const LV_TYPES={annual:'سنوية',sick:'مرضية',emergency:'اضطراري',maternity:'أمومة',study:'دراسية',unpaid:'بدون راتب',shift:'بدل مناوبة',assignment:'بدل تكليف',hajj:'إجازة حج',sick_ext:'إجازة مرضية مطولة',compassionate:'إجازة وفاة',remote:'عمل عن بُعد',compensatory:'تعويضية',patient_escort:'مرافقة مريض',absence_comp:'بدل أيام غياب',exceptional:'إجازة استثنائية'};
+const LV_TCLASS={annual:'annual',sick:'sick',emergency:'emergency',maternity:'maternity',study:'study',unpaid:'unpaid',shift:'shift',assignment:'assignment',hajj:'hajj',sick_ext:'sick_ext',compassionate:'compassionate',remote:'remote',compensatory:'shift',patient_escort:'maternity',absence_comp:'unpaid',exceptional:'exceptional'};
 const LV_MONTHS=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 const LV_HIJRI_MONTHS=['محرّم','صفر','ربيع الأول','ربيع الآخر','جمادى الأولى','جمادى الآخرة','رجب','شعبان','رمضان','شوّال','ذو القعدة','ذو الحجة'];
 const LV_DAYS=['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
@@ -3581,6 +3582,7 @@ function lvHijriToGreg(hStr){
 }
 function lvGuessType(txt){
   const s=String(txt||'').trim();
+  if(s.includes('استثنائ')||s.includes('إستثنائ'))return 'exceptional';
   if(s.includes('تعويض'))return 'compensatory';
   if(s.includes('سنوية')||s.includes('إعتيادية')||s.includes('اعتيادية'))return 'annual';
   if(s.includes('مرافق'))return 'patient_escort';
