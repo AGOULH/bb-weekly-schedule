@@ -1367,6 +1367,19 @@ async function loadLeaves(){
 function isOnLeave(staffId,dateFrom,dateTo){
   return Object.values(LEAVES).find(l=>l.staffId===staffId && l.start<=dateTo && l.end>=dateFrom) || null;
 }
+// (طلب حسن 2026-10-17) أيام الإجازة ضمن الأسبوع: أيام العمل الأحد–الخميس التي تغطيها أي إجازة للموظف؛ full = كل أيام العمل
+function leaveSpan(staffId,dateFrom,dateTo){
+  const ls=Object.values(LEAVES).filter(l=>l.staffId===staffId && l.start<=dateTo && l.end>=dateFrom);
+  if(!ls.length) return null;
+  let work=0, off=0;
+  for(let d=new Date(dateFrom+'T00:00:00Z'); d.toISOString().slice(0,10)<=dateTo; d.setUTCDate(d.getUTCDate()+1)){
+    if(d.getUTCDay()>=5) continue; // الجمعة والسبت
+    const ds=d.toISOString().slice(0,10); work++;
+    if(ls.some(l=>l.start<=ds&&l.end>=ds)) off++;
+  }
+  return {days:off, full:off>=work};
+}
+const leaveTag=sp=>sp.full?'⛔ إجازة':sp.days?`🕐 ${sp.days} يوم`:'🕐 إجازة';
 
 function renderAll(){ fillWeekPicks(); renderSheet(); renderResults(); renderStaff(); renderArchive(); renderApx(); renderAlerts(); renderReportArchive(); lvRenderAll(); renderDammi(); }
 
@@ -1417,12 +1430,12 @@ function dammiDutyDays(sid,f,t){
 }
 function renderLeaveInfo(w){
   const el=$('#leaveInfo'); if(!el)return;
-  const onLeave=activeStaff().map(s=>({s,lv:isOnLeave(s.id,w.dateFrom,w.dateTo)})).filter(x=>x.lv);
+  const onLeave=activeStaff().map(s=>({s,lv:isOnLeave(s.id,w.dateFrom,w.dateTo),sp:leaveSpan(s.id,w.dateFrom,w.dateTo)})).filter(x=>x.lv);
   const onDm=activeStaff().map(s=>({s,d:dammiDutyDays(s.id,w.dateFrom,w.dateTo)})).filter(x=>x.d.length);
   if(!onLeave.length&&!onDm.length){ el.style.display='none'; return; }
   el.style.display='block';
   el.innerHTML=(onLeave.length?'🏖️ في إجازة ضمن هذا الأسبوع (مستبعدون تلقائياً من قوائم التكليف): '
-    +onLeave.map(x=>`<b>${x.s.name}</b> <span dir="ltr">(${x.lv.start} → ${x.lv.end})</span>`).join('، '):'')
+    +onLeave.map(x=>`<b>${x.s.name}</b> ${x.sp.full?'⛔ الأسبوع كامل':`🕐 ${x.sp.days} يوم فقط`} <span dir="ltr">(${x.lv.start} → ${x.lv.end})</span>`).join('، '):'')
     +(onLeave.length&&onDm.length?'<br>':'')
     +(onDm.length?'🏥 مناوبون في مركز دمي ضمن هذا الأسبوع (مستبعدون تلقائياً من قوائم التكليف): '
     +onDm.map(x=>`<b>${x.s.name}</b> <span dir="ltr">(${x.d.map(d=>d.slice(8)+'/'+d.slice(5,7)).join(', ')})</span>`).join('، '):'');
@@ -1438,7 +1451,7 @@ function taskOpts(tid,a,j){
   const onDammi=s=>dammiDutyDays(s.id,w.dateFrom,w.dateTo).length>0;
   // موظف مجاز أو مناوب في مركز دمي خلال هذا الأسبوع يُستبعد من الخيارات المتاحة؛ إن كان مكلَّفاً بها أصلاً يبقى ظاهراً في خانته مع تنبيه بدل اختفائه فجأة
   const avail=s=>(!used.has(s.id)||s.id===id)&&(s.id===id||(!onLeave(s)&&!onDammi(s)));
-  const optLabel=s=>s.id!==id?s.name:onLeave(s)?`${s.name} ⚠️ إجازة`:onDammi(s)?`${s.name} 🏥 دمي`:s.name;
+  const optLabel=s=>s.id!==id?s.name:onLeave(s)?`${s.name} ${leaveTag(leaveSpan(s.id,w.dateFrom,w.dateTo))}`:onDammi(s)?`${s.name} 🏥 دمي`:s.name;
   const optHtml=list=>list.map(s=>`<option value="${s.id}" ${s.id===id?'selected':''}>${optLabel(s)}</option>`).join('');
   const primary=activeStaff().filter(s=>s.role===wantRole&&avail(s));
   const rest=activeStaff().filter(s=>s.role!==wantRole&&avail(s));
