@@ -1434,7 +1434,7 @@ function renderLeaveInfo(w){
   const onDm=activeStaff().map(s=>({s,d:dammiDutyDays(s.id,w.dateFrom,w.dateTo)})).filter(x=>x.d.length);
   if(!onLeave.length&&!onDm.length){ el.style.display='none'; return; }
   el.style.display='block';
-  el.innerHTML=(onLeave.length?'🏖️ في إجازة ضمن هذا الأسبوع (مستبعدون تلقائياً من قوائم التكليف): '
+  el.innerHTML=(onLeave.length?'🏖️ في إجازة ضمن هذا الأسبوع (⛔ الأسبوع كامل = مستبعد من قوائم التكليف، 🕐 جزئي = متاح للتكليف): '
     +onLeave.map(x=>`<b>${x.s.name}</b> ${x.sp.full?'⛔ الأسبوع كامل':`🕐 ${x.sp.days} يوم فقط`} <span dir="ltr">(${x.lv.start} → ${x.lv.end})</span>`).join('، '):'')
     +(onLeave.length&&onDm.length?'<br>':'')
     +(onDm.length?'🏥 مناوبون في مركز دمي ضمن هذا الأسبوع (مستبعدون تلقائياً من قوائم التكليف): '
@@ -1448,10 +1448,13 @@ function taskOpts(tid,a,j){
   const w=WEEKS[curWeek];
   const id=a[j], used=new Set([...a.filter((v,k)=>k!==j&&v),...(EXCL_PAIR[tid]?(w.assignments[EXCL_PAIR[tid]]||[]).filter(Boolean):[])]);
   const onLeave=s=>isOnLeave(s.id,w.dateFrom,w.dateTo);
+  // (طلب حسن 2026-10-17) المجاز جزءاً من الأسبوع يبقى خياراً متاحاً بشارة «🕐 N يوم»؛ المجاز الأسبوع كاملاً فقط يُستبعد
+  const span=s=>leaveSpan(s.id,w.dateFrom,w.dateTo);
+  const fullLeave=s=>{ const sp=span(s); return !!(sp&&sp.full); };
   const onDammi=s=>dammiDutyDays(s.id,w.dateFrom,w.dateTo).length>0;
   // موظف مجاز أو مناوب في مركز دمي خلال هذا الأسبوع يُستبعد من الخيارات المتاحة؛ إن كان مكلَّفاً بها أصلاً يبقى ظاهراً في خانته مع تنبيه بدل اختفائه فجأة
-  const avail=s=>(!used.has(s.id)||s.id===id)&&(s.id===id||(!onLeave(s)&&!onDammi(s)));
-  const optLabel=s=>s.id!==id?s.name:onLeave(s)?`${s.name} ${leaveTag(leaveSpan(s.id,w.dateFrom,w.dateTo))}`:onDammi(s)?`${s.name} 🏥 دمي`:s.name;
+  const avail=s=>(!used.has(s.id)||s.id===id)&&(s.id===id||(!fullLeave(s)&&!onDammi(s)));
+  const optLabel=s=>onLeave(s)?`${s.name} ${leaveTag(span(s))}`:s.id===id&&onDammi(s)?`${s.name} 🏥 دمي`:s.name;
   const optHtml=list=>list.map(s=>`<option value="${s.id}" ${s.id===id?'selected':''}>${optLabel(s)}</option>`).join('');
   const primary=activeStaff().filter(s=>s.role===wantRole&&avail(s));
   const rest=activeStaff().filter(s=>s.role!==wantRole&&avail(s));
