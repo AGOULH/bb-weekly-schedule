@@ -4732,7 +4732,7 @@ function dsPrintEn(sec){
     c={...c,dt:dsNoPrev(c.dt)};
     return {...c,rtl:false,dt:c.dt.replace(/<br>\s*من المتبرعين/,' of donors').replace('من المتبرعين','of donors')}; })};
 }
-function dsExportPdf(plain,saved){
+async function dsExportPdf(plain,saved){
   if(!saved&&!DS){ toast('ارفع الملفات أولاً'); return; }
   const M=saved?saved.M:dsExportModel(), DRW=saved?saved.draws:(DS_DRAWS||[]), main=M.secs.filter(s=>!s.draws).map(dsPrintEn), dr=M.secs.find(s=>s.draws);
   if(!M.secs.length){ toast('لا توجد بطاقات للتصدير'); return; }
@@ -4743,6 +4743,8 @@ function dsExportPdf(plain,saved){
   $('#dsPrint').classList.toggle('dsp-plain',!!plain);
   $('#dsPrint').innerHTML=sheets.map((b,i)=>`<div class="dsp-sheet${dr&&i===sheets.length-1?' dsp-draws':' dsp-fill'}"><div class="dsp-body">${b}</div>
     <div class="dsp-foot" dir="ltr"><span>DONE BY : HASAN ALAGOUL</span><span class="pg">Page ${i+1} of ${sheets.length} · Printed ${today}</span></div></div>`).join('');
+  // شعار «اقتداء وعطاء» صورة PNG: تُنتظر قبل القياس والطباعة وإلا تُطبع خانة فارغة (2026-10-18)
+  await Promise.all($$('#dsPrint img').map(i=>i.decode().catch(()=>{})));
   dsFitPages();
   document.body.classList.add('ds-printing');
   const o=document.title; document.title=dsFileName(M.R)+(plain?'_print':'');
