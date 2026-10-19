@@ -4707,11 +4707,18 @@ function dsExportModel(){
     if(!abo.length) return sec;
     const tot=abo.reduce((t,x)=>t+x.n,0), unk=x.querySelector('.hint')?.textContent.replace(/[^\d]/g,'');
     return [sec,{title:`${title} · Blood Group`,icon:'🩸',rtl:false,draws:false,cards:[
-      ...abo.map(x=>({cls:x.neg?'neg':'',lb:`Blood Group ${x.g}`,vl:fmtNum(x.n),dt:`${x.p} of ${of}`,ic:'',rtl:false})),
-      {cls:'',lb:'Total',vl:fmtNum(tot),dt:'All blood groups'+(unk?` · ${fmtNum(+unk)} unknown`:''),ic:'',rtl:false}]}];
+      ...abo.map(x=>({cls:x.neg?'neg':'',lb:x.neg?'Rh Negative':'Rh Positive',vl:fmtNum(x.n),dt:`${x.p} of ${of}`,ic:dsAboBadge(x.g,x.neg?DS_NEG_C:of==='issued'?'#2F6672':'#8E2A43'),rtl:false})),
+      {cls:'',lb:'Total',vl:fmtNum(tot),dt:'All blood groups'+(unk?` · ${fmtNum(+unk)} unknown`:''),ic:of==='issued'?DS_ICO.issue:DS_ICO.donors,rtl:false}]}];
   }).flat().filter(s=>s&&(s.cards.length||(s.draws&&DS_DRAWS?.length)));
   return {R,secs,site:allSites?'All sites':[...dsSites].map(x=>DS_SITES[x]).join(' + ')};
 }
+// شارة الفصيلة في التقرير المُصدَّر: قطرة دم بلون القسم (السالبة ذهبية) والفصيلة بالأبيض — بنفس مقاس أيقونات البطاقات (تُحوَّل PNG في PPTX)
+const DS_NEG_C='#B07A24';
+const dsAboBadge=(g,c)=>{ const t=g.replace('-','−'), fs=t.length>2?8.6:10.4;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" aria-hidden="true"><defs><linearGradient id="ab${t.length}${c.slice(1)}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c}" stop-opacity=".82"/><stop offset="1" stop-color="${c}"/></linearGradient></defs>`
+    +`<path d="M16 1.6c6 7.4 10.3 12.4 10.3 17.7a10.3 10.3 0 0 1-20.6 0C5.7 14 10 9 16 1.6z" fill="url(#ab${t.length}${c.slice(1)})"/>`
+    +`<path d="M11.4 11.6c.8-1.7 1.8-3.2 3-4.7" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width="1.3" stroke-linecap="round"/>`
+    +`<text x="16" y="${21.2+(fs-10.4)*-0.1}" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="900" font-size="${fs}" fill="#fff" letter-spacing="-.2">${t}</text></svg>`; };
 const dsTone=cls=>/ds-bad/.test(cls)?'bad':/\bneg\b/.test(cls)?'neg':/\ba\b/.test(cls)?'a':/\bg\b/.test(cls)?'g':/\bn\b/.test(cls)?'n':'t';
 function dsPrintHead(M){
   const lg=(dsLogos.moh?MOH_LOGO_SVG:'')+(dsLogos.iqt?`<img src="${IQT_LOGO_PNG}" alt="اقتداء وعطاء">`:'');
