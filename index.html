@@ -4645,7 +4645,7 @@ function dsRender(){
     ${tot?`<h3 style="margin-top:6px">🏥 Product × Sector</h3>
     ${mx(prods,(r,p)=>r.p===p,colsC,(r,c)=>catOf(r)===c,cLb)}
     <h3 style="margin-top:16px">🩸 Blood Group of Issued Units</h3>
-    ${dsAboTiles(aboC,true)}
+    <div data-xabo>${dsAboTiles(aboC,true)}</div>
     <h3 style="margin-top:16px">🩸 Product × Blood Group</h3>
     ${mx(prods,(r,p)=>r.p===p,[...DS_ABO,...(aboC['?']?['?']:[])],(r,g)=>r.abo===g,g=>g==='?'?'Unknown':g)}
     <details class="ds-det"><summary>🏥 Hospitals (${hl.length})</summary><div style="overflow:auto;max-height:460px"><table class="rk"><thead><tr><th>#</th><th>Hospital</th><th>Code</th><th>Sector</th><th>Units</th><th></th><th>Share</th></tr></thead><tbody>
@@ -4699,8 +4699,15 @@ function dsExportModel(){
       cls:k.className.replace('kpi','').trim(), lb:k.querySelector('.lb')?.textContent.trim()||'', vl:k.querySelector('.vl')?.textContent.trim()||'',
       dt:(k.querySelector('.dt')?.innerHTML||'')+(k.dataset.m!=null?`<br>Male ${fmtNum(+k.dataset.m)} · Female ${fmtNum(+k.dataset.f)}`:''),
       ic:k.dataset.m!=null?DS_ICO.donors:(k.querySelector('.kic svg')?.outerHTML||''), rtl:getComputedStyle(k).direction==='rtl'}));
-    return {title,icon,cards,draws:/^Draws/.test(title),rtl:getComputedStyle(c).direction==='rtl'};
-  }).filter(s=>s&&(s.cards.length||(s.draws&&DS_DRAWS?.length)));
+    const sec={title,icon,cards,draws:/^Draws/.test(title),rtl:getComputedStyle(c).direction==='rtl'};
+    // (2026-10-19، طلب حسن) فصائل الوحدات المصروفة: بطاقة لكل فصيلة + المجموع، كقسم فرعي بعد Issuing Units
+    const abo=[...c.querySelectorAll('[data-xabo] .ds-abo .t')].map(t=>({g:t.querySelector('.g').textContent.trim(),n:+t.querySelector('.n').textContent.replace(/[^\d]/g,''),p:t.querySelector('.p').textContent.trim(),neg:t.classList.contains('neg')}));
+    if(!abo.length) return sec;
+    const tot=abo.reduce((t,x)=>t+x.n,0), unk=c.querySelector('[data-xabo] .hint')?.textContent.replace(/[^\d]/g,'');
+    return [sec,{title:'Issuing Units · Blood Group',icon:'🩸',rtl:false,draws:false,cards:[
+      ...abo.map(x=>({cls:x.neg?'g':'',lb:`Blood Group ${x.g}`,vl:fmtNum(x.n),dt:`${x.p} of issued`,ic:'',rtl:false})),
+      {cls:'',lb:'Total',vl:fmtNum(tot),dt:'All blood groups'+(unk?` · ${fmtNum(+unk)} unknown`:''),ic:'',rtl:false}]}];
+  }).flat().filter(s=>s&&(s.cards.length||(s.draws&&DS_DRAWS?.length)));
   return {R,secs,site:allSites?'All sites':[...dsSites].map(x=>DS_SITES[x]).join(' + ')};
 }
 const dsTone=cls=>/ds-bad/.test(cls)?'bad':/\ba\b/.test(cls)?'a':/\bg\b/.test(cls)?'g':/\bn\b/.test(cls)?'n':'t';
