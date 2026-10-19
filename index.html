@@ -5163,12 +5163,16 @@ const UP_MISS={donations:'لا تبرعات، ولا يمكن نسب الأكي�
 function upWarnings(need){
   const miss=need.filter(t=>t==='prod'?!upProdFiles().length:!UP[t]);
   const ends=need.filter(t=>t!=='prod'&&UP[t]?.to).map(t=>({t,to:UP[t].to})), max=ends.reduce((a,x)=>x.to>a?x.to:a,'');
-  return {miss,late:ends.filter(x=>x.to<max),max};
+  /* (2026-10-19) آخر يوم في ملف صُدّر/رُفع في نفس ذلك اليوم = يوم غير مكتمل (Wateen رُفع 18/10 9:06 ص فظهر متبرعان بدل 102) */
+  const dayOf=a=>{ const d=new Date(a); return isNaN(d)?'':`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+  const part=ends.filter(x=>UP[x.t].added&&dayOf(UP[x.t].added)===x.to).map(x=>({...x,at:UP[x.t].added}));
+  return {miss,late:ends.filter(x=>x.to<max),max,part};
 }
 function upWarnHtml(W){
   let h='';
   if(W.miss.length) h+=`<div class="upwarn bad">✗ ملفات غير مرفوعة: ${W.miss.map(t=>`<b dir="ltr">${UP_TYPES[t].name}</b> (${UP_MISS[t]})`).join(' · ')}${W.miss.some(t=>UP_TRASH[t])?' — <b>يوجد نسخة محذوفة يمكن استعادتها من «📥 رفع الملفات»</b>':' — ارفعها من «📥 رفع الملفات»'}</div>`;
   if(W.late.length) h+=`<div class="upwarn">⚠️ ملفات تنتهي قبل غيرها: ${W.late.map(x=>`<b dir="ltr">${UP_TYPES[x.t].name}</b> حتى <span dir="ltr">${fmtDMY(x.to)}</span>`).join(' · ')} بينما أحدث ملف حتى <span dir="ltr">${fmtDMY(W.max)}</span> — الأيام بعدها ناقصة في الحساب؛ صدّر الملف من جديد وارفعه (يُدمج تلقائياً).</div>`;
+  if(W.part?.length) h+=`<div class="upwarn">⚠️ يوم غير مكتمل: ${W.part.map(x=>`<b dir="ltr">${UP_TYPES[x.t].name}</b> صُدّر يوم <span dir="ltr">${fmtDMY(x.to)}</span> الساعة <span dir="ltr">${new Date(x.at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</span>`).join(' · ')} — أرقام آخر يوم فيه ناقصة (ما سُجّل بعد التصدير غير موجود)؛ صدّره من جديد بعد انتهاء اليوم وارفعه (يُدمج تلقائياً).</div>`;
   return h;
 }
 function upRender(){
@@ -5191,7 +5195,7 @@ function upRender(){
     delete UP[k]; await upSave(k,null).catch(()=>{}); await upCloudDel(k).catch(e=>toast('تعذّر الحذف من السحابة: '+e.message)); UP_VER++; upRender(); });
   const cs=$('#upCloud'); if(cs) cs.textContent=CLOUD?`☁️ الملفات محفوظة سحابياً (${Object.keys(UP_META).length} ملف) — تظهر على كل الأجهزة`:'💾 بلا اتصال بالسحابة — الملفات على هذا الجهاز فقط';
   $$('.upstat').forEach(el=>{
-    const need=el.dataset.need.split(','), W=upWarnings(need), late=new Set(W.late.map(x=>x.t));
+    const need=el.dataset.need.split(','), W=upWarnings(need), late=new Set([...W.late,...W.part].map(x=>x.t));
     el.innerHTML=need.map(t=>{ const ok=t==='prod'?upProdFiles().length:!!UP[t], cls=!ok?'bad':late.has(t)?'warn':'ok';
       return `<span class="chip ${cls}">${!ok?'✗':late.has(t)?'⚠️':'✓'} ${UP_TYPES[t].name}${t==='prod'&&ok?` (${ok})`:''}${ok&&t!=='prod'&&UP[t].to?` · <span dir="ltr">${fmtDMY(UP[t].to).slice(0,5)}</span>`:''}</span>`; }).join('')
       +`<button class="btn ghost sm" data-goup>📥 رفع / تحديث الملفات</button>`+upWarnHtml(W);
