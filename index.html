@@ -601,6 +601,7 @@ table.rk.iss-mx td.nm{text-align:left}table.rk.iss-mx td.tot,table.rk.iss-mx tr.
 .dsp-card{display:grid;grid-template-columns:minmax(0,1fr) 62px;column-gap:8px;align-items:center;background:var(--card);border:1px solid var(--card-b);
   border-top:2px solid var(--s);border-radius:9px;box-shadow:0 1px 3px rgba(90,40,55,.06);padding:7px 10px;page-break-inside:avoid}
 .dsp-card.t-bad{border-top-color:#B3261E}
+.dsp-card.t-neg{border-top-color:#B07A24;background:rgba(255,246,226,.75);border-color:#EBD3A3}.dsp-card.t-neg .vl,.dsp-card.t-neg .lb{color:#9A6714}
 .dsp-card>:not(.ic){grid-column:1}.dsp-card .ic{grid-column:2;grid-row:1/span 3;width:62px;height:62px}.dsp-card .ic svg{display:block;width:100%;height:100%}
 .dsp-card .lb{font:700 10px Arial;color:var(--muted);letter-spacing:.02em}
 .dsp-card .vl{font:900 22px Arial;color:var(--ink);margin:1px 0;font-variant-numeric:tabular-nums}.dsp-card.t-bad .vl{color:#B3261E}
@@ -4500,7 +4501,7 @@ function dsRender(){
     <h3 style="margin-top:16px">📍 Donors by Site</h3>
     ${dsSplit(['F','D','C'].filter(x=>dsSites.has(x)).map(x=>({lb:DS_SITES[x],n:cnt(don,r=>r.s===x),col:DS_SITE_COL[x]})))}
     <h3 style="margin-top:16px">🩸 Blood Group</h3>
-    ${(()=>{ const c={}; don.forEach(r=>{ const k=dsAboKey(r.abo); c[k]=(c[k]||0)+1; }); return dsAboTiles(c); })()}
+    ${(()=>{ const c={}; don.forEach(r=>{ const k=dsAboKey(r.abo); c[k]=(c[k]||0)+1; }); return `<div data-xabo="donors">${dsAboTiles(c)}</div>`; })()}
     ${new Set(don.map(r=>r.d)).size>=3?`<h3 style="margin-top:16px">📈 الاتجاه</h3><div class="chartbox" style="height:230px"><canvas id="dsTrend"></canvas></div>`:''}
     </div>`;
   }
@@ -4645,7 +4646,7 @@ function dsRender(){
     ${tot?`<h3 style="margin-top:6px">🏥 Product × Sector</h3>
     ${mx(prods,(r,p)=>r.p===p,colsC,(r,c)=>catOf(r)===c,cLb)}
     <h3 style="margin-top:16px">🩸 Blood Group of Issued Units</h3>
-    <div data-xabo>${dsAboTiles(aboC,true)}</div>
+    <div data-xabo="issued">${dsAboTiles(aboC,true)}</div>
     <h3 style="margin-top:16px">🩸 Product × Blood Group</h3>
     ${mx(prods,(r,p)=>r.p===p,[...DS_ABO,...(aboC['?']?['?']:[])],(r,g)=>r.abo===g,g=>g==='?'?'Unknown':g)}
     <details class="ds-det"><summary>🏥 Hospitals (${hl.length})</summary><div style="overflow:auto;max-height:460px"><table class="rk"><thead><tr><th>#</th><th>Hospital</th><th>Code</th><th>Sector</th><th>Units</th><th></th><th>Share</th></tr></thead><tbody>
@@ -4700,17 +4701,18 @@ function dsExportModel(){
       dt:(k.querySelector('.dt')?.innerHTML||'')+(k.dataset.m!=null?`<br>Male ${fmtNum(+k.dataset.m)} · Female ${fmtNum(+k.dataset.f)}`:''),
       ic:k.dataset.m!=null?DS_ICO.donors:(k.querySelector('.kic svg')?.outerHTML||''), rtl:getComputedStyle(k).direction==='rtl'}));
     const sec={title,icon,cards,draws:/^Draws/.test(title),rtl:getComputedStyle(c).direction==='rtl'};
-    // (2026-10-19، طلب حسن) فصائل الوحدات المصروفة: بطاقة لكل فصيلة + المجموع، كقسم فرعي بعد Issuing Units
-    const abo=[...c.querySelectorAll('[data-xabo] .ds-abo .t')].map(t=>({g:t.querySelector('.g').textContent.trim(),n:+t.querySelector('.n').textContent.replace(/[^\d]/g,''),p:t.querySelector('.p').textContent.trim(),neg:t.classList.contains('neg')}));
+    // (2026-10-19، طلب حسن) فصائل المتبرعين والوحدات المصروفة: بطاقة لكل فصيلة (السالبة مميّزة) + المجموع، كقسم فرعي بعد قسمها
+    const x=c.querySelector('[data-xabo]'); if(!x) return sec;
+    const of=x.dataset.xabo, abo=[...x.querySelectorAll('.ds-abo .t')].map(t=>({g:t.querySelector('.g').textContent.trim(),n:+t.querySelector('.n').textContent.replace(/[^\d]/g,''),p:t.querySelector('.p').textContent.trim(),neg:t.classList.contains('neg')}));
     if(!abo.length) return sec;
-    const tot=abo.reduce((t,x)=>t+x.n,0), unk=c.querySelector('[data-xabo] .hint')?.textContent.replace(/[^\d]/g,'');
-    return [sec,{title:'Issuing Units · Blood Group',icon:'🩸',rtl:false,draws:false,cards:[
-      ...abo.map(x=>({cls:x.neg?'g':'',lb:`Blood Group ${x.g}`,vl:fmtNum(x.n),dt:`${x.p} of issued`,ic:'',rtl:false})),
+    const tot=abo.reduce((t,x)=>t+x.n,0), unk=x.querySelector('.hint')?.textContent.replace(/[^\d]/g,'');
+    return [sec,{title:`${title} · Blood Group`,icon:'🩸',rtl:false,draws:false,cards:[
+      ...abo.map(x=>({cls:x.neg?'neg':'',lb:`Blood Group ${x.g}`,vl:fmtNum(x.n),dt:`${x.p} of ${of}`,ic:'',rtl:false})),
       {cls:'',lb:'Total',vl:fmtNum(tot),dt:'All blood groups'+(unk?` · ${fmtNum(+unk)} unknown`:''),ic:'',rtl:false}]}];
   }).flat().filter(s=>s&&(s.cards.length||(s.draws&&DS_DRAWS?.length)));
   return {R,secs,site:allSites?'All sites':[...dsSites].map(x=>DS_SITES[x]).join(' + ')};
 }
-const dsTone=cls=>/ds-bad/.test(cls)?'bad':/\ba\b/.test(cls)?'a':/\bg\b/.test(cls)?'g':/\bn\b/.test(cls)?'n':'t';
+const dsTone=cls=>/ds-bad/.test(cls)?'bad':/\bneg\b/.test(cls)?'neg':/\ba\b/.test(cls)?'a':/\bg\b/.test(cls)?'g':/\bn\b/.test(cls)?'n':'t';
 function dsPrintHead(M){
   const lg=(dsLogos.moh?MOH_LOGO_SVG:'')+(dsLogos.iqt?`<img src="${IQT_LOGO_PNG}" alt="اقتداء وعطاء">`:'');
   return `<div class="dsp-head" dir="ltr">${lg?`<div class="dsp-logo">${lg}</div>`:''}
@@ -4818,7 +4820,7 @@ async function dsExportPptx(saved){
   M.secs=M.secs.map(dsPrintEn);
   toast('⏳ جاري تجهيز PowerPoint…');
   // نفس هوية الـ PDF المطبوع: خلفية وردية هادئة، حبر بنفسجي داكن، ولون واحد لكل قسم (طلب حسن 2026-10-12)
-  const ACC='8E2A43',INK='2B2231',MUT='6B5A63',LINE='E6D4DA',BG='F2E6E9',BAD='B3261E',THEAD='4A2A3C';
+  const ACC='8E2A43',INK='2B2231',MUT='6B5A63',LINE='E6D4DA',BG='F2E6E9',BAD='B3261E',THEAD='4A2A3C',NEG='9A6714';
   const SECC=t=>/^Received/.test(t)?'6B4A7E':/^Platelets/.test(t)?'B07A24':/^Issuing/.test(t)?'2F6672':ACC;
   const strip=h=>h.replace(/<br\s*\/?>/gi,'\n').replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/[ \t]+/g,' ').trim();
   const logo=dsLogos.moh?await dsSvgPng(MOH_LOGO_SVG,600):null, icons={};
@@ -4859,15 +4861,15 @@ async function dsExportPptx(saved){
   const GAP=0.08, TOP=1.24, BOT=PH-0.52;
   const dims=cols=>({cols,CW:(PW-2*MX-(cols-1)*GAP)/cols});
   const card=(sl,c,x,y,D)=>{
-    const {CW,CH}=D, k=Math.min(1,CH), bad=dsTone(c.cls)==='bad', col=bad?BAD:D.acc, ic=icons[c.ic], IS=Math.min(1.1,CH*0.72,CW*0.3);
-    sl.addShape(P.ShapeType.roundRect,{x,y,w:CW,h:CH,rectRadius:0.07,fill:{color:'FFFFFF',transparency:50},line:{color:'FFFFFF',width:0.75,transparency:30}});
+    const {CW,CH}=D, k=Math.min(1,CH), bad=dsTone(c.cls)==='bad', neg=dsTone(c.cls)==='neg', col=bad?BAD:neg?NEG:D.acc, ic=icons[c.ic], IS=Math.min(1.1,CH*0.72,CW*0.3);
+    sl.addShape(P.ShapeType.roundRect,{x,y,w:CW,h:CH,rectRadius:0.07,fill:{color:neg?'FFF6E2':'FFFFFF',transparency:neg?20:50},line:{color:neg?'EBD3A3':'FFFFFF',width:0.75,transparency:neg?0:30}});
     sl.addShape(P.ShapeType.rect,{x:x+0.07,y,w:CW-0.14,h:0.025,fill:{color:col},line:{color:col}});
     const pad=0.1, tw=CW-2*pad-(ic?IS+0.08:0), tx=c.rtl?x+CW-pad-tw:x+pad, al=c.rtl?'right':'left';
     if(ic){ const iw=ic.ar>=1?IS:IS*ic.ar, ih=ic.ar>=1?IS/ic.ar:IS; sl.addImage({data:ic.data,x:(c.rtl?x+pad:x+CW-pad-IS)+(IS-iw)/2,y:y+(CH-ih)/2+0.02,w:iw,h:ih}); }
     const o={fontFace:'Arial',align:al,lang:c.rtl?'ar-SA':'en-US',rtlMode:c.rtl,margin:0};
     const cl=v=>Math.min(v[2],Math.max(v[0],v[1])), lf=cl([6,CH*(c.lb.length>22?12:14),12]), vf=cl([12,CH*28,30]), df=cl([6,CH*13,12]);
-    sl.addText(c.lb,{...o,x:tx,y:y+0.05,w:tw,h:CH*0.3,fontSize:lf,bold:true,color:MUT,valign:'bottom',fit:'shrink'});
-    sl.addText(c.vl,{...o,x:tx,y:y+0.05+CH*0.3,w:tw,h:CH*0.36,fontSize:vf,bold:true,color:bad?BAD:INK,valign:'middle'});
+    sl.addText(c.lb,{...o,x:tx,y:y+0.05,w:tw,h:CH*0.3,fontSize:lf,bold:true,color:neg?NEG:MUT,valign:'bottom',fit:'shrink'});
+    sl.addText(c.vl,{...o,x:tx,y:y+0.05+CH*0.3,w:tw,h:CH*0.36,fontSize:vf,bold:true,color:bad?BAD:neg?NEG:INK,valign:'middle'});
     let dt=strip(c.dt); if(CH<0.7) dt=dt.replace(/\n+/g,' · ');
     if(dt) sl.addText(dt,{...o,x:tx,y:y+0.05+CH*0.66,w:tw,h:CH*0.32,fontSize:df,color:MUT,valign:'top'});
   };
