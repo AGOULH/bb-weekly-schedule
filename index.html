@@ -4707,7 +4707,7 @@ function dsExportModel(){
     if(!abo.length) return sec;
     const tot=abo.reduce((t,x)=>t+x.n,0), unk=x.querySelector('.hint')?.textContent.replace(/[^\d]/g,'');
     return [sec,{title:`${title} · Blood Group`,icon:'🩸',rtl:false,draws:false,cards:[
-      ...abo.map(x=>({cls:x.neg?'neg':'',lb:x.neg?'Rh Negative':'Rh Positive',vl:fmtNum(x.n),dt:`${x.p} of ${of}`,ic:dsAboBadge(x.g,x.neg?DS_NEG_C:of==='issued'?'#2F6672':'#8E2A43'),rtl:false})),
+      ...abo.map(x=>({cls:x.neg?'neg':'',lb:x.neg?'Rh Negative':'Rh Positive',vl:fmtNum(x.n),dt:`${x.p} of ${of}`,ic:dsAboBadge(x.g,x.neg?DS_NEG_C:'#8E2A43'),rtl:false})),
       {cls:'',lb:'Total',vl:fmtNum(tot),dt:'All blood groups'+(unk?` · ${fmtNum(+unk)} unknown`:''),ic:of==='issued'?DS_ICO.issue:DS_ICO.donors,rtl:false}]}];
   }).flat().filter(s=>s&&(s.cards.length||(s.draws&&DS_DRAWS?.length)));
   return {R,secs,site:allSites?'All sites':[...dsSites].map(x=>DS_SITES[x]).join(' + ')};
@@ -4727,7 +4727,7 @@ function dsPrintHead(M){
     <div class="dsp-per"><div class="lb">Period · <span style="letter-spacing:0">الفترة</span></div><div class="v">${dsPer(M.R)}</div><div class="s">Collection sites: ${M.site}</div></div></div>`;
 }
 function dsPrintSec(s){
-  const k=/^Donors/.test(s.title)?'don':/^Draws/.test(s.title)?'drw':/^Received/.test(s.title)?'rec':/^Platelets/.test(s.title)?'plt':/^Issuing/.test(s.title)?'iss':'';
+  const k=/^Donors|Blood Group$/.test(s.title)?'don':/^Draws/.test(s.title)?'drw':/^Received/.test(s.title)?'rec':/^Platelets/.test(s.title)?'plt':/^Issuing/.test(s.title)?'iss':'';
   return `<div class="dsp-sec s-${k}" dir="${s.rtl?'rtl':'ltr'}"><div class="dsp-st"><span class="si">${s.icon}</span>${dsEsc(s.title)}</div>
     <div class="dsp-grid">${s.cards.map(c=>`<div class="dsp-card t-${dsTone(c.cls)}" dir="${c.rtl?'rtl':'ltr'}">${c.ic?`<div class="ic">${c.ic}</div>`:''}<div class="lb">${dsEsc(c.lb)}</div><div class="vl">${dsEsc(c.vl)}</div><div class="dt">${c.dt}</div></div>`).join('')}</div></div>`;
 }
@@ -4828,7 +4828,7 @@ async function dsExportPptx(saved){
   toast('⏳ جاري تجهيز PowerPoint…');
   // نفس هوية الـ PDF المطبوع: خلفية وردية هادئة، حبر بنفسجي داكن، ولون واحد لكل قسم (طلب حسن 2026-10-12)
   const ACC='8E2A43',INK='2B2231',MUT='6B5A63',LINE='E6D4DA',BG='F2E6E9',BAD='B3261E',THEAD='4A2A3C',NEG='9A6714';
-  const SECC=t=>/^Received/.test(t)?'6B4A7E':/^Platelets/.test(t)?'B07A24':/^Issuing/.test(t)?'2F6672':ACC;
+  const SECC=t=>/Blood Group$/.test(t)?ACC:/^Received/.test(t)?'6B4A7E':/^Platelets/.test(t)?'B07A24':/^Issuing/.test(t)?'2F6672':ACC;
   const strip=h=>h.replace(/<br\s*\/?>/gi,'\n').replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/[ \t]+/g,' ').trim();
   const logo=dsLogos.moh?await dsSvgPng(MOH_LOGO_SVG,600):null, icons={};
   for(const s of M.secs) for(const c of s.cards) if(c.ic&&!icons[c.ic]) icons[c.ic]=await dsSvgPng(c.ic,256).catch(()=>null);
