@@ -863,6 +863,9 @@ table.rk.iss-mx td.nm{text-align:left}table.rk.iss-mx td.tot,table.rk.iss-mx tr.
       <div class="field"><label>نقطة السحب (اختر واحدة أو أكثر)</label>
         <div class="cmp-chips ds-chips" id="dsSiteChips" style="margin:0"><button class="cmp-chip on" data-s="F" aria-pressed="true">CENTER</button><button class="cmp-chip on" data-s="D" aria-pressed="true">DAMY</button><button class="cmp-chip on" data-s="C" aria-pressed="true">MOBILE</button><button class="btn ghost sm" data-s="all">الكل</button></div>
       </div>
+      <div class="field"><label title="بلا اختيار = كل الموظفين (الوضع الحالي)">موظفو السحب (اختياري)</label>
+        <div class="cmp-chips ds-chips" id="dsWhoChips" style="margin:0"><button class="cmp-chip" data-w="tech" title="الفنيون في قائمة موظفي الجدول الأسبوعي (مطابقة الرقم الوظيفي)">Schedule staff</button><button class="cmp-chip" data-w="other">Other staff</button></div>
+      </div>
     </div>
   </div>
   <div id="dashOut"></div>
@@ -4285,8 +4288,16 @@ $('#dashOut').addEventListener('click',e=>{ const b=e.target.closest('.ds-items 
   else dsHidden.has(i)?dsHidden.delete(i):dsHidden.add(i);
   LS.set('bb_ds_items',[...dsHidden]); dsRender(); });
 // (2026-10-26، طلب حسن) فلتر الموظفين في Draws and Discarded Bags: الكل / الفنيون في الجدول الأسبوعي (مطابقة staffId) / بقية الأسماء
-let dsWho=LS.get('bb_ds_who','all');
-$('#dashOut').addEventListener('click',e=>{ const b=e.target.closest('#dsWhoChips button'); if(!b) return; dsWho=b.dataset.w; LS.set('bb_ds_who',dsWho); dsRender(); });
+// (2026-10-26) نُقل لشريط الفلاتر العام: يحصر المتبرعين والوحدات المستلمة والمحضّرة وDraws بمن سحبها (رقم الكيس ← STAFFID من List of donations)؛ بلا اختيار = الكل
+let dsWho=LS.get('bb_ds_who','all'), dsU2S=null, dsU2Sof=null;
+$('#dsWhoChips').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; dsWho=dsWho===b.dataset.w?'all':b.dataset.w; LS.set('bb_ds_who',dsWho); dsRender(); };
+const dsTechSids=()=>new Set(Object.values(STAFF).filter(s=>s.role==='technical'&&s.staffId).map(s=>normSid(s.staffId)));
+const dsWhoLbl=()=>dsWho==='tech'?'Schedule staff':dsWho==='other'?'Other staff':'';
+function dsUnitStaff(){ // رقم الكيس ← رقم الموظف الساحب، من ملف List of donations المحمّل في الجلسة
+  if(!REP_RAW) return null;
+  if(dsU2Sof!==REP_RAW){ dsU2S={}; REP_RAW.don.forEach(r=>{ if(r.unit) dsU2S[r.unit]=r.staffId; }); dsU2Sof=REP_RAW; }
+  return dsU2S;
+}
 let DS_DRAWS=null; // قائمة السحب لكل موظف في الفترة — لصفحة Draws في التقرير المُصدَّر
 let DS=null, dsMode='all', dsSites=new Set(['F','D','C']), dsCharts={}; // نقاط السحب المختارة (متعددة مثل مقارنة الأقسام)
 async function dsLoad(){
@@ -4471,10 +4482,15 @@ function dsRender(){
   const R=dsRange(), inR=d=>d>=R.from&&d<=R.to, allSites=dsSites.size===3, siteOk=s=>dsSites.has(s);
   const siteLbl=allSites?'كل النقاط':[...dsSites].map(x=>DS_SITES[x]).join(' + '), siteLblEn=allSites?'All sites':[...dsSites].map(x=>DS_SITES[x]).join(' + '), pct=(n,t)=>t?(n/t*100).toFixed(1)+'%':'—';
   const kpi=(cls,lb,vl,dt,ic)=>`<div class="kpi ${cls}">${dsIc(ic)}<div class="lb">${lb}</div><div class="vl">${vl}</div><div class="dt flat">${dt}</div></div>`;
-  const W=DS.w.filter(r=>inR(r.d)), Ws=W.filter(r=>siteOk(r.s)), don=Ws.filter(r=>r.t!=='SO'&&r.t!=='OT');
+  const techSids=dsTechSids(), u2s=dsWho!=='all'?dsUnitStaff():null, byWho=dsWho!=='all';
+  const whoOk=u=>{ if(!u2s) return true; const sid=u2s[u]; return sid!=null&&techSids.has(sid)===(dsWho==='tech'); }; // كيس بلا سحب مطابق يُستبعد مع الفلتر
+  $$('#dsWhoChips .cmp-chip').forEach(b=>{ const on=dsWho===b.dataset.w; b.classList.toggle('on',on); b.setAttribute('aria-pressed',on); });
+  const W=DS.w.filter(r=>inR(r.d)&&whoOk(r.u)), Ws=W.filter(r=>siteOk(r.s)), don=Ws.filter(r=>r.t!=='SO'&&r.t!=='OT');
   const cnt=(a,fn)=>a.reduce((n,r)=>n+(fn(r)?1:0),0);
   const days=new Set(don.map(r=>r.d)).size;
-  let h=`<div class="alert info">الفترة: <b class="bidi-ltr">${fmtLbl(R.from,R.to)}</b> — نقطة السحب: <b>${siteLbl}</b></div>`;
+  let h=`<div class="alert info">الفترة: <b class="bidi-ltr">${fmtLbl(R.from,R.to)}</b> — نقطة السحب: <b>${siteLbl}</b>${byWho?` — موظفو السحب: <b dir="ltr">${dsWhoLbl()}</b>`:''}</div>`
+    +(byWho&&!u2s?`<div class="alert warn">⚠️ فلتر موظفي السحب يحتاج ملف <b>List of donations</b> من «📥 رفع الملفات» — Donors والوحدات المستلمة والمحضّرة تُعرض الآن لكل الموظفين؛ Draws فقط مفلتر.</div>`:'')
+    +(byWho?`<div class="hint">فلتر موظفي السحب يطبّق على Donors وDraws and Discarded Bags والوحدات المستلمة والمحضّرة (عبر رقم الكيس)؛ Platelets وIssuing Units لا تتأثر.</div>`:'');
   // ===== 1) المتبرعون =====
   if(DS.w.length){
     const nWB=cnt(don,r=>r.t==='WB'), nPLT=cnt(don,r=>r.t==='PLT'), nPLS=cnt(don,r=>r.t==='PLS'), nSO=cnt(Ws,r=>r.t==='SO');
@@ -4512,7 +4528,6 @@ function dsRender(){
   const rep=dsReportFor(R.from,R.to);
   if(rep){
     const d=reportDerive(rep.agg), codes=[...dsSites].map(x=>DS_SITE_CP[x]), bySite=!allSites;
-    const techSids=new Set(Object.values(STAFF).filter(s=>s.role==='technical'&&s.staffId).map(s=>normSid(s.staffId))), byWho=dsWho!=='all';
     const tracked=p=>TRACKED_DISCARD_CODES.reduce((t,c)=>t+(p.byReason[c]||0),0), sum=o=>codes.reduce((t,c)=>t+(o?.[c]||0),0);
     const list=d.staffList.map(p=>{ const col=bySite?sum(p.bySite):p.collected, dis=bySite?sum(p.drawBySite):tracked(p);
       const fd=p.femDrawBySite?(bySite?sum(p.femDrawBySite):Object.values(p.femDrawBySite).reduce((a,b)=>a+b,0)):null; // (2026-10-16) Female / Male لكل موظف
@@ -4529,7 +4544,6 @@ function dsRender(){
     const tb=(rows,cols)=>`<table class="rk"><thead><tr><th>#</th><th>Staff</th>${cols.map(c=>`<th>${c[0]}</th>`).join('')}</tr></thead><tbody>${rows.length?rows.map((p,i)=>`<tr><td>${i<3?['🥇','🥈','🥉'][i]:i+1}</td><td class="nm">${dsEsc(p.name)}</td>${cols.map(c=>`<td>${c[1](p)}</td>`).join('')}</tr>`).join(''):'<tr><td colspan="9" class="empty">No data</td></tr>'}</tbody></table>`;
     h+=`<div class="card ds-ltr" dir="ltr"><h3 class="ds-sec"><span class="si">🏅</span>Draws and Discarded Bags</h3>
       <div class="hint" style="margin:-6px 0 10px">Source: ${rep.src} <b>${rep.agg.label}</b>${rep.exact?'':' — ⚠️ Covers only part of the selected period; for a full match, upload the latest List of donations and Discarded products files on the 📥 upload page'}${bySite?` — Site: ${siteLblEn}`:''}. Discarded bags = the six collection-related discard reasons (${TRACKED_DISCARD_CODES.join(', ')}), attributed to the staff member who drew the bag.${byWho?` — Staff: <b>${dsWho==='tech'?'Technical team (weekly schedule)':'Other staff'}</b>.`:''}${rep.agg.female?' Female discarded bags are counted on their own and are also part of the total (Female + Male = total) — they stay on the collector\'s account.':' (Female split unavailable: the saved report predates it — re-upload List of donations.)'}</div>
-      <div class="noprint" style="margin:-2px 0 8px"><div class="hint" style="margin:0">Staff:</div><div class="cmp-chips" id="dsWhoChips" style="margin:5px 0 4px">${[['all','All staff'],['tech','Technical team (weekly schedule)'],['other','Other staff']].map(([w,lb])=>`<button class="cmp-chip${dsWho===w?' on':''}" data-w="${w}" aria-pressed="${dsWho===w}">${lb}</button>`).join('')}</div></div>
       ${(()=>{
         const cards=[{id:'drUnits',lb:'Units Drawn',h:kpi('','Units Drawn',fmtNum(totCol),`${list.filter(p=>p.col>0).length} staff`)},
           {id:'drDisc',lb:'Discarded Bags',h:kpi('a','Discarded Bags (Collection Reasons)',fmtNum(totDis),pct(totDis,totCol)+' of drawn')}];
@@ -4553,7 +4567,7 @@ function dsRender(){
   } else h+=`<div class="card ds-ltr" dir="ltr"><h3 class="ds-sec"><span class="si">🏅</span>Draws and Discarded Bags</h3><div class="empty">No saved donation report within this period — upload List of donations and Discarded products on the 📥 upload page (they are filtered here automatically for any week or period during the session).</div></div>`;
   // ===== 2) الوحدات المستلمة والمحضّرة — بطاقات بنمط صفحة الإحصائيات (القيمة + مقارنة بالفترة السابقة المماثلة) =====
   if(DS.rec.length||DS.prep.length){
-    const SC=['F','D','C','U'], rec=DS.rec.filter(r=>inR(r.dd)), prep=DS.prep.filter(r=>inR(r.dd));
+    const SC=['F','D','C','U'], rec=DS.rec.filter(r=>inR(r.dd)&&whoOk(r.u)), prep=DS.prep.filter(r=>inR(r.dd)&&whoOk(r.u));
     const by=(a,k)=>{ const o={F:0,D:0,C:0,U:0}; a.forEach(r=>{ if(!k||r.k===k||(Array.isArray(k)&&k.includes(r.k))) o[r.s]++; }); return o; };
     const wbSt=(a,st,f)=>by(a.filter(r=>r.k==='WB'&&r.st===st&&(f==null||r.f===f))); // f: جنس المتبرع من Wateen (2026-10-15)
     const donOf=a=>{ const o={F:0,D:0,C:0,U:0}; a.forEach(r=>{ if(r.t!=='SO'&&r.t!=='OT') o[r.s]++; }); return o; };
@@ -4722,7 +4736,7 @@ function dsExportModel(){
       ...abo.map(x=>({cls:x.neg?'neg':'',lb:x.neg?'Rh Negative':'Rh Positive',vl:fmtNum(x.n),dt:`${x.p} of ${of}`,ic:dsAboBadge(x.g,x.neg?DS_NEG_C:'#8E2A43'),rtl:false})),
       {cls:'',lb:'Total',vl:fmtNum(tot),dt:'All blood groups'+(unk?` · ${fmtNum(+unk)} unknown`:''),ic:of==='issued'?DS_ICO.issue:DS_ICO.donors,rtl:false}]}];
   }).flat().filter(s=>s&&(s.cards.length||(s.draws&&DS_DRAWS?.length)));
-  return {R,secs,site:allSites?'All sites':[...dsSites].map(x=>DS_SITES[x]).join(' + ')};
+  return {R,secs,site:(allSites?'All sites':[...dsSites].map(x=>DS_SITES[x]).join(' + '))+(dsWho!=='all'?` · ${dsWhoLbl()}`:'')};
 }
 // شارة الفصيلة في التقرير المُصدَّر: قطرة دم بلون القسم (السالبة ذهبية) والفصيلة بالأبيض — بنفس مقاس أيقونات البطاقات (تُحوَّل PNG في PPTX)
 const DS_NEG_C='#B07A24';
