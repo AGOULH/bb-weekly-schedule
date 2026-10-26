@@ -4284,6 +4284,9 @@ $('#dashOut').addEventListener('click',e=>{ const b=e.target.closest('.ds-items 
   else if(i==='none') grp.forEach(x=>{ if(!['all','none'].includes(x.dataset.i)) dsHidden.add(x.dataset.i); });
   else dsHidden.has(i)?dsHidden.delete(i):dsHidden.add(i);
   LS.set('bb_ds_items',[...dsHidden]); dsRender(); });
+// (2026-10-26، طلب حسن) فلتر الموظفين في Draws and Discarded Bags: الكل / الفنيون في الجدول الأسبوعي (مطابقة staffId) / بقية الأسماء
+let dsWho=LS.get('bb_ds_who','all');
+$('#dashOut').addEventListener('click',e=>{ const b=e.target.closest('#dsWhoChips button'); if(!b) return; dsWho=b.dataset.w; LS.set('bb_ds_who',dsWho); dsRender(); });
 let DS_DRAWS=null; // قائمة السحب لكل موظف في الفترة — لصفحة Draws في التقرير المُصدَّر
 let DS=null, dsMode='all', dsSites=new Set(['F','D','C']), dsCharts={}; // نقاط السحب المختارة (متعددة مثل مقارنة الأقسام)
 async function dsLoad(){
@@ -4509,11 +4512,13 @@ function dsRender(){
   const rep=dsReportFor(R.from,R.to);
   if(rep){
     const d=reportDerive(rep.agg), codes=[...dsSites].map(x=>DS_SITE_CP[x]), bySite=!allSites;
+    const techSids=new Set(Object.values(STAFF).filter(s=>s.role==='technical'&&s.staffId).map(s=>normSid(s.staffId))), byWho=dsWho!=='all';
     const tracked=p=>TRACKED_DISCARD_CODES.reduce((t,c)=>t+(p.byReason[c]||0),0), sum=o=>codes.reduce((t,c)=>t+(o?.[c]||0),0);
     const list=d.staffList.map(p=>{ const col=bySite?sum(p.bySite):p.collected, dis=bySite?sum(p.drawBySite):tracked(p);
       const fd=p.femDrawBySite?(bySite?sum(p.femDrawBySite):Object.values(p.femDrawBySite).reduce((a,b)=>a+b,0)):null; // (2026-10-16) Female / Male لكل موظف
       const fc=p.femBySite?(bySite?sum(p.femBySite):p.fc):null; // (2026-10-16) سحب النساء / الرجال
-      return {name:p.name,col,dis,fd,md:fd==null?null:dis-fd,fc,mc:fc==null?null:col-fc,rate:col?dis/col*100:0}; }).filter(p=>p.col>0||p.dis>0);
+      return {name:p.name,tech:techSids.has(normSid(p.id)),col,dis,fd,md:fd==null?null:dis-fd,fc,mc:fc==null?null:col-fc,rate:col?dis/col*100:0}; })
+      .filter(p=>(p.col>0||p.dis>0)&&(dsWho==='all'||p.tech===(dsWho==='tech')));
     // كل الموظفين الذين سحبوا (طلب حسن 2026-10-11) — لا أعلى ١٠ فقط
     const all=[...list].sort((a,b)=>b.col-a.col||a.name.localeCompare(b.name)); const allDis=list.filter(p=>p.dis>0).sort((a,b)=>b.dis-a.dis||b.rate-a.rate);
     // (2026-10-16، طلب حسن) اختيار العناصر الظاهرة في Draws and Discarded Bags مثل قسم Received (نفس dsHidden، معرّفات dr*)
@@ -4523,14 +4528,16 @@ function dsRender(){
     const totCol=list.reduce((t,p)=>t+p.col,0), totDis=list.reduce((t,p)=>t+p.dis,0), mx=all[0]?.col||1;
     const tb=(rows,cols)=>`<table class="rk"><thead><tr><th>#</th><th>Staff</th>${cols.map(c=>`<th>${c[0]}</th>`).join('')}</tr></thead><tbody>${rows.length?rows.map((p,i)=>`<tr><td>${i<3?['🥇','🥈','🥉'][i]:i+1}</td><td class="nm">${dsEsc(p.name)}</td>${cols.map(c=>`<td>${c[1](p)}</td>`).join('')}</tr>`).join(''):'<tr><td colspan="9" class="empty">No data</td></tr>'}</tbody></table>`;
     h+=`<div class="card ds-ltr" dir="ltr"><h3 class="ds-sec"><span class="si">🏅</span>Draws and Discarded Bags</h3>
-      <div class="hint" style="margin:-6px 0 10px">Source: ${rep.src} <b>${rep.agg.label}</b>${rep.exact?'':' — ⚠️ Covers only part of the selected period; for a full match, upload the latest List of donations and Discarded products files on the 📥 upload page'}${bySite?` — Site: ${siteLblEn}`:''}. Discarded bags = the six collection-related discard reasons (${TRACKED_DISCARD_CODES.join(', ')}), attributed to the staff member who drew the bag.${rep.agg.female?' Female discarded bags are counted on their own and are also part of the total (Female + Male = total) — they stay on the collector\'s account.':' (Female split unavailable: the saved report predates it — re-upload List of donations.)'}</div>
+      <div class="hint" style="margin:-6px 0 10px">Source: ${rep.src} <b>${rep.agg.label}</b>${rep.exact?'':' — ⚠️ Covers only part of the selected period; for a full match, upload the latest List of donations and Discarded products files on the 📥 upload page'}${bySite?` — Site: ${siteLblEn}`:''}. Discarded bags = the six collection-related discard reasons (${TRACKED_DISCARD_CODES.join(', ')}), attributed to the staff member who drew the bag.${byWho?` — Staff: <b>${dsWho==='tech'?'Technical team (weekly schedule)':'Other staff'}</b>.`:''}${rep.agg.female?' Female discarded bags are counted on their own and are also part of the total (Female + Male = total) — they stay on the collector\'s account.':' (Female split unavailable: the saved report predates it — re-upload List of donations.)'}</div>
+      <div class="noprint" style="margin:-2px 0 8px"><div class="hint" style="margin:0">Staff:</div><div class="cmp-chips" id="dsWhoChips" style="margin:5px 0 4px">${[['all','All staff'],['tech','Technical team (weekly schedule)'],['other','Other staff']].map(([w,lb])=>`<button class="cmp-chip${dsWho===w?' on':''}" data-w="${w}" aria-pressed="${dsWho===w}">${lb}</button>`).join('')}</div></div>
       ${(()=>{
         const cards=[{id:'drUnits',lb:'Units Drawn',h:kpi('','Units Drawn',fmtNum(totCol),`${list.filter(p=>p.col>0).length} staff`)},
           {id:'drDisc',lb:'Discarded Bags',h:kpi('a','Discarded Bags (Collection Reasons)',fmtNum(totDis),pct(totDis,totCol)+' of drawn')}];
-        if(!bySite) cards.push({id:'drAll',lb:'Total Discarded',h:kpi('n','Total Discarded (All Reasons)',fmtNum(rep.agg.totalDiscarded),'All red cell products')});
+        if(!bySite&&!byWho) cards.push({id:'drAll',lb:'Total Discarded',h:kpi('n','Total Discarded (All Reasons)',fmtNum(rep.agg.totalDiscarded),'All red cell products')});
         // (2026-10-15، طلب حسن) المتلف للمتبرعات يُحسب لوحده ويبقى ضمن الإجمالي وعلى حساب الساحب — Female + Male = العام
         const G=rep.agg.female, M=rep.agg.male;
-        if(G){ const gc=g=>sum(g.bySite), gd=g=>sum(g.drawBySite), fC=gc(G), fD=gd(G), mC=gc(M||{}), mD=gd(M||{}), all=fD+mD;
+        if(G){ const gc=g=>sum(g.bySite), gd=g=>sum(g.drawBySite), ls=k=>list.reduce((t,p)=>t+(p[k]||0),0); // مع فلتر الموظفين: مجموع أعمدة الجنس للقائمة المفلترة
+          const fC=byWho?ls('fc'):gc(G), fD=byWho?ls('fd'):gd(G), mC=byWho?ls('mc'):gc(M||{}), mD=byWho?ls('md'):gd(M||{}), all=fD+mD;
           cards.push({id:'drFDrawn',lb:'Female Drawn',h:kpi('a','Female Drawn',fmtNum(fC),pct(fC,fC+mC)+' of drawn','female')},
             {id:'drFDisc',lb:'Female Discarded',h:kpi('a ds-bad','Female Discarded Bags',fmtNum(fD),`${pct(fD,fC)} of female drawn<br>${pct(fD,all)} of discarded`,'female')},
             {id:'drMDisc',lb:'Male Discarded',h:kpi('n','Male Discarded Bags',fmtNum(mD),`${pct(mD,mC)} of male drawn<br>${pct(mD,all)} of discarded`,'male')}); }
