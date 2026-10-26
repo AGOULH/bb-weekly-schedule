@@ -842,7 +842,7 @@ table.rk.iss-mx td.nm{text-align:left}table.rk.iss-mx td.tot,table.rk.iss-mx tr.
 <section class="page" id="pg-dash">
   <div class="pghead noprint">
     <div><h2 tabindex="-1">Donors and Blood Components</h2><p>من Wateen report وList of Operations وDelivered to outside: لوحة المتبرعين (CENTER/DAMY/MOBILE)، الوحدات المحضّرة، الصفائح (Pooling/Treatment)، والوحدات المصروفة (Issuing Units)</p></div>
-    <div class="row"><button class="btn ghost sm" id="dsPdfBtn" title="البطاقات الظاهرة فقط + صفحة مستقلة لـ Draws and Discarded Bags">🖨️ تصدير PDF</button><button class="btn ghost sm" id="dsPdfPlainBtn" title="نفس التقرير بخلفية بيضاء للطباعة الورقية (توفير الحبر)">🖨️ نسخة ورقية</button><button class="btn ghost sm" id="dsPptBtn" title="البطاقات الظاهرة فقط + صفحة مستقلة لـ Draws and Discarded Bags">📊 PowerPoint</button><label class="hint" style="display:flex;gap:5px;align-items:center;cursor:pointer" title="إظهار شعار وزارة الصحة في رأس PDF/PowerPoint"><input type="checkbox" id="dsLgMoh"> شعار وزارة الصحة</label><label class="hint" style="display:flex;gap:5px;align-items:center;cursor:pointer" title="إظهار شعار «اقتداء وعطاء» في رأس PDF/PowerPoint"><input type="checkbox" id="dsLgIqt"> شعار اقتداء وعطاء</label><button class="btn sm" id="dsSaveBtn" title="يحفظ التقرير بالفترة والفلاتر الحالية لتصديره لاحقاً PDF/PowerPoint دون رفع الملفات">💾 حفظ التقرير</button></div>
+    <div class="row"><button class="btn ghost sm" id="dsPdfBtn" title="البطاقات الظاهرة فقط + صفحة مستقلة لـ Draws and Discarded Bags">🖨️ تصدير PDF</button><button class="btn ghost sm" id="dsPdfPlainBtn" title="نفس التقرير بخلفية بيضاء للطباعة الورقية (توفير الحبر)">🖨️ نسخة ورقية</button><button class="btn ghost sm" id="dsPptBtn" title="البطاقات الظاهرة فقط + صفحة مستقلة لـ Draws and Discarded Bags">📊 PowerPoint</button><label class="hint" style="display:flex;gap:5px;align-items:center;cursor:pointer" title="إظهار شعار وزارة الصحة في رأس PDF/PowerPoint"><input type="checkbox" id="dsLgMoh"> شعار وزارة الصحة</label><label class="hint" style="display:flex;gap:5px;align-items:center;cursor:pointer" title="إظهار شعار «اقتداء وعطاء» في رأس PDF/PowerPoint"><input type="checkbox" id="dsLgIqt"> شعار اقتداء وعطاء</label><span class="hint" id="dsXSecs" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap" title="الأقسام التي تدخل PDF/PowerPoint (والتقارير المحفوظة عند تصديرها)">أقسام التقرير:</span><button class="btn sm" id="dsSaveBtn" title="يحفظ التقرير بالفترة والفلاتر الحالية لتصديره لاحقاً PDF/PowerPoint دون رفع الملفات">💾 حفظ التقرير</button></div>
   </div>
   <div class="card noprint">
     <h3>📥 الملفات</h3>
@@ -4696,6 +4696,11 @@ const IQT_LOGO_PNG='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAq8AAANiCAYAAA
 const IQT_AR=687/866;
 // إظهار/إخفاء الشعارين في رأس التقرير المُصدَّر (PDF/PPTX، والمحفوظ أيضاً) — لكل متصفح
 let dsLogos={moh:true,iqt:true,...LS.get('bb_ds_logos',{})};
+// (2026-10-26، طلب حسن) اختيار الأقسام التي تُطبع/تُصدَّر — مثلاً Donors وDraws فقط؛ فصائل القسم تتبع قسمها
+const DS_XSECS=[['don','Donors'],['drw','Draws and Discarded Bags'],['rec','Received and Prepared Units'],['plt','Platelets'],['iss','Issuing Units']];
+let dsXOff=new Set(LS.get('bb_ds_xsecs',[]));
+const dsSecKey=t=>/^Donors/.test(t)?'don':/^Draws/.test(t)?'drw':/^Received/.test(t)?'rec':/^Platelets/.test(t)?'plt':/^Issuing/.test(t)?'iss':'';
+const dsXPick=secs=>secs.filter(s=>!dsXOff.has(dsSecKey(s.title)));
 const dsPer=R=>`${fmtDMY(R.from)} → ${fmtDMY(R.to)}`;
 const dsFileName=R=>`Donors_Blood_Components_${fmtDMY(R.from).replace(/\//g,'-')}_To_${fmtDMY(R.to).replace(/\//g,'-')}`;
 function dsExportModel(){
@@ -4757,7 +4762,7 @@ function dsPrintEn(sec){
 }
 async function dsExportPdf(plain,saved){
   if(!saved&&!DS){ toast('ارفع الملفات أولاً'); return; }
-  const M=saved?saved.M:dsExportModel(), DRW=saved?saved.draws:(DS_DRAWS||[]), main=M.secs.filter(s=>!s.draws).map(dsPrintEn), dr=M.secs.find(s=>s.draws);
+  const M0=saved?saved.M:dsExportModel(), M={...M0,secs:dsXPick(M0.secs)}, DRW=saved?saved.draws:(DS_DRAWS||[]), main=M.secs.filter(s=>!s.draws).map(dsPrintEn), dr=M.secs.find(s=>s.draws);
   if(!M.secs.length){ toast('لا توجد بطاقات للتصدير'); return; }
   // كل جزء ورقة مستقلة: المحتوى (.dsp-body) ثم سطر DONE BY مثبّت أسفل الورقة مع رقم الصفحة وتاريخ الطباعة
   // (2026-10-13، طلب حسن) ثلاث صفحات: Donors + Received، ثم Platelets + Issuing، ثم Draws
@@ -4830,7 +4835,7 @@ async function dsSvgPng(svg,hPx){
 }
 async function dsExportPptx(saved){
   if(!saved&&!DS){ toast('ارفع الملفات أولاً'); return; }
-  const M=saved?{...saved.M}:dsExportModel(), DRW=saved?saved.draws:(DS_DRAWS||[]); if(!M.secs.length){ toast('لا توجد بطاقات للتصدير'); return; }
+  const M=saved?{...saved.M}:dsExportModel(), DRW=saved?saved.draws:(DS_DRAWS||[]); M.secs=dsXPick(M.secs); if(!M.secs.length){ toast('لا توجد بطاقات للتصدير'); return; }
   M.secs=M.secs.map(dsPrintEn);
   toast('⏳ جاري تجهيز PowerPoint…');
   // نفس هوية الـ PDF المطبوع: خلفية وردية هادئة، حبر بنفسجي داكن، ولون واحد لكل قسم (طلب حسن 2026-10-12)
@@ -4965,6 +4970,8 @@ $('#dsSaveBtn').onclick=async()=>{
 };
 [['#dsLgMoh','moh'],['#dsLgIqt','iqt']].forEach(([id,k])=>{ const c=$(id); c.checked=dsLogos[k];
   c.onchange=()=>{ dsLogos[k]=c.checked; LS.set('bb_ds_logos',dsLogos); }; });
+$('#dsXSecs').insertAdjacentHTML('beforeend',DS_XSECS.map(([k,lb])=>`<label style="display:flex;gap:4px;align-items:center;cursor:pointer"><input type="checkbox" data-xs="${k}"${dsXOff.has(k)?'':' checked'}> <span dir="ltr">${lb}</span></label>`).join(''));
+$$('#dsXSecs input').forEach(c=>c.onchange=()=>{ c.checked?dsXOff.delete(c.dataset.xs):dsXOff.add(c.dataset.xs); LS.set('bb_ds_xsecs',[...dsXOff]); });
 $('#dsPdfBtn').onclick=()=>dsExportPdf(false);
 $('#dsPdfPlainBtn').onclick=()=>dsExportPdf(true);
 $('#dsPptBtn').onclick=()=>dsExportPptx().catch(e=>{ console.error(e); toast('تعذّر تصدير PowerPoint: '+e.message); });
