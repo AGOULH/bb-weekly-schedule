@@ -864,7 +864,7 @@ table.rk.iss-mx td.nm{text-align:left}table.rk.iss-mx td.tot,table.rk.iss-mx tr.
         <div class="cmp-chips ds-chips" id="dsSiteChips" style="margin:0"><button class="cmp-chip on" data-s="F" aria-pressed="true">CENTER</button><button class="cmp-chip on" data-s="D" aria-pressed="true">DAMY</button><button class="cmp-chip on" data-s="C" aria-pressed="true">MOBILE</button><button class="btn ghost sm" data-s="all">الكل</button></div>
       </div>
       <div class="field"><label title="بلا اختيار = كل الموظفين (الوضع الحالي)">موظفو السحب (اختياري)</label>
-        <div class="cmp-chips ds-chips" id="dsWhoChips" style="margin:0"><button class="cmp-chip" data-w="tech" title="الفنيون في قائمة موظفي الجدول الأسبوعي (مطابقة الرقم الوظيفي)">Schedule staff</button><button class="cmp-chip" data-w="other">Other staff</button></div>
+        <div class="cmp-chips ds-chips" id="dsWhoChips" style="margin:0"><button class="cmp-chip" data-w="tech" title="الفنيون في قائمة موظفي الجدول الأسبوعي (مطابقة الرقم الوظيفي)">Schedule staff</button><button class="cmp-chip" data-w="other">Other staff</button><button class="btn ghost sm" data-w="all" title="كل الموظفين (إلغاء الفلتر)">الكل</button></div>
       </div>
     </div>
   </div>
@@ -4290,7 +4290,7 @@ $('#dashOut').addEventListener('click',e=>{ const b=e.target.closest('.ds-items 
 // (2026-10-26، طلب حسن) فلتر الموظفين في Draws and Discarded Bags: الكل / الفنيون في الجدول الأسبوعي (مطابقة staffId) / بقية الأسماء
 // (2026-10-26) نُقل لشريط الفلاتر العام: يحصر المتبرعين والوحدات المستلمة والمحضّرة وDraws بمن سحبها (رقم الكيس ← STAFFID من List of donations)؛ بلا اختيار = الكل
 let dsWho=LS.get('bb_ds_who','all'), dsU2S=null, dsU2Sof=null;
-$('#dsWhoChips').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; dsWho=dsWho===b.dataset.w?'all':b.dataset.w; LS.set('bb_ds_who',dsWho); dsRender(); };
+$('#dsWhoChips').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; dsWho=b.dataset.w==='all'||dsWho===b.dataset.w?'all':b.dataset.w; LS.set('bb_ds_who',dsWho); dsRender(); };
 const dsTechSids=()=>new Set(Object.values(STAFF).filter(s=>s.role==='technical'&&s.staffId).map(s=>normSid(s.staffId)));
 const dsWhoLbl=()=>dsWho==='tech'?'Schedule staff':dsWho==='other'?'Other staff':'';
 function dsUnitStaff(){ // رقم الكيس ← رقم الموظف الساحب، من ملف List of donations المحمّل في الجلسة
