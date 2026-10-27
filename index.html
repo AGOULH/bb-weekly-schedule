@@ -829,6 +829,9 @@ table.rk.iss-mx td.nm{text-align:left}table.rk.iss-mx td.tot,table.rk.iss-mx tr.
         <div class="field"><label for="repTo">إلى</label><input type="date" class="inp" id="repTo"></div>
       </div>
       <div class="field" id="repYearCtl" style="display:none"><label for="repYear">السنة</label><select class="inp" id="repYear" style="min-width:110px"></select></div>
+      <div class="field"><label title="بلا اختيار = كل الموظفين">موظفو السحب (اختياري)</label>
+        <div class="cmp-chips ds-chips" id="repWhoChips" style="margin:0"><button class="cmp-chip" data-w="tech" title="الفنيون في قائمة موظفي الجدول الأسبوعي (مطابقة الرقم الوظيفي)">Schedule staff</button><button class="cmp-chip" data-w="other">Other staff</button><button class="btn ghost sm" data-w="all" title="كل الموظفين (إلغاء الفلتر)">الكل</button></div>
+      </div>
     </div>
   </div>
   <div id="reportOut"></div>
@@ -2649,6 +2652,7 @@ async function repAnalyze(quiet){
   const agg=aggregateReport(donRows,disRows);
   if(!agg){ toast('لا توجد سجلات صالحة في الملفات المرفوعة'); return; }
   REP_RAW={don:donRows,dis:disRows,from:agg.dateFrom,to:agg.dateTo}; repMode='all'; repFillFilter();
+  if(repWho!=='all'){ repApplyFilter(); if(!quiet) toast('تم التحليل ✓'); return; } // فلتر موظفي السحب مفعّل
   curReportAgg=agg; renderReportPage(agg);
   $('#repLog').innerHTML=(errs.length?errs.join('<br>')+'<br>':'')+`تم تحليل ${agg.totalCollected} تبرع و${agg.totalDiscarded} وحدة مستبعدة${dupRemoved?` (حُذف ${dupRemoved} سطراً مكرراً لنفس رقم الوحدة)`:''}${otherRemoved?` (استُبعد ${otherRemoved} سطر بلازما/صفائح/منتجات أخرى)`:''} — الفترة <span class="bidi-ltr">${agg.label}</span>`;
   if(!quiet) toast('تم التحليل ✓');
@@ -2777,7 +2781,7 @@ function renderReportPage(agg){
   const unmatchedNote=agg.unmatchedDiscard?` · ${fmtNum(agg.unmatchedDiscard)} units could not be matched to a draw`:'';
 
   let html=`
-  <div class="rpt-actions noprint"><div>📊 التقرير المعروض الآن — <b class="bidi-ltr">${agg.label}</b></div>
+  <div class="rpt-actions noprint"><div>📊 التقرير المعروض الآن — <b class="bidi-ltr">${agg.label}</b>${agg.who?` — موظفو السحب: <b dir="ltr">${repWhoLbl(agg.who)}</b>`:''}</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" id="repSaveBtn">💾 حفظ التقرير</button><button class="btn amber sm" id="repPdfBtn">🖨️ PDF</button><button class="btn teal sm" id="repPptxBtn">📊 PowerPoint</button></div>
   </div>
   <div class="rpt" id="reportSheet">
@@ -2791,6 +2795,7 @@ function renderReportPage(agg){
         <div class="rpt-cover-meta">
           <div><span class="rpt-meta-label">Period</span><span class="rpt-meta-val">${fmtDMY(agg.dateFrom)} – ${fmtDMY(agg.dateTo)}</span></div>
           <div><span class="rpt-meta-label">Source</span><span class="rpt-meta-val">List of donations · Discarded products</span></div>
+          ${agg.who?`<div><span class="rpt-meta-label">Staff</span><span class="rpt-meta-val">${repWhoLbl(agg.who)}</span></div>`:''}
         </div>
       </div>
       <div class="rpt-cover-right">
@@ -2886,11 +2891,11 @@ function renderReportPage(agg){
   });
   $('#repSaveBtn').onclick=async()=>{
     if(!agg.totalCollected){ toast('⚠️ لا يُحفظ تقرير بلا تبرعات — ارفع List of donations أولاً من «📥 رفع الملفات»'); return; }
-    const id=`${agg.dateFrom}_${agg.dateTo}`; REPORTS[id]=agg; await cloudSet('reports',id,agg);
+    const id=`${agg.dateFrom}_${agg.dateTo}${agg.who?'_'+agg.who:''}`; REPORTS[id]=agg; await cloudSet('reports',id,agg);
     toast('تم حفظ التقرير ✓'); renderReportArchive();
   };
   $('#repPdfBtn').onclick=()=>{
-    const old=document.title; document.title=`Donations_Analysis_${agg.label.replace(/ /g,'_')}`;
+    const old=document.title; document.title=`Donations_Analysis_${agg.label.replace(/ /g,'_')}${agg.who?'_'+repWhoLbl(agg.who).replace(/ /g,'_'):''}`;
     window.print(); setTimeout(()=>document.title=old,700);
   };
   $('#repPptxBtn').onclick=()=>exportReportPptx(agg,d);
@@ -2904,7 +2909,7 @@ async function exportReportPptx(agg,d){
   let s=P.addSlide(); s.background={color:DARK};
   s.addText('SITE 2001 · BLOOD BANK',{x:0.6,y:0.5,fontSize:11,color:'9FB0C4',charSpacing:2});
   s.addText('Donation & Discard\nStatistics',{x:0.6,y:1.0,w:6.5,fontSize:34,bold:true,color:'FFFFFF',fontFace:'Arial Black'});
-  s.addText(`Period: ${fmtDMY(agg.dateFrom)} – ${fmtDMY(agg.dateTo)}`,{x:0.6,y:6.9,fontSize:11,color:'FFFFFF'});
+  s.addText(`Period: ${fmtDMY(agg.dateFrom)} – ${fmtDMY(agg.dateTo)}${agg.who?` · Staff: ${repWhoLbl(agg.who)}`:''}`,{x:0.6,y:6.9,fontSize:11,color:'FFFFFF'});
   s.addText('Source: List of donations · Discarded products',{x:0.6,y:7.2,fontSize:11,color:'9FB0C4'});
   const coverStats=[['Donations',fmtNum(agg.totalCollected)],['Staff IDs',String(byCollected.length)],['Discarded units',`${fmtNum(trackedDiscarded)} · ${topReasons.length} codes`]];
   coverStats.forEach((k,i)=>{
@@ -3001,7 +3006,7 @@ async function exportReportPptx(agg,d){
     s.addText(f.h,{x,y:2.05,w:3.6,fontSize:15,bold:true,color:'FFFFFF'});
     s.addText(f.body,{x,y:2.7,w:3.6,h:3.2,fontSize:10.5,color:'C7D1DC',valign:'top'});
   });
-  await P.writeFile({fileName:`Donations_Analysis_${agg.label.replace(/ /g,'_')}.pptx`});
+  await P.writeFile({fileName:`Donations_Analysis_${agg.label.replace(/ /g,'_')}${agg.who?'_'+repWhoLbl(agg.who).replace(/ /g,'_'):''}.pptx`});
 }
 // ===== فلتر زمني للتقرير (2026-10-10، طلب حسن): كامل الملف / أسبوعي (أحد–سبت) / فترة محددة / سنوي =====
 // يعمل على سجلات الملفات المرفوعة في هذه الجلسة (التقارير المحفوظة ملخّص رقمي بلا سجلات خام)
@@ -3027,11 +3032,22 @@ function repApplyFilter(render=true){
   else if(repMode==='period'){ let f=$('#repFrom').value, t=$('#repTo').value; if(!f||!t) return; if(f>t) [f,t]=[t,f]; range={from:f,to:t}; }
   else if(repMode==='year'){ const y=$('#repYear').value; range={from:`${y}-01-01`,to:`${y}-12-31`}; }
   if(range){ if(range.from<R.from) range.from=R.from; if(range.to>R.to) range.to=R.to; } // عنوان الفترة = ما يغطيه الملف فعلاً
-  const agg=aggregateReport(R.don,R.dis,range&&range.from<=range.to?range:{from:'9',to:'0'});
+  // (2026-10-27، طلب حسن) فلتر موظفي السحب كصفحة Donors: التبرعات بـ STAFFID، والمستبعد برقم الوحدة ← ساحبها (غير المطابَق يُستبعد)
+  let don=R.don, dis=R.dis;
+  if(repWho!=='all'){ const tech=dsTechSids(), ok=sid=>sid!=null&&sid!==''&&tech.has(sid)===(repWho==='tech'), u2s={};
+    R.don.forEach(r=>{ if(r.unit) u2s[r.unit]=r.staffId; });
+    don=R.don.filter(r=>ok(r.staffId)); dis=R.dis.filter(r=>ok(u2s[r.unit])); }
+  const agg=aggregateReport(don,dis,range&&range.from<=range.to?range:{from:'9',to:'0'});
+  if(agg&&repWho!=='all') agg.who=repWho;
   if(!agg){ $('#reportOut').innerHTML=''; curReportAgg=null; $('#repLog').innerHTML='لا توجد سجلات ضمن الفترة المختارة'; return; }
   curReportAgg=agg; renderReportPage(agg);
-  $('#repLog').innerHTML=`${agg.totalCollected} تبرع و${agg.totalDiscarded} وحدة مستبعدة — الفترة <span class="bidi-ltr">${agg.label}</span>`;
+  $('#repLog').innerHTML=`${agg.totalCollected} تبرع و${agg.totalDiscarded} وحدة مستبعدة — الفترة <span class="bidi-ltr">${agg.label}</span>${agg.who?` — موظفو السحب: <b dir="ltr">${repWhoLbl(agg.who)}</b>`:''}`;
 }
+let repWho=LS.get('bb_rep_who','all');
+const repWhoLbl=w=>w==='tech'?'Schedule staff':w==='other'?'Other staff':'';
+const repWhoChips=()=>$$('#repWhoChips .cmp-chip').forEach(b=>{ const on=repWho===b.dataset.w; b.classList.toggle('on',on); b.setAttribute('aria-pressed',on); });
+$('#repWhoChips').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; repWho=b.dataset.w==='all'||repWho===b.dataset.w?'all':b.dataset.w; LS.set('bb_rep_who',repWho); repWhoChips(); repApplyFilter(); };
+repWhoChips();
 $('#repModeSeg').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; repMode=b.dataset.m; repApplyFilter(); };
 ['#repWeek','#repFrom','#repTo','#repYear'].forEach(x=>$(x).onchange=()=>repApplyFilter());
 function renderReportArchive(){
@@ -3040,7 +3056,7 @@ function renderReportArchive(){
     const pct=n=>r.totalCollected?(n/r.totalCollected*100).toFixed(1)+'%':'—';
     // معدّل أسباب السحب = نفس أساس "معدّل الاستبعاد" داخل التقرير (TRACKED_DISCARD_CODES فقط)؛ الإجمالية = كل الأسباب
     const tracked=TRACKED_DISCARD_CODES.reduce((t,c)=>t+(r.discardReasons?.[c]?.count||0),0);
-    return `<tr><td class="nm">${r.label}</td><td>${r.totalCollected}</td><td>${r.totalDiscarded}</td><td><b>${pct(tracked)}</b></td><td>${pct(r.totalDiscarded)}</td>
+    return `<tr><td class="nm">${r.label}${r.who?` <small dir="ltr">· ${repWhoLbl(r.who)}</small>`:''}</td><td>${r.totalCollected}</td><td>${r.totalDiscarded}</td><td><b>${pct(tracked)}</b></td><td>${pct(r.totalDiscarded)}</td>
     <td>${(r.generatedAt||'').slice(0,10)}</td><td><button class="btn sm ghost" data-openrep="${k}">فتح</button> <button class="btn danger sm" data-delrep="${k}">🗑️ حذف</button></td></tr>`;
   }).join(''):'<tr><td colspan="7" style="padding:18px;color:var(--faint)">لا توجد تقارير محفوظة بعد</td></tr>';
   $$('[data-openrep]').forEach(b=>b.onclick=()=>{
@@ -4361,7 +4377,7 @@ function dsReportFor(f,t){
     if(a&&a.totalCollected>0) return {agg:a,src:'Donation report files uploaded in this session',exact:r.from===f&&r.to===t};
   }
   const span=r=>new Date(r.dateTo)-new Date(r.dateFrom);
-  const best=Object.values(REPORTS).filter(r=>r.dateFrom>=f&&r.dateTo<=t&&r.totalCollected>0).sort((a,b)=>span(b)-span(a))[0];
+  const best=Object.values(REPORTS).filter(r=>r.dateFrom>=f&&r.dateTo<=t&&r.totalCollected>0&&!r.who).sort((a,b)=>span(b)-span(a))[0];
   return best?{agg:best,src:'Saved report',exact:best.dateFrom===f&&best.dateTo===t}:null;
 }
 // (2026-10-11، طلب حسن) مؤشرات بصرية بدل الرسوم البيانية: شريط توزيع النقاط، بطاقات الفصائل، شريط نسبة
