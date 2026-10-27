@@ -276,8 +276,10 @@ table.rpt-rate .rratebar{display:inline-block;height:6px;background:var(--rblue2
 @media print{
   .rpt{box-shadow:none;border-radius:0}
   .rpt-page{page-break-after:always;padding:14mm 16mm}
-  .rpt-page:last-child{page-break-after:auto}
+  .rpt-page:last-child,.rpt-page.rp-last{page-break-after:auto}
+  .rpt-page.rp-off{display:none}
 }
+@media screen{.rpt-page.rp-off{opacity:.35}}
 
 /* ===== Leaves (إدارة الإجازات) — صفحة مدمجة، تعيد استخدام متغيرات الهوية الأساسية أعلاه ===== */
 :root{
@@ -2783,9 +2785,12 @@ function renderReportPage(agg){
   let html=`
   <div class="rpt-actions noprint"><div>📊 التقرير المعروض الآن — <b class="bidi-ltr">${agg.label}</b>${agg.who?` — موظفو السحب: <b dir="ltr">${repWhoLbl(agg.who)}</b>`:''}</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" id="repSaveBtn">💾 حفظ التقرير</button><button class="btn amber sm" id="repPdfBtn">🖨️ PDF</button><button class="btn teal sm" id="repPptxBtn">📊 PowerPoint</button></div>
+    <div class="hint" id="repPgPick" style="flex-basis:100%;display:flex;gap:10px;align-items:center;flex-wrap:wrap" title="الصفحات التي تدخل PDF/PowerPoint — المستبعدة تظهر باهتة هنا">صفحات الطباعة:
+      ${REP_PAGES.map(([k,lb])=>`<label style="display:flex;gap:4px;align-items:center;cursor:pointer"><input type="checkbox" data-rp="${k}"${repPgOff.has(k)?'':' checked'}> <span dir="ltr">${lb}</span></label>`).join('')}
+      <button class="btn ghost sm" data-rpall="1">الكل</button></div>
   </div>
   <div class="rpt" id="reportSheet">
-    <section class="rpt-page rpt-cover">
+    <section class="rpt-page rpt-cover" data-rp="cover">
       <div class="rpt-cover-left">
         <div><div class="rpt-eyebrow"><span class="rpt-rule"></span>SITE 2001 · BLOOD BANK</div>
           <h1 class="rpt-title">Donation &amp; Discard<br>Statistics</h1>
@@ -2805,7 +2810,7 @@ function renderReportPage(agg){
       </div>
     </section>
 
-    <section class="rpt-page">
+    <section class="rpt-page" data-rp="ov">
       <div class="rpt-eyebrow"><span class="rpt-rule"></span>01 —— OVERVIEW</div>
       <div class="rpt-headrow"><h2 class="rpt-h2">Where the blood is drawn</h2><p class="rpt-ar-h">توزيع التبرعات على نقاط السحب ونسبة الاستبعاد العامة</p></div>
       <div class="rpt-kpirow">
@@ -2821,21 +2826,21 @@ function renderReportPage(agg){
       <p class="rpt-foot">Other = every collection point outside 2001F / 2001D, combined — mobile and campaign drives. باقي المواقع مجمّعة تحت Other.</p>
     </section>
 
-    <section class="rpt-page">
+    <section class="rpt-page" data-rp="drw">
       <div class="rpt-eyebrow"><span class="rpt-rule"></span>02 —— DRAWS PER STAFF</div>
       <div class="rpt-headrow"><h2 class="rpt-h2">Units drawn per collector</h2><p class="rpt-ar-h">عدد الوحدات المسحوبة لكل موظف، موزّعة على 2001F و2001D وباقي المواقع</p></div>
       <div class="rpt-twocol">${staffColHtml(colA)}${staffColHtml(colB)}</div>
       <p class="rpt-foot-row"><span>${staffCount} staff IDs · ${fmtNum(agg.totalCollected)} donations · sorted by total drawn</span>${byCollected[0]?`<span>Top draw: ${byCollected[0].name} — ${fmtNum(byCollected[0].collected)} units</span>`:''}</p>
     </section>
 
-    ${topReasons.length?`<section class="rpt-page">
+    ${topReasons.length?`<section class="rpt-page" data-rp="rsn">
       <div class="rpt-eyebrow"><span class="rpt-rule"></span>03 —— DISCARD REASONS</div>
       <div class="rpt-headrow"><h2 class="rpt-h2">${topReasons.length===1?'The':topReasons.length} tracked discard reason${topReasons.length===1?'':'s'}</h2><p class="rpt-ar-h">أسباب الاستبعاد الستة المطلوبة — ${fmtNum(trackedDiscarded)} وحدة من أصل ${fmtNum(agg.totalDiscarded)} وحدة مستبعدة</p></div>
       <div class="rpt-reasonlist">${reasonRowsHtml}</div>
       ${calloutHtml}
     </section>`:''}
 
-    ${sex?`<section class="rpt-page">
+    ${sex?`<section class="rpt-page" data-rp="fem">
       <div class="rpt-eyebrow"><span class="rpt-rule"></span>03·F —— FEMALE DONORS</div>
       <div class="rpt-headrow"><h2 class="rpt-h2">Female discards, counted on their own</h2><p class="rpt-ar-h">الوحدات المتلفة للمتبرعات تُحسب لوحدها ثم تُضاف للعام — وتبقى على حساب الموظف الذي سحبها</p></div>
       <div class="rpt-kpirow">
@@ -2852,7 +2857,7 @@ function renderReportPage(agg){
       <p class="rpt-foot-row"><span>Female + Male${sex.U.disc?' + Unmatched':''} = Total · Discarded = the six draw-related causes · gender from the GENDER column of List of donations, linked to each discarded bag by its unit number</span><span>${sex.U.disc?`Unmatched = discarded bags with no donation record in the uploaded file (gender unknown)`:''}</span></p>
     </section>`:''}
 
-    <section class="rpt-page">
+    <section class="rpt-page" data-rp="rate">
       <div class="rpt-eyebrow"><span class="rpt-rule"></span>04 —— RATE BY STAFF</div>
       <div class="rpt-headrow"><h2 class="rpt-h2">Discards per collector</h2><p class="rpt-ar-h">ربط كل وحدة مستبعدة بالموظف الذي سحبها — مرتّبة بنسبة الاستبعاد</p></div>
       ${rateTableHtml}
@@ -2860,14 +2865,14 @@ function renderReportPage(agg){
       <p class="rpt-foot-row"><span>Ranked: staff with ${RATE_TABLE_MIN_DRAWN}+ draws.${omitted.length?` ${omitted.length} staff below ${RATE_TABLE_MIN_DRAWN} draws listed underneath, unranked (${fmtNum(omitted.reduce((s,p)=>s+p.collected,0))} draws, ${fmtNum(omitted.reduce((s,p)=>s+discardInTop(p),0))} discards combined).`:''} Discarded = the six draw-related causes only.</span><span>Baseline rate ${overallRate.toFixed(2)}%${unmatchedNote}</span></p>
     </section>
 
-    ${byDiscarded.length?`<section class="rpt-page">
+    ${byDiscarded.length?`<section class="rpt-page" data-rp="site">
       <div class="rpt-eyebrow"><span class="rpt-rule"></span>05 —— DISCARDS BY SITE</div>
       <div class="rpt-headrow"><h2 class="rpt-h2">Where discards happened</h2><p class="rpt-ar-h">توزيع الأكياس المستبعدة لكل موظف حسب نقطة السحب الأصلية للوحدة</p></div>
       <div class="rpt-twocol">${discardSiteColHtml(colA2)}${discardSiteColHtml(colB2)}</div>
       <p class="rpt-foot-row"><span>${byDiscarded.length} staff (all collectors, including zero) · ${fmtNum(byDiscarded.reduce((t,p)=>t+p.siteTotal,0))} units · ${d.siteAll?'all discard causes (saved before 10 Oct — re-upload the files for the six draw causes only)':'six draw-related causes only ('+TRACKED_DISCARD_CODES.join(', ')+')'}</span><span>نقطة السحب هنا هي نقطة سحب الوحدة نفسها (2001F/2001D/Other) وقت التبرع، وليست موقع تنفيذ الاستبعاد</span></p>
     </section>`:''}
 
-    <section class="rpt-page rpt-dark">
+    <section class="rpt-page rpt-dark" data-rp="fnd">
       <div class="rpt-eyebrow"><span class="rpt-rule"></span>06 —— FINDINGS</div>
       <div class="rpt-headrow" style="border-bottom-color:var(--rd-line)"><h2 class="rpt-h2">What the numbers ask for</h2><p class="rpt-ar-h">ثلاث نتائج قابلة للتنفيذ</p></div>
       <div class="rpt-findings">
@@ -2884,6 +2889,9 @@ function renderReportPage(agg){
   </div>` : ''}
   `;
   $('#reportOut').innerHTML=html;
+  repApplyPages();
+  $$('#repPgPick input').forEach(c=>c.onchange=()=>{ c.checked?repPgOff.delete(c.dataset.rp):repPgOff.add(c.dataset.rp); LS.set('bb_rep_pages',[...repPgOff]); repApplyPages(); });
+  $('#repPgPick [data-rpall]').onclick=()=>{ repPgOff.clear(); LS.set('bb_rep_pages',[]); $$('#repPgPick input').forEach(c=>c.checked=true); repApplyPages(); };
 
   $$('[data-namesave]').forEach(b=>b.onclick=async()=>{
     const id=b.dataset.namesave, n=$(`[data-nameid="${id}"]`).value.trim(); if(!n){toast('اكتب اسماً أولاً');return}
@@ -2895,18 +2903,30 @@ function renderReportPage(agg){
     toast('تم حفظ التقرير ✓'); renderReportArchive();
   };
   $('#repPdfBtn').onclick=()=>{
+    if(!$$('#reportSheet .rpt-page:not(.rp-off)').length){ toast('اختر صفحة واحدة على الأقل للطباعة'); return; }
     const old=document.title; document.title=`Donations_Analysis_${agg.label.replace(/ /g,'_')}${agg.who?'_'+repWhoLbl(agg.who).replace(/ /g,'_'):''}`;
     window.print(); setTimeout(()=>document.title=old,700);
   };
   $('#repPptxBtn').onclick=()=>exportReportPptx(agg,d);
 }
+// ===== اختيار صفحات التقرير للطباعة/PowerPoint (2026-10-27، طلب حسن) — المُلغى لكل متصفح في bb_rep_pages =====
+const REP_PAGES=[['cover','Cover'],['ov','Overview'],['drw','Draws per staff'],['rsn','Discard reasons'],['fem','Female donors'],['rate','Rate by staff'],['site','Discards by site'],['fnd','Findings']];
+let repPgOff=new Set(LS.get('bb_rep_pages',[]));
+function repApplyPages(){
+  const pgs=$$('#reportSheet .rpt-page'); pgs.forEach(p=>{ p.classList.toggle('rp-off',repPgOff.has(p.dataset.rp)); p.classList.remove('rp-last'); });
+  const on=pgs.filter(p=>!p.classList.contains('rp-off')); if(on.length) on[on.length-1].classList.add('rp-last');
+}
 async function exportReportPptx(agg,d){
+  if(REP_PAGES.every(([k])=>repPgOff.has(k))){ toast('اختر صفحة واحدة على الأقل للتصدير'); return; }
+  const on=k=>!repPgOff.has(k);
   d=d||reportDerive(agg);
   const {sex,hasFD,hasFC,byCollected,byDiscarded,topReasons,trackedDiscarded,overallRate,offsitePct,rateRows}=d;
   const DARK='122036',INK='15181C',MUT='6E7580',BLUE='48688F',LINE='DBD8D2';
   const P=new PptxGenJS(); P.defineLayout({name:'A4L',width:11.69,height:8.27}); P.layout='A4L';
 
-  let s=P.addSlide(); s.background={color:DARK};
+  let s;
+  if(on('cover')){
+  s=P.addSlide(); s.background={color:DARK};
   s.addText('SITE 2001 · BLOOD BANK',{x:0.6,y:0.5,fontSize:11,color:'9FB0C4',charSpacing:2});
   s.addText('Donation & Discard\nStatistics',{x:0.6,y:1.0,w:6.5,fontSize:34,bold:true,color:'FFFFFF',fontFace:'Arial Black'});
   s.addText(`Period: ${fmtDMY(agg.dateFrom)} – ${fmtDMY(agg.dateTo)}${agg.who?` · Staff: ${repWhoLbl(agg.who)}`:''}`,{x:0.6,y:6.9,fontSize:11,color:'FFFFFF'});
@@ -2916,7 +2936,9 @@ async function exportReportPptx(agg,d){
     s.addText(k[1],{x:7.6,y:0.9+i*2.2,w:3.4,fontSize:38,bold:true,color:'FFFFFF'});
     s.addText(k[0],{x:7.6,y:1.7+i*2.2,w:3.4,fontSize:11,color:'9FB0C4'});
   });
+  }
 
+  if(on('ov')){
   s=P.addSlide(); s.background={color:'F2F1EE'};
   s.addText('01 —— OVERVIEW',{x:0.5,y:0.35,fontSize:11,color:MUT,charSpacing:2});
   s.addText('Where the blood is drawn',{x:0.5,y:0.65,fontSize:26,bold:true,color:INK});
@@ -2936,8 +2958,9 @@ async function exportReportPptx(agg,d){
     s.addShape('rect',{x:2.0,y:y+0.05,w:Math.max(0.05,8.5*pct/100),h:0.32,fill:{color:r[0]==='Other'?'9CA1A6':BLUE},line:{type:'none'}});
     s.addText(`${fmtNum(r[1])}  ${pct.toFixed(1)}%`,{x:10.6,y,w:1.3,fontSize:12,bold:true,color:INK,align:'right'});
   });
+  }
 
-  if(byCollected.length){
+  if(on('drw')&&byCollected.length){
     s=P.addSlide(); s.background={color:'F2F1EE'};
     s.addText('02 —— DRAWS PER STAFF',{x:0.5,y:0.35,fontSize:11,color:MUT,charSpacing:2});
     s.addText('Units drawn per collector',{x:0.5,y:0.65,fontSize:24,bold:true,color:INK});
@@ -2947,7 +2970,7 @@ async function exportReportPptx(agg,d){
     top.forEach(p=>rows.push([p.name,fmtNum(p.collected),...(hasFC?(p.fc==null?['–','–']:[fmtNum(p.fc),fmtNum(p.collected-p.fc)]):[]),p.bySite['2001F']?fmtNum(p.bySite['2001F']):'–',p.bySite['2001D']?fmtNum(p.bySite['2001D']):'–',p.bySite.OTHER?fmtNum(p.bySite.OTHER):'–']));
     s.addTable(rows,{x:0.5,y:1.2,w:10.7,fontSize:10.5,border:{type:'solid',color:LINE,pt:0.5}});
   }
-  if(topReasons.length){
+  if(on('rsn')&&topReasons.length){
     s=P.addSlide(); s.background={color:'F2F1EE'};
     s.addText('03 —— DISCARD REASONS',{x:0.5,y:0.35,fontSize:11,color:MUT,charSpacing:2});
     s.addText('Tracked discard reasons',{x:0.5,y:0.65,fontSize:24,bold:true,color:INK});
@@ -2961,7 +2984,7 @@ async function exportReportPptx(agg,d){
       s.addText(`${fmtNum(r[1].count)}  ${pct.toFixed(1)}%`,{x:10.3,y,w:0.9,fontSize:11,bold:true,color:INK,align:'right'});
     });
   }
-  if(sex){
+  if(on('fem')&&sex){
     s=P.addSlide(); s.background={color:'F2F1EE'};
     s.addText('03·F —— FEMALE DONORS',{x:0.5,y:0.35,fontSize:11,color:MUT,charSpacing:2});
     s.addText('Female discards, counted on their own',{x:0.5,y:0.65,fontSize:24,bold:true,color:INK});
@@ -2978,7 +3001,7 @@ async function exportReportPptx(agg,d){
     s.addTable(rows,{x:0.5,y:3.2,w:10.7,fontSize:11,border:{type:'solid',color:LINE,pt:0.5}});
     s.addText(`Female + Male${sex.U.disc?' + Unmatched (no donation record)':''} = Total · six draw-related causes · female discards stay on the collector's account`,{x:0.5,y:7.4,w:10.7,fontSize:9,color:MUT});
   }
-  if(rateRows.length){
+  if(on('rate')&&rateRows.length){
     s=P.addSlide(); s.background={color:'F2F1EE'};
     s.addText('04 —— RATE BY STAFF',{x:0.5,y:0.35,fontSize:11,color:MUT,charSpacing:2});
     s.addText('Discards per collector',{x:0.5,y:0.65,fontSize:24,bold:true,color:INK});
@@ -2987,7 +3010,7 @@ async function exportReportPptx(agg,d){
     rateRows.slice(0,18).forEach(p=>rows.push([p.name,fmtNum(p.collected),...(hasFC?(p.fc==null?['–','–']:[fmtNum(p.fc),fmtNum(p.collected-p.fc)]):[]),fmtNum(p.disc),...(hasFD?(p.fd==null?['–','–']:[fmtNum(p.fd),fmtNum(p.disc-p.fd)]):[]),p.rate.toFixed(2)+'%']));
     s.addTable(rows,{x:0.5,y:1.2,w:10.7,fontSize:10.5,border:{type:'solid',color:LINE,pt:0.5}});
   }
-  if(byDiscarded.length){
+  if(on('site')&&byDiscarded.length){
     s=P.addSlide(); s.background={color:'F2F1EE'};
     s.addText('05 —— DISCARDS BY SITE',{x:0.5,y:0.35,fontSize:11,color:MUT,charSpacing:2});
     s.addText('Where discards happened',{x:0.5,y:0.65,fontSize:24,bold:true,color:INK});
@@ -2996,6 +3019,7 @@ async function exportReportPptx(agg,d){
     byDiscarded.slice(0,18).forEach(p=>rows.push([p.name,p.siteDisc['2001F']?fmtNum(p.siteDisc['2001F']):'–',p.siteDisc['2001D']?fmtNum(p.siteDisc['2001D']):'–',p.siteDisc.OTHER?fmtNum(p.siteDisc.OTHER):'–',fmtNum(p.siteTotal)]));
     s.addTable(rows,{x:0.5,y:1.2,w:10.7,fontSize:10.5,border:{type:'solid',color:LINE,pt:0.5}});
   }
+  if(on('fnd')){
   const findings=reportFindings(agg,d);
   s=P.addSlide(); s.background={color:DARK};
   s.addText('06 —— FINDINGS',{x:0.5,y:0.35,fontSize:11,color:'9FB0C4',charSpacing:2});
@@ -3006,6 +3030,7 @@ async function exportReportPptx(agg,d){
     s.addText(f.h,{x,y:2.05,w:3.6,fontSize:15,bold:true,color:'FFFFFF'});
     s.addText(f.body,{x,y:2.7,w:3.6,h:3.2,fontSize:10.5,color:'C7D1DC',valign:'top'});
   });
+  }
   await P.writeFile({fileName:`Donations_Analysis_${agg.label.replace(/ /g,'_')}${agg.who?'_'+repWhoLbl(agg.who).replace(/ /g,'_'):''}.pptx`});
 }
 // ===== فلتر زمني للتقرير (2026-10-10، طلب حسن): كامل الملف / أسبوعي (أحد–سبت) / فترة محددة / سنوي =====
