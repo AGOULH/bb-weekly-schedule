@@ -1059,6 +1059,9 @@ table.rk.iss-mx td.nm{text-align:left}table.rk.iss-mx td.tot,table.rk.iss-mx tr.
       <div class="field"><label>نقطة السحب</label>
         <div class="cmp-chips ds-chips" id="cpSiteChips" style="margin:0"><button class="cmp-chip on" data-s="F">CENTER</button><button class="cmp-chip on" data-s="D">DAMY</button><button class="cmp-chip on" data-s="C">MOBILE</button><button class="btn ghost sm" data-s="all">الكل</button></div>
       </div>
+      <div class="field"><label title="بلا اختيار = كل الموظفين">موظفو السحب (اختياري)</label>
+        <div class="cmp-chips ds-chips" id="cpWhoChips" style="margin:0"><button class="cmp-chip" data-w="tech" title="الفنيون في قائمة موظفي الجدول الأسبوعي (مطابقة الرقم الوظيفي)">Schedule staff</button><button class="cmp-chip" data-w="other">Other staff</button><button class="btn ghost sm" data-w="all" title="كل الموظفين (إلغاء الفلتر)">الكل</button></div>
+      </div>
       <div class="field"><label>الأقسام الظاهرة (والتي تدخل PDF / PowerPoint)</label>
         <div class="cmp-chips" id="cpSecChips" style="margin:0"></div>
       </div>
@@ -5579,7 +5582,7 @@ $('#upArcInput').onchange=e=>{ const fs=[...e.target.files]; e.target.value=''; 
 const CP_SECS=[['don','Donors','🩸'],['abo','Donors · Blood Group','🩸'],['drw','Draws and Discarded Bags','🏅'],['stf','Draws per Staff','👤'],
   ['rec','Received and Prepared Units','🧪'],['plt','Platelets','🟡'],['iss','Issuing Units','🚚'],['isabo','Issuing Units · Blood Group','🩸']];
 const CP_COL={don:'#8E2A43',abo:'#8E2A43',drw:'#8E2A43',stf:'#8E2A43',rec:'#6B4A7E',plt:'#B07A24',iss:'#2F6672',isabo:'#2F6672'};
-let cpMode=LS.get('bb_cp_mode','year'), cpSel=null, cpSites=new Set(['F','D','C']), cpOff=new Set(LS.get('bb_cp_off',[])), CP=null, cpTok=0;
+let cpWho=LS.get('bb_cp_who','all'), cpMode=LS.get('bb_cp_mode','year'), cpSel=null, cpSites=new Set(['F','D','C']), cpOff=new Set(LS.get('bb_cp_off',[])), CP=null, cpTok=0;
 const CP_PARSE={}; // key → {ver,data}: كل ملف يُقرأ مرة واحدة في الجلسة
 async function cpParsed(key){
   const v=UP[key]; if(!v?.file) return null; const ver=v.ver||v.added;
@@ -5662,8 +5665,11 @@ function cpFillSel(){
 }
 function cpInit(){
   $('#cpSecChips').innerHTML=CP_SECS.map(([k,lb])=>`<button class="cmp-chip${cpOff.has(k)?'':' on'}" data-k="${k}">${lb}</button>`).join('')+`<button class="btn ghost sm" data-k="all">All</button>`;
-  cpFillSel(); cpRun();
+  cpWhoChips(); cpFillSel(); cpRun();
 }
+// (2026-10-28، طلب حسن) موظفو السحب كصفحة Donors: Schedule staff / Other staff / بلا اختيار = الكل
+const cpWhoChips=()=>$$('#cpWhoChips .cmp-chip').forEach(b=>{ const on=cpWho===b.dataset.w; b.classList.toggle('on',on); b.setAttribute('aria-pressed',on); });
+$('#cpWhoChips').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; cpWho=b.dataset.w==='all'||cpWho===b.dataset.w?'all':b.dataset.w; LS.set('bb_cp_who',cpWho); cpWhoChips(); cpRun(); };
 $('#cpModeSeg').onclick=e=>{ const b=e.target.closest('button'); if(!b) return; cpMode=b.dataset.m; LS.set('bb_cp_mode',cpMode); cpFillSel(); cpRun(); };
 $('#cpSwap').onclick=()=>{ if(!cpSel) return; cpSel={A:cpSel.B,B:cpSel.A}; cpFillSel(); cpRun(); };
 $('#cpSame').onchange=()=>cpRun();
@@ -5679,8 +5685,13 @@ async function cpCompute(R){
   const Ys=cpYearsOf(R.from,R.to), Yn=[...Ys,Ys[Ys.length-1]+1], Yp=[Ys[0]-1,...Ys];
   const inR=d=>d>=R.from&&d<=R.to, all3=cpSites.size===3, sOk=s=>cpSites.has(s), cnt=(a,fn)=>a.reduce((n,r)=>n+(fn(r)?1:0),0);
   const S={}, row=(sec,g,id,lb,v,o={})=>(S[sec]=S[sec]||[]).push({id,lb,v,g,k:'n',...o});
+  // موظفو السحب: رقم الكيس ← STAFFID من List of donations؛ كيس بلا سحب مطابق يُستبعد مع الفلتر. بلا ملف تبرعات لا يُفلتر إلا Draws (تنبيه)
+  let u2s=null, okSid=()=>true;
+  if(cpWho!=='all'){ const tech=dsTechSids(); okSid=sid=>sid!=null&&sid!==''&&tech.has(sid)===(cpWho==='tech');
+    u2s={}; (await cpGet('donations',[...new Set([...Yp,...Yn])])).forEach(r=>{ if(r.unit) u2s[r.unit]=r.staffId; }); }
+  const noMap=!!u2s&&!Object.keys(u2s).length, whoOk=u=>!u2s||noMap||okSid(u2s[u]);
   // ===== Donors (Wateen) =====
-  const wAll=await cpGet('wateen',Yn), W=wAll.filter(r=>inR(r.d)), Ws=W.filter(r=>sOk(r.s)), don=Ws.filter(r=>r.t!=='SO'&&r.t!=='OT');
+  const wAll=await cpGet('wateen',Yn), W=wAll.filter(r=>inR(r.d)&&whoOk(r.u)), Ws=W.filter(r=>sOk(r.s)), don=Ws.filter(r=>r.t!=='SO'&&r.t!=='OT');
   if(W.length){
     const N=don.length, days=new Set(don.map(r=>r.d)).size, nNeg=cnt(don,r=>r.neg), nSa=cnt(don,r=>r.sa), nF=cnt(don,r=>r.f);
     row('don','Overview','tot','Total Donors',N,{h:1});
@@ -5707,7 +5718,9 @@ async function cpCompute(R){
   }
   // ===== Draws and Discarded Bags (List of donations + Discarded products، المتلف ← الساحب برقم الوحدة) =====
   let staff=null;
-  const dn=await cpGet('donations',Yp), di=await cpGet('discarded',Ys), agg=(dn.length||di.length)?aggregateReport(dn,di,R):null;
+  let dn=await cpGet('donations',Yp), di=await cpGet('discarded',Ys);
+  if(u2s){ dn=dn.filter(r=>okSid(r.staffId)); di=di.filter(r=>okSid(u2s[r.unit])); }
+  const agg=(dn.length||di.length)?aggregateReport(dn,di,R):null;
   if(agg&&agg.totalCollected>0){
     const d=reportDerive(agg), codes=[...cpSites].map(x=>DS_SITE_CP[x]), sum=o=>codes.reduce((t,c)=>t+(o?.[c]||0),0);
     const tracked=p=>TRACKED_DISCARD_CODES.reduce((t,c)=>t+(p.byReason[c]||0),0);
@@ -5733,7 +5746,7 @@ async function cpCompute(R){
   if(ops.rec.length||ops.prep.length){
     const um={}; wAll.forEach(r=>{ if(r.u) um[r.u]=r; });
     [...ops.rec,...ops.prep].forEach(r=>{ const x=um[r.u]; r.dd=x?x.d:r.d; r.s=x?x.s:'U'; r.f=x?x.f:null; });
-    const rec=ops.rec.filter(r=>inR(r.dd)), prep=ops.prep.filter(r=>inR(r.dd));
+    const rec=ops.rec.filter(r=>inR(r.dd)&&whoOk(r.u)), prep=ops.prep.filter(r=>inR(r.dd)&&whoOk(r.u));
     const sel=a=>cnt(a,r=>sOk(r.s)||(all3&&r.s==='U')), donN=cnt(W,r=>sOk(r.s)&&r.t!=='SO'&&r.t!=='OT');
     const wb=rec.filter(r=>r.k==='WB'), Rc=sel(rec), nWB=sel(wb), sep=sel(wb.filter(r=>r.st==='sep')), disc=sel(wb.filter(r=>r.st==='disc'));
     const P=k=>sel(k?prep.filter(r=>r.k===k):prep);
@@ -5780,7 +5793,7 @@ async function cpCompute(R){
     DS_ABO.forEach(g=>row('isabo','Blood Group','g'+g,g,ab[g]||0,{of:N,neg:g.endsWith('-')}));
   }
   if(staff) S.stf=[]; // قسم جدول الموظفين يُبنى من staff
-  return {S,staff,cov:Object.fromEntries(ARC_TYPES.map(t=>[t,cpCover(t,R)]))};
+  return {S,staff,noMap,cov:Object.fromEntries(ARC_TYPES.map(t=>[t,cpCover(t,R)]))};
 }
 // التغيّر: الفرق المطلق ونسبته؛ مؤشرات النسب (k:'p') بالنقاط المئوية pp
 function cpChg(a,b,r){
@@ -5806,7 +5819,7 @@ async function cpRun(){
   try{
     const a=await cpCompute(Rg.A); if(tok!==cpTok) return;
     const b=await cpCompute(Rg.B); if(tok!==cpTok) return;
-    CP={Rg,A:{...cpRangeOf(cpSel.A),...Rg.A,...a},B:{...cpRangeOf(cpSel.B),...Rg.B,...b},sites:cpSites.size===3?'All sites':[...cpSites].map(x=>DS_SITES[x]).join(' + ')};
+    CP={Rg,A:{...cpRangeOf(cpSel.A),...Rg.A,...a},B:{...cpRangeOf(cpSel.B),...Rg.B,...b},sites:(cpSites.size===3?'All sites':[...cpSites].map(x=>DS_SITES[x]).join(' + '))+(cpWho!=='all'?` · ${cpWho==='tech'?'Schedule staff':'Other staff'}`:'')};
     CP.A.lb=cpRangeOf(cpSel.A).lb; CP.B.lb=cpRangeOf(cpSel.B).lb;
     if(CP.A.lb===CP.B.lb){ CP.A.lb+=' (A)'; CP.B.lb+=' (B)'; }
     $('#cpLog').textContent=''; cpRender();
@@ -5864,6 +5877,7 @@ function cpRender(){
     c.part.forEach(x=>warn.push(`<b dir="ltr">${UP_TYPES[t].name}</b>: سنة ${x.y} متوفرة <span class="bidi-ltr">${fmtDMY(x.from)} → ${fmtDMY(x.to)}</span> فقط (الفترة ${s})`)); }));
   let h='';
   if(warn.length) h+=`<div class="alert warn">⚠️ بيانات ناقصة — الأرقام المتأثرة أقل من الحقيقة:<br>${warn.join('<br>')}<br>أضف الملفات الناقصة من «📥 رفع الملفات» ← «📦 الملفات السنوية الثابتة».</div>`;
+  if(A.noMap||B.noMap) h+=`<div class="alert warn">⚠️ فلتر موظفي السحب يحتاج <b dir="ltr">List of donations</b> لربط رقم الكيس بالساحب — لا ملف للفترة ${A.noMap&&B.noMap?'A و B':A.noMap?'A':'B'}، فطُبّق الفلتر على Draws فقط فيها.</div>`;
   if(!M.secs.length){ $('#cpOut').innerHTML=h+'<div class="card"><div class="empty">لا أقسام مختارة — اختر من «الأقسام الظاهرة».</div></div>'; return; }
   // ===== الخلاصة =====
   const all=M.secs.flatMap(s=>s.rows), T=cpTally(all), N=all.length||1, K=M.secs.filter(s=>s.rows.length).length;
