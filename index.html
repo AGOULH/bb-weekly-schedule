@@ -444,31 +444,133 @@ table.rpt-rate .rratebar{display:inline-block;height:6px;background:var(--rblue2
 .arc-yr h4{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:15px;color:var(--navy);margin-bottom:6px}
 .arc-yr .chips{display:flex;flex-wrap:wrap;gap:6px}
 .arc-yr .chip{font-size:11.5px;padding:4px 10px;border-radius:20px;background:#FBE9E7;color:#B3261E;font-weight:700}.arc-yr .chip.ok{background:#dff3e6;color:#15693f}.arc-yr .chip.warn{background:#FFF3D6;color:#8A5A00}.arc-yr .chip button{border:0;background:none;color:var(--muted);cursor:pointer;padding:0 0 0 4px;font-size:11px}
-/* ⚖️ مقارنة الفترات */
-.cp-pers{display:flex;gap:12px;align-items:stretch;flex-wrap:wrap}
-.cp-per{flex:1;min-width:260px;border-radius:12px;padding:10px 12px;border:1.5px solid var(--line-strong);background:#fff}
-.cp-per.a{border-color:#9AA3AF}.cp-per.b{border-color:var(--navy);box-shadow:inset 0 3px 0 var(--amber)}
-.cp-tag{font-weight:900;font-size:13px;margin-bottom:6px;color:var(--navy)}.cp-per.a .cp-tag{color:#5B6472}
-.cp-dates{font-size:12px;color:var(--muted);margin-top:6px;direction:ltr;text-align:right}
-.cp-swap{align-self:center;font-size:18px}
-.cp-heroes{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin:0 0 14px}
-.cp-hero{background:#fff;border-radius:12px;padding:11px 13px;box-shadow:var(--shadow-card);border-top:3px solid var(--navy);transition:transform 150ms}
-@media(hover:hover){.cp-hero:hover{transform:translateY(-2px)}}
-.cp-hero .lb{font-size:12px;font-weight:700;color:var(--muted)}
-.cp-hero .v{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:3px 0}
-.cp-hero .v b{font:900 24px Arial;color:var(--ink);font-variant-numeric:tabular-nums}.cp-hero .v span{font-size:12px;color:#6B7380}
-.cp-chg{display:inline-flex;gap:5px;white-space:nowrap;align-items:baseline;font:900 13px Arial;padding:2px 9px;border-radius:999px;background:#EEF1F5;color:#5B6472}
-.cp-chg.good{background:#E6F4EC;color:#1F7A47}.cp-chg.bad{background:#FBE9E7;color:#B3261E}.cp-chg small{font-weight:700;font-size:11px;opacity:.85}
-.cp-bars{margin-top:8px;display:grid;gap:3px}.cp-bars i{display:block;height:5px;border-radius:3px;min-width:2px}
-.cp-bars i.a,.cp-tbl .bars i.a{background:#B5BCC7}.cp-bars i.b,.cp-tbl .bars i.b{background:var(--navy)}
-table.cp-tbl td,table.cp-tbl th{text-align:right;font-variant-numeric:tabular-nums}table.cp-tbl td.nm,table.cp-tbl th.nm{text-align:left}
-table.cp-tbl th.a{background:#7A8494}
-table.cp-tbl tr.g td{background:#EEF3F8;color:var(--navy);font-weight:900;font-size:12px;letter-spacing:.06em;text-align:left}
-table.cp-tbl td.good{color:#1F7A47;font-weight:800}table.cp-tbl td.bad{color:#B3261E;font-weight:800}
-table.cp-tbl .bars{display:grid;gap:2px;min-width:110px}table.cp-tbl .bars i{display:block;height:5px;border-radius:3px;min-width:2px}
-.cp-hl{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px}
-.cp-hl div{display:flex;justify-content:space-between;gap:8px;align-items:center;background:#fff;border-radius:10px;padding:8px 12px;box-shadow:var(--shadow-card);font-size:13px}
-.cp-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:-4px 0 10px}.cp-legend i{display:inline-block;width:12px;height:6px;border-radius:3px;margin-right:4px;vertical-align:middle}
+/* ⚖️ مقارنة الفترات — العرض الجديد (الشاشة فقط؛ تصدير #cpPrint بأنماط dsp و cpp كما هو) */
+.cp-num,.cp-sec table.cp-tbl td,.cp-hero .v,.cp-sum .big{font-family:Inter,Arial,sans-serif;font-variant-numeric:tabular-nums}
+.cp-svg{width:18px;height:18px;flex:none;vertical-align:-4px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.cp-xbtn{display:inline-flex;align-items:center;gap:6px;min-height:40px}
+/* الفترتان */
+.cp-pers{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.cp-per{flex:1;min-width:260px;align-self:stretch;border-radius:14px;padding:14px 16px;border:1.5px solid #C9D0DA;background:#fff}
+.cp-per.b{border-color:var(--navy);box-shadow:inset 0 3px 0 var(--amber)}
+.cp-ph{display:flex;gap:12px;align-items:center}
+.cp-let{display:grid;place-items:center;width:40px;height:40px;border-radius:10px;background:#8A94A3;color:#fff;font:900 20px Inter,Arial,sans-serif;flex:none}
+.cp-per.b .cp-let{background:var(--navy)}
+.cp-tag{font-size:12px;font-weight:700;color:var(--muted)}
+.cp-pn{font:800 24px/1.15 Inter,Arial,sans-serif;color:var(--ink);direction:ltr;text-align:right;font-variant-numeric:tabular-nums}
+.cp-dates{font:600 12px Inter,Arial,sans-serif;color:var(--muted);margin:8px 0 2px;direction:ltr;text-align:right;font-variant-numeric:tabular-nums}
+.cp-swap{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;border:1.5px solid var(--line-strong);background:#fff;color:var(--navy);cursor:pointer;flex:none;transition:transform 200ms,background-color 150ms}
+.cp-swap:hover{background:#EEF3F8}.cp-swap:active{transform:rotate(180deg)}
+.cp-swap .cp-svg{width:20px;height:20px}
+.cp-same{display:inline-flex;gap:8px;align-items:center;min-height:40px;margin:12px 0 0;padding:4px 14px 4px 10px;border-radius:999px;background:#E9F5F6;color:#0A5A5D;font-size:12.5px;font-weight:700;cursor:pointer;border:1.5px solid transparent}
+.cp-same input{width:16px;height:16px;accent-color:var(--teal);margin:0}
+.cp-same.on{border-color:var(--teal)}
+.cp-same .st{font-size:11px;font-weight:800;background:var(--teal);color:#fff;border-radius:999px;padding:1px 8px;display:none}.cp-same.on .st{display:inline}
+/* كبسولة التغيّر */
+.cp-pill{display:inline-flex;gap:4px;align-items:baseline;white-space:nowrap;font:800 12.5px Inter,Arial,sans-serif;font-variant-numeric:tabular-nums;padding:3px 9px;border-radius:999px;background:#EEF1F5;color:#566476;direction:ltr}
+.cp-pill.good{background:#E6F4EC;color:#1F7A47}.cp-pill.bad{background:#FBE9E7;color:#B3261E}
+.cp-pill small{font-weight:600;font-size:11px}
+/* مربعات الأيقونات (نفس صور DS_ICO) */
+.cp-ib{display:grid;place-items:center;flex:none;border-radius:12px;background:#F3F6FA}
+.cp-ib svg{display:block;width:76%;height:76%}
+.cp-ib.e{background:transparent}
+/* الخلاصة */
+.cp-sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:14px}
+.cp-sum>div{border-radius:14px;padding:16px 18px;background:#fff;box-shadow:var(--shadow-card)}
+.cp-sum .hd{grid-column:span 2;background:var(--navy);color:#fff}
+.cp-sum .hd .t{display:flex;gap:10px;align-items:center;color:var(--amber);font-weight:800;font-size:13px}
+.cp-sum .hd .cp-ib{width:46px;height:46px;background:#fff}
+.cp-sum .hd p{font-size:17px;font-weight:700;line-height:1.6;margin:10px 0 12px}
+.cp-sum .hd p bdi{font-family:Inter,Arial,sans-serif;font-weight:800}
+.cp-stack{display:flex;height:10px;border-radius:5px;overflow:hidden;background:rgba(255,255,255,.18)}
+.cp-stack i{display:block;height:100%}.cp-stack .g{background:#4CC38A}.cp-stack .b{background:#F07A73}.cp-stack .f{background:rgba(255,255,255,.3)}
+.cp-sum .hd .n{font-size:12px;color:#D5DEEA;margin-top:8px}
+.cp-sum .k{display:flex;flex-direction:column;justify-content:space-between;gap:6px}
+.cp-sum .k .lb{display:flex;justify-content:space-between;align-items:center;font-weight:800;color:var(--muted);font-size:13px}
+.cp-sum .k .lb .cp-svg{width:28px;height:28px}
+.cp-sum .k.up .lb .cp-svg{color:#1F7A47}.cp-sum .k.dn .lb .cp-svg{color:#B3261E}
+.cp-sum .big{font-size:40px;font-weight:800;line-height:1;color:var(--ink)}
+.cp-sum .k.up .big{color:#1F7A47}.cp-sum .k.dn .big{color:#B3261E}
+.cp-sum .k .s{font-size:12px;color:var(--muted)}
+/* أبرز التغييرات */
+.cp-kc{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-bottom:14px}
+.cp-kc>div{background:#fff;border-radius:14px;padding:14px 16px;box-shadow:var(--shadow-card)}
+.cp-kc h4{display:flex;gap:8px;align-items:center;font-size:14px;margin:0 0 8px;color:#1F7A47}
+.cp-kc .dn h4{color:#B3261E}
+.cp-kr{display:flex;gap:12px;align-items:center;text-align:left;padding:9px 0;border-top:1px solid #EEF1F5}
+.cp-kr:first-of-type{border-top:0}
+.cp-kr .cp-ib{width:46px;height:46px}.cp-kc .dn .cp-kr .cp-ib{background:#FDF1EF}
+.cp-kr .tx{flex:1;min-width:0}
+.cp-kr .kn{font-weight:800;font-size:13.5px;color:var(--ink)}
+.cp-kr .sb{font-size:11.5px;color:var(--muted);margin:2px 0 6px}
+.cp-kr .tr{height:6px;border-radius:3px;background:#EEF1F5;overflow:hidden}
+.cp-kr .tr i{display:block;height:100%;border-radius:3px;background:#2E9D63}.cp-kc .dn .cp-kr .tr i{background:#D9534F}
+.cp-kc .none{color:var(--muted);font-size:13px;padding:10px 0}
+/* شريط تنقّل الأقسام */
+#main:has(#pg-compare.on){overflow-x:clip} /* overflow:hidden يجعل #main حاوية تمرير فيُبطل position:sticky */
+.cp-nav{position:sticky;top:0;z-index:20;display:flex;gap:8px;flex-wrap:wrap;padding:8px 10px;margin:0 0 14px;background:#fff;border-radius:12px;box-shadow:0 4px 14px -6px rgba(27,58,107,.28),var(--shadow-card)}
+.cp-nav button{display:inline-flex;gap:7px;align-items:center;min-height:40px;padding:4px 12px 4px 6px;border-radius:999px;border:1px solid #DDE3EA;background:#fff;color:var(--ink);font:700 12.5px Inter,Arial,sans-serif;cursor:pointer;transition:background-color 150ms}
+.cp-nav button:hover{background:#F3F6FA}
+.cp-nav .cp-ib{width:30px;height:30px;border-radius:50%}.cp-nav .cp-ib svg{width:24px;height:24px}
+.cp-nav .u{color:#1F7A47;font-weight:800}.cp-nav .d{color:#B3261E;font-weight:800}
+/* بطاقة القسم */
+.cp-sec{scroll-margin-top:calc(var(--cp-navh,64px) + 12px)}
+.cp-sh{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.cp-sh>.cp-ib{width:54px;height:54px}
+.cp-sh .tt{flex:1;min-width:200px}
+.cp-sh h3{margin:0;font-size:18px;color:var(--ink)}
+.cp-cnt{font-size:12.5px;color:var(--muted);margin-top:2px}
+.cp-cnt b.u{color:#1F7A47}.cp-cnt b.d{color:#B3261E}
+.cp-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.cp-lg{display:flex;gap:12px;font-size:12px;color:var(--muted)}
+.cp-lg i{display:inline-block;width:12px;height:8px;border-radius:3px;margin-right:5px;vertical-align:middle}
+.cp-tg{display:inline-flex;gap:6px;align-items:center;min-height:40px;padding:4px 12px;border-radius:999px;border:1px solid #DDE3EA;background:#fff;color:var(--muted);font-weight:700;font-size:12px;cursor:pointer}
+.cp-tg[aria-pressed=true]{background:#EEF3F8;border-color:var(--navy);color:var(--navy)}
+.cp-fold{position:relative;display:grid;place-items:center;width:36px;height:36px;border-radius:50%;border:1px solid #DDE3EA;background:#fff;color:var(--navy);cursor:pointer}
+.cp-fold::before{content:"";position:absolute;inset:-3px}
+.cp-fold .cp-svg{transition:transform 200ms}.cp-fold[aria-expanded=false] .cp-svg{transform:rotate(-90deg)}
+.cp-sec.fold{padding-top:12px;padding-bottom:12px;border-left:6px solid var(--cp-c)}
+.cp-sec.fold .cp-sh{margin:0}.cp-sec.fold .cp-sh>.cp-ib{width:50px;height:50px}
+.cp-top{display:flex;gap:10px;align-items:center;font-size:12.5px;color:var(--muted)}
+.cp-top b{color:var(--ink)}
+/* بطاقات المؤشرات الرئيسية */
+.cp-heroes{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin:0 0 16px}
+.cp-hero{background:#FBFCFE;border-radius:12px;padding:12px 14px;box-shadow:var(--shadow-card)}
+.cp-hero .hh{display:flex;gap:10px;align-items:center;justify-content:space-between}
+.cp-hero .hh .cp-ib{width:58px;height:58px}.cp-hero .hh .cp-ib svg{width:44px;height:44px}
+.cp-hero .lb{font-size:12px;font-weight:700;color:var(--muted);line-height:1.35}
+.cp-hero .v{font-size:26px;font-weight:800;color:var(--ink);margin:6px 0 0;line-height:1.1}
+.cp-hero .vs{font-size:11.5px;color:var(--muted);margin:2px 0 8px}
+.cp-hb{margin-top:10px;display:grid;gap:3px}.cp-hb i{display:block;height:6px;border-radius:3px;min-width:2px;background:#B5BCC7}.cp-hb i.b{background:var(--navy)}
+/* الجدول */
+.cp-tw{margin:0}
+.cp-sec table.cp-tbl{width:100%}
+.cp-sec table.cp-tbl th{top:var(--cp-navh,64px);z-index:2}
+.cp-sec .cp-scroll table.cp-tbl th{top:0}
+.cp-sec table.cp-tbl td,.cp-sec table.cp-tbl th{text-align:right;vertical-align:middle}
+.cp-sec table.cp-tbl td.nm,.cp-sec table.cp-tbl th.nm{text-align:left}
+.cp-sec table.cp-tbl th.a{background:#5E6876}
+.cp-sec table.cp-tbl td.va{color:#5E6876}
+.cp-sec table.cp-tbl td small{color:#6B7380;font-size:11px}
+.cp-sec table.cp-tbl tr.g td{background:none;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;text-align:left;padding:14px 8px 4px;color:var(--cp-c);border-bottom:1.5px solid currentColor}
+.cp-sec table.cp-tbl tr.cp-neu td.nm{color:#63758C}
+.cp-nmw{display:flex;gap:10px;align-items:center}
+.cp-nmw .cp-ib{width:32px;height:32px;border-radius:9px}.cp-nmw .cp-ib svg{width:26px;height:26px}
+.cp-dvh{display:flex;justify-content:space-between;font-weight:700;min-width:150px}
+.cp-dv{position:relative;display:block;height:10px;min-width:150px;border-radius:5px;background:#EEF1F5}
+.cp-dv::after{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:1.5px;background:#8A94A3}
+.cp-dv i{position:absolute;top:0;bottom:0;border-radius:5px;background:#8A94A3}
+.cp-dv i.good{background:#2E9D63}.cp-dv i.bad{background:#D9534F}
+@media(max-width:700px){
+  .cp-sum .hd{grid-column:auto}
+  .cp-sum,.cp-kc{grid-template-columns:1fr}
+  .cp-heroes{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cp-hero .hh .cp-ib{width:44px;height:44px}.cp-hero .hh .cp-ib svg{width:34px;height:34px}
+  .cp-tw{overflow-x:auto}.cp-tw table.cp-tbl{min-width:760px}
+  .cp-sec table.cp-tbl th{position:static}
+  .cp-swap{margin:0 auto}
+  .cp-nav{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin}.cp-nav button{flex:none}
+}
+@media(prefers-reduced-motion:reduce){.cp-swap,.cp-fold .cp-svg{transition:none}}
 .upstat{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px}
 .upstat .chip{font-size:11.5px;padding:4px 10px;border-radius:20px;background:#EEF3F8;color:var(--muted);font-weight:700;font-family:Arial}
 .upstat .chip.ok{background:#dff3e6;color:#15693f}
@@ -939,7 +1041,7 @@ table.rk.iss-mx td.nm{text-align:left}table.rk.iss-mx td.tot,table.rk.iss-mx tr.
 <section class="page" id="pg-compare">
   <div class="pghead noprint">
     <div><h2 tabindex="-1">مقارنة الفترات</h2><p>Period Comparison — مؤشرات Donors and Blood Components لفترتين جنباً إلى جنب (سنة، ربع، نصف سنة، شهر، أو فترة مخصصة) مع الفرق ونسبة التغيّر</p></div>
-    <div class="row"><button class="btn ghost sm" id="cpPdfBtn">🖨️ تصدير PDF</button><button class="btn ghost sm" id="cpPdfPlainBtn" title="بخلفية بيضاء للطباعة الورقية">🖨️ نسخة ورقية</button><button class="btn ghost sm" id="cpPptBtn">📊 PowerPoint</button></div>
+    <div class="row"><button class="btn ghost sm cp-xbtn" id="cpPdfBtn"><svg class="cp-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6z"/></svg>تصدير PDF</button><button class="btn ghost sm cp-xbtn" id="cpPdfPlainBtn" title="بخلفية بيضاء للطباعة الورقية"><svg class="cp-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6M8 13h8M8 17h5"/></svg>نسخة ورقية</button><button class="btn ghost sm cp-xbtn" id="cpPptBtn"><svg class="cp-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v12H3zM12 16v4M8 20h8M7 12l3-3 2 2 4-4"/></svg>PowerPoint</button></div>
   </div>
   <div class="card noprint">
     <h3>⚙️ الفترتان</h3>
@@ -948,11 +1050,11 @@ table.rk.iss-mx td.nm{text-align:left}table.rk.iss-mx td.tot,table.rk.iss-mx tr.
       <button data-m="year" class="on">سنة مقابل سنة</button><button data-m="quarter">ربع سنة</button><button data-m="half">نصف سنة</button><button data-m="month">شهر</button><button data-m="custom">فترة مخصصة</button>
     </div>
     <div class="cp-pers">
-      <div class="cp-per a"><div class="cp-tag">A · الفترة الأساس</div><div class="row" id="cpA"></div><div class="cp-dates" id="cpAd"></div></div>
-      <button class="btn ghost sm cp-swap" id="cpSwap" title="تبديل الفترتين">⇄</button>
-      <div class="cp-per b"><div class="cp-tag">B · فترة المقارنة</div><div class="row" id="cpB"></div><div class="cp-dates" id="cpBd"></div></div>
+      <div class="cp-per a"><div class="cp-ph"><span class="cp-let" aria-hidden="true">A</span><div><div class="cp-tag">الفترة الأساس</div><div class="cp-pn" id="cpAn"></div></div></div><div class="cp-dates" id="cpAd"></div><div class="row" id="cpA"></div></div>
+      <button type="button" class="cp-swap" id="cpSwap" title="تبديل الفترتين" aria-label="تبديل الفترتين A و B"><svg class="cp-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg></button>
+      <div class="cp-per b"><div class="cp-ph"><span class="cp-let" aria-hidden="true">B</span><div><div class="cp-tag">فترة المقارنة</div><div class="cp-pn" id="cpBn"></div></div></div><div class="cp-dates" id="cpBd"></div><div class="row" id="cpB"></div></div>
     </div>
-    <label class="hint" style="display:flex;gap:6px;align-items:center;cursor:pointer;margin:10px 0 0"><input type="checkbox" id="cpSame" checked> ⚖️ نفس عدد الأيام: إن كانت البيانات لا تغطي إحدى الفترتين كاملة (مثل السنة الجارية) تُقارَن نفس الأيام من الفترتين</label>
+    <label class="cp-same" id="cpSameL" title="إن كانت البيانات لا تغطي إحدى الفترتين كاملة (مثل السنة الجارية) تُقارَن نفس الأيام من الفترتين"><input type="checkbox" id="cpSame" checked> <span>مقارنة عادلة: نفس الأيام من الفترتين</span><span class="st">مُطبَّقة</span></label>
     <div class="row" style="margin-top:12px;align-items:flex-end">
       <div class="field"><label>نقطة السحب</label>
         <div class="cmp-chips ds-chips" id="cpSiteChips" style="margin:0"><button class="cmp-chip on" data-s="F">CENTER</button><button class="cmp-chip on" data-s="D">DAMY</button><button class="cmp-chip on" data-s="C">MOBILE</button><button class="btn ghost sm" data-s="all">الكل</button></div>
@@ -5694,6 +5796,7 @@ async function cpRun(){
   if(!cpSel) return; const tok=++cpTok, Rg=cpRanges();
   $('#cpAd').textContent=Rg.empty?'':`${fmtDMY(Rg.A.from)} → ${fmtDMY(Rg.A.to)} · ${cpDays(Rg.A)} days`;
   $('#cpBd').textContent=Rg.empty?'':`${fmtDMY(Rg.B.from)} → ${fmtDMY(Rg.B.to)} · ${cpDays(Rg.B)} days`;
+  $('#cpAn').textContent=cpRangeOf(cpSel.A).lb; $('#cpBn').textContent=cpRangeOf(cpSel.B).lb; $('#cpSameL').classList.toggle('on',!Rg.empty&&!!Rg.same);
   const sp=cpSpan();
   $('#cpCov').innerHTML=sp?`البيانات المتاحة: <span class="bidi-ltr">${fmtDMY(sp.from)} → ${fmtDMY(sp.to)}</span> — السنوات الثابتة: ${[...new Set(Object.keys(UP).filter(isArcKey).map(k=>k.split('@')[1]))].sort().join('، ')||'لا يوجد'} <button class="btn ghost sm" data-goup>📦 الملفات السنوية</button>`:'';
   $$('#cpCov [data-goup]').forEach(b=>b.onclick=()=>$('.navbtn[data-pg=upload]').click());
@@ -5730,40 +5833,109 @@ function cpModel(){
   const dn=hl.filter(r=>r.c.cls==='bad').sort((x,y)=>Math.abs(y.c.rel)-Math.abs(x.c.rel)).slice(0,4);
   return {secs,up,dn};
 }
+// ===== العرض على الشاشة (لا يمسّ الحساب ولا التصدير) =====
+// الصور الرمزية من DS_ICO (نفس صفحة Donors and Blood Components): مفتاح صف cpCompute ← أيقونة
+const CP_IC=Object.fromEntries(Object.entries({donors:'tot avg sF sD sC',wb:'wb dr rwb',aph:'plt pls raph taph',sample:'so',rhneg:'neg',saudi:'sa',globe:'nsa',
+  male:'male sm nsm mdr mdd mdrt rdm',female:'fem sf nsf fdr fdd fdrt rdf',disc:'dd dall rdisc',recv:'rrec',norecv:'rno',sep:'rsep',pend:'rpend',total:'ptot',
+  ffp:'pFFP',plt:'pPLT',rbclr:'pRBCLR',rbcnlr:'pRBCNLR',cryo:'pCRYO',pool:'pools pin pneg tpool',issue:'itot'}).flatMap(([ic,ids])=>ids.split(' ').map(id=>[id,ic])));
+const CP_SEC_IC={don:()=>DS_ICO.donors,abo:()=>dsAboBadge('O+','#8E2A43'),drw:()=>DS_ICO.disc,stf:()=>DS_ICO.wb,rec:()=>DS_ICO.recv,plt:()=>DS_ICO.pool,iss:()=>DS_ICO.issue,isabo:()=>dsAboBadge('O+','#2F6672')};
+function cpIc(id,sk){
+  if(/^(abo|isabo)$/.test(sk)&&/^g/.test(id)&&DS_ABO.includes(id.slice(1))) return dsAboBadge(id.slice(1),id.endsWith('-')?DS_NEG_C:CP_COL[sk]);
+  if(/^c/.test(id)&&ISSUE_CATS[id.slice(1)]) return DS_ICO[ISSUE_CATS[id.slice(1)].ic]||'';
+  return DS_ICO[CP_IC[id]]||'';
+}
+const cpIb=(svg,cls='')=>`<span class="cp-ib${svg?'':' e'}${cls?' '+cls:''}" aria-hidden="true">${svg||''}</span>`;
+const CP_SVG={chev:'<svg class="cp-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>',
+  up:'<svg class="cp-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg>',
+  dn:'<svg class="cp-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 8v9H8"/></svg>',
+  flt:'<svg class="cp-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4-2v-4z"/></svg>'};
+let cpChanged=!!LS.get('bb_cp_changed',false), cpFolded=new Set(LS.get('bb_cp_collapsed',[]));
+// كبسولة واحدة للتغيّر: النِّسب بالنقاط المئوية، وغيرها «▲ +8.6% (+1,242)»
+const cpPill=(c,k)=>`<span class="cp-pill ${c.cls}">${k==='p'?c.txt:c.rel==null?(c.pct||'—'):`${c.pct} <small>(${c.txt})</small>`}</span>`;
+// شريط متباعد حول الصفر: ±30% = نصف المسار
+const cpDiv=(r)=>{ if(r.k==='p'||r.c.rel==null) return ''; const w=Math.min(Math.abs(r.c.rel),30)/30*50;
+  return `<span class="cp-dv" role="img" aria-label="${r.c.pct}"><i class="${r.c.cls}" style="${r.c.rel>=0?'left':'right'}:50%;width:${w}%"></i></span>`; };
+const cpTally=rows=>rows.reduce((t,r)=>(t[r.c.cls]++,t),{good:0,bad:0,flat:0});
+const cpStaffRows=s=>s.staff.map(p=>({p,c:cpChg(p.a?.col??null,p.b?.col??null,{}),rc:cpChg(p.a?p.a.rate:null,p.b?p.b.rate:null,{k:'p',bad:1})}));
 function cpRender(){
   const M=cpModel(), A=CP.A, B=CP.B, Rg=CP.Rg;
   const warn=[]; ARC_TYPES.forEach(t=>[['A',A],['B',B]].forEach(([s,P])=>{ const c=P.cov[t];
     if(c.miss.length) warn.push(`<b dir="ltr">${UP_TYPES[t].name}</b>: لا ملف لسنة ${c.miss.join('، ')} (الفترة ${s})`);
     c.part.forEach(x=>warn.push(`<b dir="ltr">${UP_TYPES[t].name}</b>: سنة ${x.y} متوفرة <span class="bidi-ltr">${fmtDMY(x.from)} → ${fmtDMY(x.to)}</span> فقط (الفترة ${s})`)); }));
-  const bar=(r)=>{ const mx=Math.max(r.a||0,r.b||0)||1; return `<div class="bars"><i class="a" style="width:${(r.a||0)/mx*100}%"></i><i class="b" style="width:${(r.b||0)/mx*100}%"></i></div>`; };
-  const hero=r=>{ const mx=Math.max(r.a||0,r.b||0)||1;
-    return `<div class="cp-hero" style="border-top-color:${CP_COL[r.sk]||'var(--navy)'}"><div class="lb">${dsEsc(r.lb)}</div><div class="v"><b>${cpFmt(r.b,r.k)}</b><span>vs ${cpFmt(r.a,r.k)}</span></div>
-      <span class="cp-chg ${r.c.cls}">${r.k==='p'?r.c.txt:`${r.c.pct||'—'} <small>${r.c.txt}</small>`}</span>
-      <div class="cp-bars"><i class="a" style="width:${(r.a||0)/mx*100}%" title="${dsEsc(A.lb)}"></i><i class="b" style="width:${(r.b||0)/mx*100}%" title="${dsEsc(B.lb)}"></i></div></div>`; };
-  let h=`<div class="alert info" dir="ltr" style="text-align:left"><b>A: ${dsEsc(A.lb)}</b> <span class="bidi-ltr">(${fmtDMY(A.from)} → ${fmtDMY(A.to)})</span> &nbsp;vs&nbsp; <b>B: ${dsEsc(B.lb)}</b> <span class="bidi-ltr">(${fmtDMY(B.from)} → ${fmtDMY(B.to)})</span> — ${CP.sites}${Rg.same?' — ⚖️ same number of days compared':''}</div>`;
+  let h='';
   if(warn.length) h+=`<div class="alert warn">⚠️ بيانات ناقصة — الأرقام المتأثرة أقل من الحقيقة:<br>${warn.join('<br>')}<br>أضف الملفات الناقصة من «📥 رفع الملفات» ← «📦 الملفات السنوية الثابتة».</div>`;
-  if(M.up.length||M.dn.length) h+=`<div class="card ds-ltr" dir="ltr"><h3 class="ds-sec"><span class="si">🔎</span>Key Changes</h3><div class="cp-hl">
-    ${[...M.up,...M.dn].map(r=>`<div><span>${dsEsc(r.lb)} <small style="color:var(--muted)">· ${dsEsc(r.sec)}</small></span><span class="cp-chg ${r.c.cls}">${r.c.pct}</span></div>`).join('')}</div></div>`;
+  if(!M.secs.length){ $('#cpOut').innerHTML=h+'<div class="card"><div class="empty">لا أقسام مختارة — اختر من «الأقسام الظاهرة».</div></div>'; return; }
+  // ===== الخلاصة =====
+  const all=M.secs.flatMap(s=>s.rows), T=cpTally(all), N=all.length||1, K=M.secs.filter(s=>s.rows.length).length;
+  const key=M.secs.find(s=>s.k==='don')?.rows.find(r=>r.id==='tot')||M.secs.find(s=>s.rows.some(r=>r.h))?.rows.find(r=>r.h);
+  let sent='';
+  if(key){ const nm=key.id==='tot'?'إجمالي المتبرعين':`<bdi dir="ltr">${dsEsc(key.lb)}</bdi>`, rel=key.c.rel;
+    sent=key.k==='p'?`${nm} في <bdi>${dsEsc(B.lb)}</bdi> <bdi dir="ltr">${cpFmt(key.b,'p')}</bdi> مقابل <bdi dir="ltr">${cpFmt(key.a,'p')}</bdi> في <bdi>${dsEsc(A.lb)}</bdi>`
+      :rel==null?`${nm} في <bdi>${dsEsc(B.lb)}</bdi>: <bdi dir="ltr">${cpFmt(key.b,key.k)}</bdi>`
+      :Math.abs(key.c.d)<1e-9?`${nm} في <bdi>${dsEsc(B.lb)}</bdi> مساوٍ لـ <bdi>${dsEsc(A.lb)}</bdi>`
+      :`${nm} في <bdi>${dsEsc(B.lb)}</bdi> ${rel>0?'أعلى':'أقل'} بـ <bdi dir="ltr">${Math.abs(rel).toFixed(1)}%</bdi> من <bdi>${dsEsc(A.lb)}</bdi>`; }
+  h+=`<div class="cp-sum"><div class="hd"><div class="t">${cpIb(DS_ICO.donors)}الخلاصة</div><p>${sent||'—'}</p>
+    <div class="cp-stack" role="img" aria-label="${T.good} تحسّن، ${T.bad} تراجع، ${T.flat} ثابتة"><i class="g" style="width:${T.good/N*100}%"></i><i class="b" style="width:${T.bad/N*100}%"></i><i class="f" style="width:${T.flat/N*100}%"></i></div>
+    <div class="n"><span class="cp-num">${fmtNum(all.length)}</span> مؤشراً في <span class="cp-num">${K}</span> أقسام</div></div>
+    <div class="k up"><div class="lb">تحسّن ${CP_SVG.up}</div><div class="big">${fmtNum(T.good)}</div><div class="s">مؤشراً تغيّر للأفضل</div></div>
+    <div class="k dn"><div class="lb">تراجع ${CP_SVG.dn}</div><div class="big">${fmtNum(T.bad)}</div><div class="s"><span class="cp-num">${fmtNum(T.flat)}</span> ثابتة</div></div></div>`;
+  // ===== أبرز التغييرات =====
+  const kr=r=>`<div class="cp-kr" dir="ltr">${cpIb(cpIc(r.id,r.sk))}<div class="tx"><div class="kn">${dsEsc(r.lb)}</div>
+    <div class="sb cp-num">${cpFmt(r.a,r.k)} → ${cpFmt(r.b,r.k)} · ${dsEsc(r.sec)}</div><div class="tr"><i style="width:${Math.min(Math.abs(r.c.rel),30)/30*100}%"></i></div></div>${cpPill(r.c,r.k)}</div>`;
+  const tag=r=>({...r,sk:M.secs.find(s=>s.title===r.sec)?.k});
+  h+=`<div class="cp-kc"><div class="up"><h4>${CP_SVG.up}أبرز التحسّن</h4>${M.up.length?M.up.map(r=>kr(tag(r))).join(''):'<div class="none">لا تغييرات تُذكر</div>'}</div>
+    <div class="dn"><h4>${CP_SVG.dn}يحتاج متابعة</h4>${M.dn.length?M.dn.map(r=>kr(tag(r))).join(''):'<div class="none">لا تغييرات تُذكر</div>'}</div></div>`;
+  // ===== شريط التنقّل =====
+  const secT=s=>s.k==='stf'?cpTally(cpStaffRows(s)):cpTally(s.rows);
+  h+=`<nav class="cp-nav" dir="ltr" aria-label="أقسام المقارنة">${M.secs.map(s=>{ const t=secT(s);
+    return `<button type="button" data-cpgo="${s.k}">${cpIb(CP_SEC_IC[s.k]())}${s.title}<span class="u">▲${t.good}</span><span class="d">▼${t.bad}</span></button>`; }).join('')}</nav>`;
+  // ===== الأقسام =====
+  const lg=`<div class="cp-lg"><span><i style="background:#B5BCC7"></i>A · ${dsEsc(A.lb)}</span><span><i style="background:var(--navy)"></i>B · ${dsEsc(B.lb)}</span></div>`;
+  const tg=`<button type="button" class="cp-tg" data-cpchg aria-pressed="${cpChanged}">${CP_SVG.flt}Changed only</button>`;
   M.secs.forEach(s=>{
-    h+=`<div class="card ds-ltr" dir="ltr"><h3 class="ds-sec"><span class="si">${s.icon}</span>${s.title}</h3>
-      <div class="cp-legend"><span><i style="background:#B5BCC7"></i>A · ${dsEsc(A.lb)}</span><span><i style="background:var(--navy)"></i>B · ${dsEsc(B.lb)}</span><span>▲▼ green = improvement, red = worse · pp = percentage points</span></div>`;
-    if(s.k==='stf'){
-      h+=`<div style="overflow:auto;max-height:620px"><table class="rk cp-tbl"><thead><tr><th>#</th><th class="nm">Staff</th><th class="a">Drawn A</th><th>Drawn B</th><th>Change</th><th class="a">Rate A</th><th>Rate B</th><th>Rate Change</th></tr></thead><tbody>
-        ${s.staff.map((p,i)=>{ const c=cpChg(p.a?.col??null,p.b?.col??null,{}), rc=cpChg(p.a?p.a.rate:null,p.b?p.b.rate:null,{k:'p',bad:1});
-          return `<tr><td>${i+1}</td><td class="nm">${dsEsc(p.name)}</td><td>${p.a?fmtNum(p.a.col):'—'}</td><td><b>${p.b?fmtNum(p.b.col):'—'}</b></td><td class="${c.cls}">${c.pct||c.txt}</td><td>${p.a?.col?p.a.rate.toFixed(1)+'%':'—'}</td><td>${p.b?.col?p.b.rate.toFixed(1)+'%':'—'}</td><td class="${rc.cls}">${rc.txt}</td></tr>`; }).join('')}</tbody></table></div></div>`;
+    const col=CP_COL[s.k]||'#1B3A6B', t=secT(s), fold=cpFolded.has(s.k), what=s.k==='stf'?'staff':'';
+    const cnt=`<div class="cp-cnt"><b class="u">${t.good} improved</b> · <b class="d">${t.bad} worse</b> · ${t.flat} unchanged${what?' · '+what:''}</div>`;
+    const fb=`<button type="button" class="cp-fold" data-cpfold="${s.k}" aria-expanded="${!fold}" aria-label="${fold?'فتح':'طيّ'} ${s.title}">${CP_SVG.chev}</button>`;
+    h+=`<section class="card ds-ltr cp-sec${fold?' fold':''}" dir="ltr" id="cpSec-${s.k}" style="--cp-c:${col}">`;
+    if(fold){
+      let top='';
+      if(s.k==='stf'){ const x=cpStaffRows(s)[0]; if(x) top=`<span>${dsEsc(x.p.name)}</span><b class="cp-num">${x.p.a?fmtNum(x.p.a.col):'—'} → ${x.p.b?fmtNum(x.p.b.col):'—'}</b>${cpPill(x.c)}`; }
+      else { const r=s.rows.find(r=>r.h)||s.rows[0]; if(r) top=`<span>${dsEsc(r.lb)}</span><b class="cp-num">${cpFmt(r.a,r.k)} → ${cpFmt(r.b,r.k)}</b>${cpPill(r.c,r.k)}`; }
+      h+=`<div class="cp-sh">${cpIb(CP_SEC_IC[s.k]())}<div class="tt"><h3>${s.title}</h3>${cnt}</div><div class="cp-top">${top}</div>${fb}</div></section>`;
       return;
     }
-    const heroes=s.rows.filter(r=>r.h).map(r=>({...r,sk:s.k}));
-    if(heroes.length) h+=`<div class="cp-heroes">${heroes.map(hero).join('')}</div>`;
-    let g=null;
-    h+=`<div style="overflow-x:auto"><table class="rk cp-tbl"><thead><tr><th class="nm">Metric</th><th class="a">A · ${dsEsc(A.lb)}</th><th>B · ${dsEsc(B.lb)}</th><th>Change</th><th>%</th><th></th></tr></thead><tbody>
-      ${s.rows.map(r=>(r.g!==g?`<tr class="g"><td colspan="6">${dsEsc(g=r.g)}</td></tr>`:'')
-        +`<tr><td class="nm">${dsEsc(r.lb)}</td><td>${cpFmt(r.a,r.k)}${r.a!=null?cpShare(r.a,r.ofA):''}</td><td><b>${cpFmt(r.b,r.k)}</b>${r.b!=null?cpShare(r.b,r.ofB):''}</td><td class="${r.c.cls}">${r.c.txt}</td><td class="${r.c.cls}">${r.c.pct}</td><td>${r.k==='p'?'':bar(r)}</td></tr>`).join('')}
-      </tbody></table></div></div>`;
+    h+=`<div class="cp-sh"><span class="cp-ib" aria-hidden="true" style="box-shadow:inset 0 -3px 0 ${col}">${CP_SEC_IC[s.k]()}</span><div class="tt"><h3>${s.title}</h3>${cnt}</div><div class="cp-tools">${lg}${tg}${fb}</div></div>`;
+    if(s.k==='stf'){
+      const L=cpStaffRows(s).filter(x=>!cpChanged||x.c.cls!=='flat');
+      h+=`<div class="cp-tw cp-scroll" style="overflow:auto;max-height:620px"><table class="rk cp-tbl"><thead><tr><th>#</th><th class="nm">Staff</th><th class="a">Drawn A</th><th>Drawn B</th><th>Change</th><th class="a">Rate A</th><th>Rate B</th><th>Rate Change</th></tr></thead><tbody>
+        ${L.map(({p,c,rc})=>`<tr><td>${s.staff.indexOf(p)+1}</td><td class="nm">${dsEsc(p.name)}</td><td class="va">${p.a?fmtNum(p.a.col):'—'}</td><td><b>${p.b?fmtNum(p.b.col):'—'}</b></td><td>${cpPill(c)}</td><td class="va">${p.a?.col?p.a.rate.toFixed(1)+'%':'—'}</td><td>${p.b?.col?p.b.rate.toFixed(1)+'%':'—'}</td><td>${cpPill(rc,'p')}</td></tr>`).join('')}</tbody></table></div></section>`;
+      return;
+    }
+    const heroes=s.rows.filter(r=>r.h);
+    if(heroes.length) h+=`<div class="cp-heroes">${heroes.map(r=>{ const mx=Math.max(r.a||0,r.b||0)||1;
+      return `<div class="cp-hero"><div class="hh"><div class="lb">${dsEsc(r.lb)}</div>${cpIb(cpIc(r.id,s.k))}</div><div class="v">${cpFmt(r.b,r.k)}</div>
+        <div class="vs">vs <b class="cp-num">${cpFmt(r.a,r.k)}</b> in ${dsEsc(A.lb)}</div>${cpPill(r.c,r.k)}
+        <div class="cp-hb"><i style="width:${(r.a||0)/mx*100}%" title="${dsEsc(A.lb)}"></i><i class="b" style="width:${(r.b||0)/mx*100}%" title="${dsEsc(B.lb)}"></i></div></div>`; }).join('')}</div>`;
+    const rows=s.rows.filter(r=>!cpChanged||r.c.cls!=='flat'); let g=null;
+    h+=`<div class="cp-tw"><table class="rk cp-tbl"><thead><tr><th class="nm">Metric</th><th class="a">A · ${dsEsc(A.lb)}</th><th>B · ${dsEsc(B.lb)}</th><th>Change</th><th><span class="cp-dvh"><span>−30%</span><span>0</span><span>+30%</span></span></th></tr></thead><tbody>
+      ${rows.length?rows.map(r=>(r.g!==g?`<tr class="g"><td colspan="5">${dsEsc(g=r.g)}</td></tr>`:'')
+        +`<tr${r.neu?' class="cp-neu"':''}><td class="nm"><span class="cp-nmw">${cpIb(cpIc(r.id,s.k))}<span>${dsEsc(r.lb)}</span></span></td><td class="va">${cpFmt(r.a,r.k)}${r.a!=null?cpShare(r.a,r.ofA):''}</td><td><b>${cpFmt(r.b,r.k)}</b>${r.b!=null?cpShare(r.b,r.ofB):''}</td><td>${cpPill(r.c,r.k)}</td><td>${cpDiv(r)}</td></tr>`).join('')
+        :'<tr><td colspan="5" class="nm" style="color:var(--muted)">No changed metrics in this section</td></tr>'}
+      </tbody></table></div></section>`;
   });
-  if(!M.secs.length) h+='<div class="card"><div class="empty">لا أقسام مختارة — اختر من «الأقسام الظاهرة».</div></div>';
-  $('#cpOut').innerHTML=h;
+  $('#cpOut').innerHTML=h; cpNavH();
 }
+// ارتفاع شريط التنقّل (يلتف لسطرين حسب العرض) ← موضع رأس الجدول الثابت تحته
+const cpNavH=()=>{ const n=$('#cpOut .cp-nav'); if(n&&n.offsetHeight) $('#cpOut').style.setProperty('--cp-navh',n.offsetHeight+'px'); };
+addEventListener('resize',cpNavH);
+// الطيّ و«Changed only» والتنقّل: إعادة رسم فقط (لا إعادة حساب)
+$('#cpOut').addEventListener('click',e=>{
+  const go=e.target.closest('[data-cpgo]');
+  if(go){ $('#cpSec-'+go.dataset.cpgo)?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'}); return; }
+  const f=e.target.closest('[data-cpfold]');
+  if(f){ const k=f.dataset.cpfold; cpFolded.has(k)?cpFolded.delete(k):cpFolded.add(k); LS.set('bb_cp_collapsed',[...cpFolded]); cpRender(); $(`[data-cpfold="${k}"]`)?.focus(); return; }
+  if(e.target.closest('[data-cpchg]')){ cpChanged=!cpChanged; LS.set('bb_cp_changed',cpChanged); const y=scrollY; cpRender(); scrollTo(0,y); }
+});
 // ===== التصدير: نفس هوية تقرير Donors and Blood Components (وردي، A4 أفقي، DONE BY في كل صفحة) =====
 const cpFileName=()=>`Period_Comparison_${CP.A.lb}_vs_${CP.B.lb}`.replace(/[^\w\-]+/g,'_');
 function cpPrintHead(){
