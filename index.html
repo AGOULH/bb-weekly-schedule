@@ -2109,6 +2109,33 @@ async function readProdFile(file){
   aoa.slice(hr+2).forEach(r=>add(r[c0],r[c0+1],r[c0+2]));
   return {from:val('start date'),to:val('end date'),rows};
 }
+// (2026-11-11، طلب حسن) ملفات Staff productivity تراكمية (01/01 → يوم التصدير) بدل ملف لكل أسبوع:
+// رقم كل أسبوع (أحد–سبت) = ملف ينتهي بنهايته − ملف ينتهي قبل بدايته (نفس تاريخ البداية). نهاية الملف الفعلية = End Date،
+// إلا إن صُدّر صباح نفس اليوم (قبل 12 ظهراً بتوقيت الرياض) فيُعدّ حتى اليوم السابق (اليوم لم يبدأ فعلياً).
+// نهاية الأسبوع تُقبل من الخميس للسبت (الطبيب يعمل الأحد–الخميس)؛ الأسبوع الجاري يُحسب حتى آخر ملف. الملفات الأسبوعية الحقيقية تتقدّم.
+function prodWeeklyFromCum(prods){
+  const weekly=prods.filter(p=>p.to<=addDays(p.from,6)), cum=prods.filter(p=>p.to>addDays(p.from,6)), out=[], used=new Set();
+  const eff=p=>{ if(!p.added) return p.to; const L=new Date(Date.parse(p.added)+3*36e5).toISOString(), d=L.slice(0,10), h=+L.slice(11,13);
+    return d<p.to?addDays(d,-1):d===p.to&&h<12?addDays(p.to,-1):p.to; };
+  const sum=p=>{ const m={}; p.rows.forEach(r=>m[r.sid]=(m[r.sid]||0)+r.n); return m; };
+  const today=new Date(Date.now()+3*36e5).toISOString().slice(0,10), have=new Set(weekly.map(p=>dmWeekStart(addDays(p.from,1))));
+  const groups={}; cum.forEach(p=>{ p.eff=eff(p); (groups[p.from]=groups[p.from]||[]).push(p); });
+  Object.entries(groups).forEach(([from,G])=>{
+    G.sort((a,b)=>a.eff<b.eff?-1:a.eff>b.eff?1:(a.added||'')<(b.added||'')?-1:1);
+    const last=G[G.length-1].eff;
+    for(let S=dmWeekStart(from);S<=last;S=addDays(S,7)){
+      const E=addDays(S,6); if(have.has(S)) continue;
+      let B=[...G].reverse().find(p=>p.eff>=addDays(E,-2)&&p.eff<=E);
+      if(!B&&E>=addDays(today,-1)) B=[...G].reverse().find(p=>p.eff>=S&&p.eff<=E); // الأسبوع الجاري: حتى آخر ملف
+      const A=from>=S?null:[...G].reverse().find(p=>p.eff>=addDays(S,-3)&&p.eff<=addDays(S,-1));
+      if(!B||(from<S&&!A)) continue;
+      const b=sum(B), a=A?sum(A):{}, rows=Object.entries(b).map(([sid,n])=>({sid,n:Math.max(0,n-(a[sid]||0))})).filter(r=>r.n>0);
+      out.push({from:from>S?from:S,to:B.eff>=addDays(E,-2)?E:B.eff,rows,name:`${A?A.name+' → ':''}${B.name} (فرق تراكمي)`,cum:true});
+      used.add(B.name); if(A) used.add(A.name);
+    }
+  });
+  return {prods:[...weekly,...out],cumN:cum.length,weeks:out.length};
+}
 let IMP_STAGE=null;
 $('#impReadBtn').onclick=async()=>{
   const fD=upFile('donations'), fW=upFile('wateen'), fP=upProdFiles();
@@ -2132,12 +2159,13 @@ $('#impReadBtn').onclick=async()=>{
     rows.forEach(r=>{ const iso=parseMonDate(r[iDate]); if(!iso||!inRange(iso)) return; dates.push(iso);
       if(!IMPORT_SITES.includes(r[iCP])) return; wat.push({iso,neg:/neg/i.test(r[iBG])}); });
   }
-  const prods=[];
+  let prods=[];
   for(const f of fP){
     const r=await readProdFile(f);
     if(!r||!r.from||!r.to){ toast(`تنسيق ملف Staff productivity غير معروف: ${f.name}`); return; }
-    prods.push({...r,name:f.name});
+    prods.push({...r,name:f.name,added:Object.values(UP).find(v=>v.file===f)?.added});
   }
+  const prodCum=prodWeeklyFromCum(prods); prods=prodCum.prods;
   prods.forEach(p=>{ if(inRange(p.from)&&inRange(p.to)&&p.to<=addDays(p.from,6)) dates.push(p.from,p.to); }); // ملف يمتد لأكثر من أسبوع لا يوسّع الفترة
   if(!dates.length&&prods.length){ toast('⚠️ ملف Staff productivity يغطي أكثر من أسبوع — صدّره من النظام أسبوعاً أسبوعاً'); IMP_STAGE=null; $('#impPreview').innerHTML=''; return; }
   if(!dates.length){ toast('لا توجد سجلات ضمن الفترة المحددة'); IMP_STAGE=null; $('#impPreview').innerHTML=''; return; }
@@ -2173,7 +2201,8 @@ $('#impReadBtn').onclick=async()=>{
     b.prod={per,full:p.from<=b.dateFrom&&p.to>=(b.dateTo<yest?b.dateTo:yest)};
   });
   Object.values(weeks).forEach(b=>b.full=b.dateFrom>=covFrom&&b.dateTo<=covTo&&(!b.prod||b.prod.full));
-  IMP_STAGE={weeks,covFrom,covTo,unmapped,unmatched,prodSkip,files:[fD&&'List of donations',fW&&'Wateen report',prods.length&&'Staff productivity'].filter(Boolean)};
+  const prodInfo=prodCum.weeks?(`ℹ️ ${prodCum.cumN} ملف Staff productivity تراكمي (من بداية السنة) — رقم ${prodCum.weeks} أسبوع حُسب من الفرق بين ملف نهاية الأسبوع وملف بدايته`):'';
+  IMP_STAGE={weeks,covFrom,covTo,unmapped,unmatched,prodSkip,prodInfo,files:[fD&&'List of donations',fW&&'Wateen report',prods.length&&'Staff productivity'].filter(Boolean)};
   renderImpPreview();
 };
 // أسبوع محفوظ يغطيه الملف جزئياً: اعتماده يستبدل أرقامه بأرقام أقل (حادثة 27/09–03/10: 216 ← 58)
@@ -2188,7 +2217,7 @@ function renderImpPreview(){
   const S=IMP_STAGE; if(!S){ $('#impPreview').innerHTML=''; return; }
   const ws=Object.values(S.weeks).sort((a,b)=>a.dateFrom.localeCompare(b.dateFrom));
   const um=Object.entries(S.unmatched);
-  $('#impPreview').innerHTML=(S.prodSkip.length?`<div style="margin-top:14px;padding:12px 14px;border-radius:10px;background:#FFF4D6;border:1px solid var(--amber);color:#6b4a00;font-size:13px;line-height:1.8">
+  $('#impPreview').innerHTML=(S.prodInfo?`<div class="hint" style="margin-top:12px;font-weight:700">${S.prodInfo}</div>`:'')+(S.prodSkip.length?`<div style="margin-top:14px;padding:12px 14px;border-radius:10px;background:#FFF4D6;border:1px solid var(--amber);color:#6b4a00;font-size:13px;line-height:1.8">
       <b>⚠️ ملف Staff productivity لم يُعتمد — DR وDR Cover لن يُحدَّثا:</b><br>${S.prodSkip.join('<br>')}</div>`:'')+`<div style="margin-top:14px"><h3>🔍 معاينة — ${S.files.join(' + ')} · الفترة <span class="bidi-ltr">${fmtLbl(S.covFrom,S.covTo)}</span> <span class="hint">(لم يُحفظ شيء بعد)</span></h3>
     <div style="overflow-x:auto"><table class="rk"><thead><tr><th><input type="checkbox" id="impAll" aria-label="تحديد الكل" checked></th><th style="text-align:right">الأسبوع</th><th>الحالة</th><th>Whole blood</th><th>الصفائح</th><th>إجمالي المتبرعين</th><th>Rh Negative</th><th>موظفون مطابَقون</th><th>DR / DR Cover (القسم)</th><th>ملاحظة</th></tr></thead><tbody>
     ${ws.map(b=>`<tr><td><input type="checkbox" data-wk="${b.key}" ${b.full?'checked':''} aria-label="اعتماد ${fmtLbl(b.dateFrom,b.dateTo)}"></td>
