@@ -868,6 +868,7 @@ table.rk.iss-mx td.nm{text-align:left}table.rk.iss-mx td.tot,table.rk.iss-mx tr.
       <button class="btn ghost" id="impSchedBtn" title="استيراد جداول أسابيع من PDF الجدول أو ملف إكسل — يمكن أيضاً رفعها من «📥 رفع الملفات»">📥 استيراد جداول (PDF / إكسل)</button>
       <input type="file" id="impSchedFile" accept=".xlsx,.xls,.pdf" multiple hidden>
       <button class="btn amber" id="printBtn">🖨️ تصدير PDF</button>
+      <button class="btn ghost" id="xlsSchedBtn" title="ملف Excel بنفس هوية الجدول — ورقة باسم تاريخ بداية الأسبوع فيُعاد استيراده كما هو">📊 تصدير Excel</button>
       <button class="btn teal" id="shareWaBtn">📲 حفظ ومشاركة واتساب</button>
       <button class="btn" id="saveSchedBtn">💾 حفظ</button>
     </div>
@@ -1622,6 +1623,36 @@ function renderSheet(){
   $$('#shBody tr').forEach(tr=>bindRow(tr,TASKS.find(t=>t.id===tr.dataset.tid)));
   renderLeaveInfo(w);
   $('#printBtn').onclick=()=>{ const old=document.title; document.title=`Weekly_Schedule_${w.label.replace(/ /g,'_')}`; window.print(); setTimeout(()=>document.title=old,700); };
+  $('#xlsSchedBtn').onclick=()=>schedExportXlsx(w).catch(e=>toast('⚠️ تعذّر تصدير Excel: '+e.message));
+}
+// تصدير الجدول الأسبوعي Excel (طلب حسن 2026-11-17): نفس هوية الجدول (navy/amber/mint) عبر xlsx-js-style يُحمَّل عند الحاجة
+// دون استبدال XLSX الأساسي؛ الورقة باسم weekId وسطر ITEM / TASK فيقرؤها schedFromXlsx عند إعادة الاستيراد.
+async function schedExportXlsx(w){
+  if(!window.XLSXS){ const prev=window.XLSX;
+    await new Promise((ok,no)=>{ const sc=document.createElement('script'); sc.src='https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js'; sc.onload=ok; sc.onerror=()=>no(new Error('تعذّر تحميل مكتبة Excel')); document.head.appendChild(sc); });
+    window.XLSXS=window.XLSX; window.XLSX=prev; }
+  const X=window.XLSXS, N=8;
+  const bd={style:'thin',color:{rgb:'9FB3C8'}}, border={top:bd,bottom:bd,left:bd,right:bd};
+  const st=(fill,color,o={})=>({font:{name:'Arial',sz:o.sz||11,bold:!!o.b,color:{rgb:color}},fill:fill?{fgColor:{rgb:fill}}:undefined,
+    alignment:{horizontal:o.h||'center',vertical:'center',wrapText:true},border:o.nb?undefined:border});
+  const pad=r=>{ while(r.length<N) r.push(''); return r; };
+  const aoa=[pad(['Central Blood Bank In Dammam']), pad([`Weekly Schedule — Date ${w.label}`]),
+    ['#','ITEM / TASK','STAFF 1','STAFF 2','STAFF 3','STAFF 4','STAFF 5','STAFF 6'],
+    ...TASKS.map((t,i)=>{ const a=(w.assignments?.[t.id]||[]).map(sName).filter(Boolean).slice(0,6); return pad([i+1,t.name,...a]); }),
+    pad(['DONE BY : HASAN ALAGOUL'])];
+  const ws=X.utils.aoa_to_sheet(aoa), last=aoa.length-1;
+  for(let r=0;r<=last;r++) for(let c=0;c<N;c++){
+    const ref=X.utils.encode_cell({r,c}); if(!ws[ref]) ws[ref]={t:'s',v:''};
+    ws[ref].s= r===0?st('1B3A6B','FFFFFF',{b:1,sz:16}) : r===1?st('F0A500','1A1A2E',{b:1,sz:13}) : r===2?st('1B3A6B','FFFFFF',{b:1})
+      : r===last?st(null,'1B3A6B',{b:1,sz:10,nb:1}) : c===0?st('D6EAF8','1B3A6B',{b:1})
+      : st((r-3)%2?'FFFFFF':'E8F6F3','1A1A2E',{b:c===1,h:c===1?'left':'center'});
+  }
+  ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:N-1}},{s:{r:1,c:0},e:{r:1,c:N-1}},{s:{r:last,c:0},e:{r:last,c:N-1}}];
+  ws['!cols']=[{wch:5},{wch:44},...Array(6).fill({wch:15})];
+  ws['!rows']=[{hpt:30},{hpt:24},{hpt:22},...TASKS.map(()=>({hpt:22})),{hpt:20}];
+  const wb=X.utils.book_new(); X.utils.book_append_sheet(wb,ws,w.dateFrom||curWeek);
+  X.writeFile(wb,`Weekly_Schedule_${w.label.replace(/ /g,'_')}.xlsx`);
+  toast('📊 تم تصدير الجدول Excel ✓');
 }
 // أيام مناوبة الموظف في مركز دمي ضمن مدى (أيام العمل فقط) — مناوب دمي خلال الأسبوع يُستبعد من خيارات التكليف الجديدة (مثل الإجازة)
 function dammiDutyDays(sid,f,t){
