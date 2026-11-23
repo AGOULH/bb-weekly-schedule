@@ -185,6 +185,8 @@ table.rk tr:hover td{background:var(--row-a)}
 .rpt-page{background:var(--rl);padding:44px 48px}
 .rpt-eyebrow{display:flex;align-items:center;gap:10px;font:600 11px/1 var(--rsans);letter-spacing:.14em;color:var(--rmuted);text-transform:uppercase;margin-bottom:22px}
 .rpt-eyebrow .rpt-rule{width:22px;height:1px;background:var(--rmuted)}
+.rpt-per{margin-inline-start:auto;font:700 11.5px/1 var(--rsans);letter-spacing:.04em;text-transform:none;color:var(--rink);background:#E6E4DF;padding:6px 10px;border-radius:4px;white-space:nowrap}
+.rpt-dark .rpt-per{color:#fff;background:rgba(255,255,255,.1)}
 .rpt-h2{font:400 34px/1.08 var(--rdisp);letter-spacing:.2px;margin-bottom:6px}
 .rpt-headrow{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:8px;margin-bottom:26px;border-bottom:1px solid var(--rline);padding-bottom:18px}
 .rpt-ar-h{font-family:'Cairo';font-weight:700;font-size:14px;color:var(--rmuted);direction:rtl;text-align:right}
@@ -280,6 +282,17 @@ table.rpt-rate .rratebar{display:inline-block;height:6px;background:var(--rblue2
   .rpt-page.rp-off{display:none}
 }
 @media screen{.rpt-page.rp-off{opacity:.35}}
+/* (2026-11-23) قياس الطباعة (خارج @media print لأن القياس يتم عند beforeprint) بعرض ورقة A4 أفقية، بمساحات وسطور مضغوطة لتتسع الجداول */
+body.rep-printing .rpt-page{box-sizing:border-box;padding:8mm 10mm;page-break-inside:avoid;break-inside:avoid}
+body.rep-printing .rpt-page.rp-flow{page-break-inside:auto;break-inside:auto}
+body.rep-printing .rpt-page.rpt-cover{min-height:0;padding:0}
+body.rep-printing .rpt-headrow{margin-bottom:16px;padding-bottom:12px}
+body.rep-printing .rpt-eyebrow{margin-bottom:14px}
+body.rep-printing .rpt-tablewrap{overflow:visible}
+body.rep-printing table.rpt-rate td:first-child{white-space:nowrap}
+body.rep-printing table.rpt-rate td small{display:inline;margin-inline-start:4px}
+body.rep-printing table.rpt-table td,body.rep-printing table.rpt-rate td{padding-top:5px;padding-bottom:5px}
+body.rep-printing tr{page-break-inside:avoid;break-inside:avoid}
 
 /* ===== Leaves (إدارة الإجازات) — صفحة مدمجة، تعيد استخدام متغيرات الهوية الأساسية أعلاه ===== */
 :root{
@@ -993,7 +1006,7 @@ table.rk.iss-mx td.nm{text-align:left}table.rk.iss-mx td.tot,table.rk.iss-mx tr.
     </div>
   </div>
   <div id="reportOut"></div>
-  <div class="card">
+  <div class="card noprint">
     <h3>🗂️ التقارير المحفوظة</h3>
     <div style="overflow-x:auto"><table class="rk"><thead><tr><th>الفترة</th><th>المتبرعون</th><th>المستبعد</th><th>معدّل أسباب السحب</th><th>نسبة الاستبعاد الإجمالية</th><th>تاريخ التوليد</th><th>إجراء</th></tr></thead><tbody id="reportArcBody"></tbody></table></div>
   </div>
@@ -3122,6 +3135,8 @@ function renderReportPage(agg){
     </tbody></table></div>`:'<p class="rpt-foot">لا يوجد موظف بلغ الحد الأدنى من الوحدات المسحوبة لعرض جدول المعدّلات.</p>';
   const findings=reportFindings(agg,d);
   const unmatchedNote=agg.unmatchedDiscard?` · ${fmtNum(agg.unmatchedDiscard)} units could not be matched to a draw`:'';
+  // (2026-11-23، طلب حسن) الفترة في رأس كل صفحة — حتى لو لم يُطبع الغلاف
+  const perTag=`<span class="rpt-per">${fmtDMY(agg.dateFrom)} – ${fmtDMY(agg.dateTo)}${agg.who?` · ${repWhoLbl(agg.who)}`:''}</span>`;
 
   let html=`
   <div class="rpt-actions noprint"><div>📊 التقرير المعروض الآن — <b class="bidi-ltr">${agg.label}</b>${agg.who?` — موظفو السحب: <b dir="ltr">${repWhoLbl(agg.who)}</b>`:''}</div>
@@ -3152,7 +3167,7 @@ function renderReportPage(agg){
     </section>
 
     <section class="rpt-page" data-rp="ov">
-      <div class="rpt-eyebrow"><span class="rpt-rule"></span>01 —— OVERVIEW</div>
+      <div class="rpt-eyebrow"><span class="rpt-rule"></span><span class="rpt-no">01</span> —— OVERVIEW${perTag}</div>
       <div class="rpt-headrow"><h2 class="rpt-h2">Where the blood is drawn</h2><p class="rpt-ar-h">توزيع التبرعات على نقاط السحب ونسبة الاستبعاد العامة</p></div>
       <div class="rpt-kpirow">
         <div class="rpt-kpi"><div class="rpt-kpi-lb">Donations</div><div class="rpt-kpi-val">${fmtNum(agg.totalCollected)}</div><div class="rpt-kpi-sub">Site 2001, ${monthsSpan} months</div></div>
@@ -3168,21 +3183,21 @@ function renderReportPage(agg){
     </section>
 
     <section class="rpt-page" data-rp="drw">
-      <div class="rpt-eyebrow"><span class="rpt-rule"></span>02 —— DRAWS PER STAFF</div>
+      <div class="rpt-eyebrow"><span class="rpt-rule"></span><span class="rpt-no">02</span> —— DRAWS PER STAFF${perTag}</div>
       <div class="rpt-headrow"><h2 class="rpt-h2">Units drawn per collector</h2><p class="rpt-ar-h">عدد الوحدات المسحوبة لكل موظف، موزّعة على 2001F و2001D وباقي المواقع</p></div>
       <div class="rpt-twocol">${staffColHtml(colA)}${staffColHtml(colB)}</div>
       <p class="rpt-foot-row"><span>${staffCount} staff IDs · ${fmtNum(agg.totalCollected)} donations · sorted by total drawn</span>${byCollected[0]?`<span>Top draw: ${byCollected[0].name} — ${fmtNum(byCollected[0].collected)} units</span>`:''}</p>
     </section>
 
     ${topReasons.length?`<section class="rpt-page" data-rp="rsn">
-      <div class="rpt-eyebrow"><span class="rpt-rule"></span>03 —— DISCARD REASONS</div>
+      <div class="rpt-eyebrow"><span class="rpt-rule"></span><span class="rpt-no">03</span> —— DISCARD REASONS${perTag}</div>
       <div class="rpt-headrow"><h2 class="rpt-h2">${topReasons.length===1?'The':topReasons.length} tracked discard reason${topReasons.length===1?'':'s'}</h2><p class="rpt-ar-h">أسباب الاستبعاد الستة المطلوبة — ${fmtNum(trackedDiscarded)} وحدة من أصل ${fmtNum(agg.totalDiscarded)} وحدة مستبعدة</p></div>
       <div class="rpt-reasonlist">${reasonRowsHtml}</div>
       ${calloutHtml}
     </section>`:''}
 
     ${sex?`<section class="rpt-page" data-rp="fem">
-      <div class="rpt-eyebrow"><span class="rpt-rule"></span>03·F —— FEMALE DONORS</div>
+      <div class="rpt-eyebrow"><span class="rpt-rule"></span><span class="rpt-no">03·F</span> —— FEMALE DONORS${perTag}</div>
       <div class="rpt-headrow"><h2 class="rpt-h2">Female discards, counted on their own</h2><p class="rpt-ar-h">الوحدات المتلفة للمتبرعات تُحسب لوحدها ثم تُضاف للعام — وتبقى على حساب الموظف الذي سحبها</p></div>
       <div class="rpt-kpirow">
         <div class="rpt-kpi"><div class="rpt-kpi-lb">Female donations</div><div class="rpt-kpi-val">${fmtNum(sex.F.collected)}</div><div class="rpt-kpi-sub">${agg.totalCollected?(sex.F.collected/agg.totalCollected*100).toFixed(1):0}% of all donations</div></div>
@@ -3199,7 +3214,7 @@ function renderReportPage(agg){
     </section>`:''}
 
     <section class="rpt-page" data-rp="rate">
-      <div class="rpt-eyebrow"><span class="rpt-rule"></span>04 —— RATE BY STAFF</div>
+      <div class="rpt-eyebrow"><span class="rpt-rule"></span><span class="rpt-no">04</span> —— RATE BY STAFF${perTag}</div>
       <div class="rpt-headrow"><h2 class="rpt-h2">Discards per collector</h2><p class="rpt-ar-h">ربط كل وحدة مستبعدة بالموظف الذي سحبها — مرتّبة بنسبة الاستبعاد</p></div>
       ${rateTableHtml}
       <p class="rpt-foot" style="margin-top:6px">${topReasons.map(([c,v])=>`${c} — ${v.desc}`).join(' &nbsp;·&nbsp; ')}</p>
@@ -3207,14 +3222,14 @@ function renderReportPage(agg){
     </section>
 
     ${byDiscarded.length?`<section class="rpt-page" data-rp="site">
-      <div class="rpt-eyebrow"><span class="rpt-rule"></span>05 —— DISCARDS BY SITE</div>
+      <div class="rpt-eyebrow"><span class="rpt-rule"></span><span class="rpt-no">05</span> —— DISCARDS BY SITE${perTag}</div>
       <div class="rpt-headrow"><h2 class="rpt-h2">Where discards happened</h2><p class="rpt-ar-h">توزيع الأكياس المستبعدة لكل موظف حسب نقطة السحب الأصلية للوحدة</p></div>
       <div class="rpt-twocol">${discardSiteColHtml(colA2)}${discardSiteColHtml(colB2)}</div>
       <p class="rpt-foot-row"><span>${byDiscarded.length} staff (all collectors, including zero) · ${fmtNum(byDiscarded.reduce((t,p)=>t+p.siteTotal,0))} units · ${d.siteAll?'all discard causes (saved before 10 Oct — re-upload the files for the six draw causes only)':'six draw-related causes only ('+TRACKED_DISCARD_CODES.join(', ')+')'}</span><span>نقطة السحب هنا هي نقطة سحب الوحدة نفسها (2001F/2001D/Other) وقت التبرع، وليست موقع تنفيذ الاستبعاد</span></p>
     </section>`:''}
 
     <section class="rpt-page rpt-dark" data-rp="fnd">
-      <div class="rpt-eyebrow"><span class="rpt-rule"></span>06 —— FINDINGS</div>
+      <div class="rpt-eyebrow"><span class="rpt-rule"></span><span class="rpt-no">06</span> —— FINDINGS${perTag}</div>
       <div class="rpt-headrow" style="border-bottom-color:var(--rd-line)"><h2 class="rpt-h2">What the numbers ask for</h2><p class="rpt-ar-h">ثلاث نتائج قابلة للتنفيذ</p></div>
       <div class="rpt-findings">
         ${findings.map((f,i)=>`<div class="rpt-finding"><div class="rpt-finding-eyebrow">0${i+1} · ${f.tag}</div>
@@ -3256,7 +3271,29 @@ let repPgOff=new Set(LS.get('bb_rep_pages',[]));
 function repApplyPages(){
   const pgs=$$('#reportSheet .rpt-page'); pgs.forEach(p=>{ p.classList.toggle('rp-off',repPgOff.has(p.dataset.rp)); p.classList.remove('rp-last'); });
   const on=pgs.filter(p=>!p.classList.contains('rp-off')); if(on.length) on[on.length-1].classList.add('rp-last');
+  let n=0; on.forEach(p=>{ const e=p.querySelector('.rpt-no'); if(e) e.textContent=String(++n).padStart(2,'0'); });
 }
+// (2026-11-23، طلب حسن) كل قسم يملأ ورقة A4 أفقية واحدة: يُصغَّر (zoom) إن تجاوز الورقة ويُوسَّع عرضه بنفس النسبة؛
+// قسم أطول من أن يُقرأ في ورقة واحدة (zoom < REP_MIN_Z) يمتد على أوراق بسطور لا تنقسم ورأس جدول يتكرر
+const REP_PAGE_W=1047, REP_PAGE_H=708, REP_MIN_Z=.6; // ‎A4 أفقي 297×210mm بهوامش 10mm ≈ 1047×718px عند 96dpi
+function repFitPrint(){
+  if(!$('#pg-reports')?.classList.contains('on')||!$('#reportSheet')) return;
+  document.body.classList.add('rep-printing');
+  $$('#reportSheet .rpt-page:not(.rp-off)').forEach(p=>{
+    p.style.zoom=''; p.style.width=REP_PAGE_W+'px'; p.classList.remove('rp-flow');
+    let z=1;
+    for(let i=0;i<4;i++){ const nz=Math.min(1,REP_PAGE_H/p.scrollHeight); if(Math.abs(nz-z)<.005) break; z=nz; p.style.width=(REP_PAGE_W/z)+'px'; }
+    if(z<REP_MIN_Z){ p.style.width=''; p.classList.add('rp-flow'); return; }
+    if(z<1) p.style.zoom=z.toFixed(3);
+  });
+}
+function repUnfitPrint(){
+  if(!document.body.classList.contains('rep-printing')) return;
+  document.body.classList.remove('rep-printing');
+  $$('#reportSheet .rpt-page').forEach(p=>{ p.style.zoom=''; p.style.width=''; p.classList.remove('rp-flow'); });
+}
+window.addEventListener('beforeprint',repFitPrint);
+window.addEventListener('afterprint',repUnfitPrint);
 async function exportReportPptx(agg,d){
   if(REP_PAGES.every(([k])=>repPgOff.has(k))){ toast('اختر صفحة واحدة على الأقل للتصدير'); return; }
   const on=k=>!repPgOff.has(k);
@@ -3266,6 +3303,10 @@ async function exportReportPptx(agg,d){
   const P=new PptxGenJS(); P.defineLayout({name:'A4L',width:11.69,height:8.27}); P.layout='A4L';
 
   let s;
+  // (2026-11-23، طلب حسن) ترقيم متتابع للشرائح المختارة + الفترة أعلى كل شريحة
+  let secN=0; const secNo=()=>String(++secN).padStart(2,'0');
+  const PER=`${fmtDMY(agg.dateFrom)} – ${fmtDMY(agg.dateTo)}${agg.who?` · ${repWhoLbl(agg.who)}`:''}`;
+  const per=(c=INK)=>s.addText(PER,{x:5.7,y:0.3,w:5.5,h:0.3,fontSize:10.5,bold:true,color:c,align:'right'});
   if(on('cover')){
   s=P.addSlide(); s.background={color:DARK};
   s.addText('SITE 2001 · BLOOD BANK',{x:0.6,y:0.5,fontSize:11,color:'9FB0C4',charSpacing:2});
@@ -3281,7 +3322,7 @@ async function exportReportPptx(agg,d){
 
   if(on('ov')){
   s=P.addSlide(); s.background={color:'F2F1EE'};
-  s.addText('01 —— OVERVIEW',{x:0.5,y:0.35,fontSize:11,color:MUT,charSpacing:2});
+  s.addText(secNo()+' —— OVERVIEW',{x:0.5,y:0.35,fontSize:11,color:MUT,charSpacing:2}); per();
   s.addText('Where the blood is drawn',{x:0.5,y:0.65,fontSize:26,bold:true,color:INK});
   const kpis=[['Donations',fmtNum(agg.totalCollected)],['Discarded',fmtNum(trackedDiscarded)],['Discard rate',overallRate.toFixed(2)+'%'],['Off-site draws',offsitePct.toFixed(1)+'%']];
   kpis.forEach((k,i)=>{
@@ -3303,7 +3344,7 @@ async function exportReportPptx(agg,d){
 
   if(on('drw')&&byCollected.length){
     s=P.addSlide(); s.background={color:'F2F1EE'};
-    s.addText('02 —— DRAWS PER STAFF',{x:0.5,y:0.35,fontSize:11,color:MUT,charSpacing:2});
+    s.addText(secNo()+' —— DRAWS PER STAFF',{x:0.5,y:0.35,fontSize:11,color:MUT,charSpacing:2}); per();
     s.addText('Units drawn per collector',{x:0.5,y:0.65,fontSize:24,bold:true,color:INK});
     const top=byCollected.slice(0,18);
     const rows=[[{text:'Staff',options:{bold:true,fill:{color:INK},color:'FFFFFF'}},{text:'Total',options:{bold:true,fill:{color:INK},color:'FFFFFF'}},...(hasFC?['Female','Male'].map(t=>({text:t,options:{bold:true,fill:{color:INK},color:'FFFFFF'}})):[]),
@@ -3313,7 +3354,7 @@ async function exportReportPptx(agg,d){
   }
   if(on('rsn')&&topReasons.length){
     s=P.addSlide(); s.background={color:'F2F1EE'};
-    s.addText('03 —— DISCARD REASONS',{x:0.5,y:0.35,fontSize:11,color:MUT,charSpacing:2});
+    s.addText(secNo()+' —— DISCARD REASONS',{x:0.5,y:0.35,fontSize:11,color:MUT,charSpacing:2}); per();
     s.addText('Tracked discard reasons',{x:0.5,y:0.65,fontSize:24,bold:true,color:INK});
     const maxR=topReasons[0][1].count;
     topReasons.forEach((r,i)=>{
@@ -3327,7 +3368,7 @@ async function exportReportPptx(agg,d){
   }
   if(on('fem')&&sex){
     s=P.addSlide(); s.background={color:'F2F1EE'};
-    s.addText('03·F —— FEMALE DONORS',{x:0.5,y:0.35,fontSize:11,color:MUT,charSpacing:2});
+    s.addText(secNo()+' —— FEMALE DONORS',{x:0.5,y:0.35,fontSize:11,color:MUT,charSpacing:2}); per();
     s.addText('Female discards, counted on their own',{x:0.5,y:0.65,fontSize:24,bold:true,color:INK});
     [['Female donations',fmtNum(sex.F.collected)],['Female discarded',fmtNum(sex.F.disc)],['Female discard rate',sex.F.rate.toFixed(2)+'%'],['Male discard rate',sex.M.rate.toFixed(2)+'%']].forEach((k,i)=>{
       const x=0.5+i*2.75;
@@ -3344,7 +3385,7 @@ async function exportReportPptx(agg,d){
   }
   if(on('rate')&&rateRows.length){
     s=P.addSlide(); s.background={color:'F2F1EE'};
-    s.addText('04 —— RATE BY STAFF',{x:0.5,y:0.35,fontSize:11,color:MUT,charSpacing:2});
+    s.addText(secNo()+' —— RATE BY STAFF',{x:0.5,y:0.35,fontSize:11,color:MUT,charSpacing:2}); per();
     s.addText('Discards per collector',{x:0.5,y:0.65,fontSize:24,bold:true,color:INK});
     const rows=[[{text:'Staff',options:{bold:true,fill:{color:INK},color:'FFFFFF'}},{text:'Drawn',options:{bold:true,fill:{color:INK},color:'FFFFFF'}},...(hasFC?['Female Drawn','Male Drawn'].map(t=>({text:t,options:{bold:true,fill:{color:INK},color:'FFFFFF'}})):[]),
       {text:'Discarded',options:{bold:true,fill:{color:INK},color:'FFFFFF'}},...(hasFD?['Female Disc.','Male Disc.'].map(t=>({text:t,options:{bold:true,fill:{color:INK},color:'FFFFFF'}})):[]),{text:'Rate',options:{bold:true,fill:{color:INK},color:'FFFFFF'}}]];
@@ -3353,7 +3394,7 @@ async function exportReportPptx(agg,d){
   }
   if(on('site')&&byDiscarded.length){
     s=P.addSlide(); s.background={color:'F2F1EE'};
-    s.addText('05 —— DISCARDS BY SITE',{x:0.5,y:0.35,fontSize:11,color:MUT,charSpacing:2});
+    s.addText(secNo()+' —— DISCARDS BY SITE',{x:0.5,y:0.35,fontSize:11,color:MUT,charSpacing:2}); per();
     s.addText('Where discards happened',{x:0.5,y:0.65,fontSize:24,bold:true,color:INK});
     const rows=[[{text:'Staff',options:{bold:true,fill:{color:INK},color:'FFFFFF'}},{text:'2001F',options:{bold:true,fill:{color:INK},color:'FFFFFF'}},
       {text:'2001D',options:{bold:true,fill:{color:INK},color:'FFFFFF'}},{text:'Other',options:{bold:true,fill:{color:INK},color:'FFFFFF'}},{text:'Discarded',options:{bold:true,fill:{color:INK},color:'FFFFFF'}}]];
@@ -3363,7 +3404,7 @@ async function exportReportPptx(agg,d){
   if(on('fnd')){
   const findings=reportFindings(agg,d);
   s=P.addSlide(); s.background={color:DARK};
-  s.addText('06 —— FINDINGS',{x:0.5,y:0.35,fontSize:11,color:'9FB0C4',charSpacing:2});
+  s.addText(secNo()+' —— FINDINGS',{x:0.5,y:0.35,fontSize:11,color:'9FB0C4',charSpacing:2}); per('FFFFFF');
   s.addText('What the numbers ask for',{x:0.5,y:0.65,fontSize:26,bold:true,color:'FFFFFF'});
   findings.forEach((f,i)=>{
     const x=0.5+i*3.85;
