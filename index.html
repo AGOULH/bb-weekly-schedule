@@ -5430,7 +5430,7 @@ let UP_TRASH={}, UP_HIST=[]; // (2026-10-17) سلة المحذوفات السح�
 const upFile=t=>UP[t]?.file||null;
 // (2026-11-23، طلب حسن) مصدر بيانات صفحتي «تقارير التبرعات» و«Donors and Blood Components»: الملفات الحالية (null) أو ملفات سنة ثابتة 📦
 let upSrc=LS.get('bb_up_src',null);
-const upSrcYears=()=>[...new Set(Object.keys(UP).filter(k=>/@\d{4}$/.test(k)).map(k=>+k.split('@')[1]))].sort((a,b)=>b-a);
+const upSrcYears=()=>[...new Set(Object.keys(UP).filter(k=>/@\d{4}$/.test(k)).map(k=>+k.split('@')[1]))].filter(y=>y<new Date().getFullYear()).sort((a,b)=>b-a); // السنة الجارية = الملفات الحالية دائماً
 const upSrcY=()=>upSrc&&upSrcYears().includes(upSrc)?upSrc:null; // سنة حُذفت ملفاتها ← الملفات الحالية
 const srcFile=t=>{ const y=upSrcY(); return y?UP[`${t}@${y}`]?.file||null:upFile(t); };
 const upProdFiles=()=>Object.keys(UP).filter(k=>k.startsWith('prod:')).sort().map(k=>UP[k].file);
@@ -5584,6 +5584,7 @@ async function upSync(){
       if(await upCloudPut(k,v)){ UP[k]=v; await upSave(k,v).catch(()=>{}); ch=true; }
     }
   }catch(e){ console.warn('upSync',e); if(st) st.textContent='⚠️ تعذّرت المزامنة مع السحابة — الملفات المحلية متاحة'; }
+  if(await arcAuto().catch(e=>{ console.warn('arcAuto',e); return false; })) ch=true;
   if(ch){ UP_VER++; const pg=$('.navbtn.active')?.dataset.pg; if(pg) upAutoRun(pg); }
   upRender();
 }
@@ -5684,7 +5685,7 @@ function upRender(){
   const sy=upSrcY(), sys=upSrcYears();
   $$('.upstat').forEach(el=>{
     const need=el.dataset.need.split(',');
-    const src=el.hasAttribute('data-src')&&sys.length?`<div class="upsrc"><b>مصدر البيانات:</b><button class="btn sm ${sy?'ghost':''}" data-upsrc="">📂 الملفات الحالية</button>${sys.map(y=>`<button class="btn sm ${sy===y?'':'ghost'}" data-upsrc="${y}">📦 ${y}</button>`).join('')}</div>`:'';
+    const src=el.hasAttribute('data-src')&&sys.length?`<div class="upsrc"><b>مصدر البيانات:</b><button class="btn sm ${sy?'ghost':''}" data-upsrc="">📂 الملفات الحالية (${new Date().getFullYear()})</button>${sys.map(y=>`<button class="btn sm ${sy===y?'':'ghost'}" data-upsrc="${y}">📦 ${y}</button>`).join('')}</div>`:'';
     if(sy&&el.hasAttribute('data-src')){ // ملفات السنة الثابتة
       el.innerHTML=src+need.map(t=>{ const v=UP[`${t}@${sy}`];
         return `<span class="chip ${v?'ok':'bad'}">${v?'✓':'✗'} ${UP_TYPES[t].name} 📦 ${sy}${v?` · <span dir="ltr">${fmtDMY(v.from).slice(0,5)} → ${fmtDMY(v.to).slice(0,5)}</span>`:''}</span>`; }).join('')
@@ -5747,11 +5748,11 @@ function arcRender(){
     const have=ARC_TYPES.filter(t=>UP[arcKey(t,y)]);
     const pin=y<cy&&ARC_TYPES.some(t=>!UP[arcKey(t,y)]&&UP[t]?.from&&UP[t].from<=`${y}-12-31`&&UP[t].to>=`${y}-01-01`);
     return `<div class="arc-yr"><h4>📦 سنة ${y} <span class="chip ${have.length===ARC_TYPES.length?'ok':have.length?'warn':'bad'}">${have.length} / ${ARC_TYPES.length}</span>
-      <button class="btn ghost sm" data-arcadd="${y}">📂 إضافة ملفات ${y}</button>${pin?`<button class="btn ghost sm" data-arcpin="${y}">📌 تثبيت من الملفات الحالية</button>`:''}</h4>
+      ${y<cy?`<button class="btn ghost sm" data-arcadd="${y}">📂 إضافة ملفات ${y}</button>`:''}${pin?`<button class="btn ghost sm" data-arcpin="${y}">📌 تثبيت من الملفات الحالية</button>`:''}</h4>
       <div class="chips">${ARC_TYPES.map(t=>{ const v=UP[arcKey(t,y)];
         return v?`<span class="chip ok" title="${dsEsc(v.name)}">✓ <b dir="ltr">${UP_TYPES[t].name}</b> · <span dir="ltr">${fmtDMY(v.from).slice(0,5)} → ${fmtDMY(v.to).slice(0,5)}</span> · ${fmtNum(v.rows)} سجل${v.cloud?' ☁️':''}<button data-arcdel="${arcKey(t,y)}" aria-label="حذف">✕</button></span>`
           :`<span class="chip bad">✗ <b dir="ltr">${UP_TYPES[t].name}</b></span>`; }).join('')}</div>
-      ${y===cy?`<div class="hint" style="margin:6px 0 0">السنة الجارية تُقرأ من الملفات الحالية أعلاه، وتُثبَّت بعد انتهائها (من 1 يناير ${cy+1}) بزر «📌 تثبيت من الملفات الحالية».</div>`:''}</div>`;
+      ${y===cy?`<div class="hint" style="margin:6px 0 0">السنة الجارية تُقرأ دائماً من الملفات الحالية أعلاه (ارفع الجديد كالعادة)، و<b>تُثبَّت تلقائياً</b> عند فتح الموقع بعد 1 يناير ${cy+1}.</div>`:''}</div>`;
   }).join('');
   $$('[data-arcadd]').forEach(b=>b.onclick=()=>{ arcYear=+b.dataset.arcadd; $('#upArcInput').click(); });
   $$('[data-arcpin]').forEach(b=>b.onclick=()=>arcPin(+b.dataset.arcpin));
@@ -5766,6 +5767,7 @@ async function arcPut(key,v){
   return v;
 }
 async function arcAdd(files,y){
+  if(y>=new Date().getFullYear()) return toast('السنة الجارية تُقرأ من الملفات الحالية — ارفعها في منطقة الرفع أعلاه');
   const log=[]; let n=0;
   await UP_SYNC.catch(()=>{});
   for(const f of files){
@@ -5797,6 +5799,22 @@ async function arcPin(y){
   }
   UP_VER++; $('#upArcLog').innerHTML=log.join('<br>'); upRender(); toast(`تم تثبيت سنة ${y} ✓`);
 }
+// (2026-11-23، طلب حسن) تلقائي بعد كل مزامنة: نسخة ثابتة للسنة الجارية أو بعدها تُنقل للمحذوفات (تُقرأ من الملفات الحالية)،
+// والسنة السابقة تُثبَّت/تُكمَّل من الملفات الحالية إن غطّت منها أكثر من الثابت (يُدمج معه) — بلا زر ولا تأكيد
+async function arcAuto(){
+  const cy=new Date().getFullYear(), y=cy-1, ys=`${y}-01-01`, ye=`${y}-12-31`; let ch=false;
+  for(const k of Object.keys(UP).filter(k=>isArcKey(k)&&+k.split('@')[1]>=cy)){
+    delete UP[k]; await upSave(k,null).catch(()=>{}); await upCloudDel(k).catch(e=>console.warn('arcAuto del',e)); ch=true; }
+  for(const t of ARC_TYPES){
+    const c=UP[t]; if(!c?.file||!c.from||c.from>ye||c.to<ys) continue;
+    const k=arcKey(t,y), a=UP[k], end=c.to<ye?c.to:ye;
+    if(a&&a.to>=end) continue;
+    const v=await upBuild(t,c.file,{from:null,to:null},a||null,y).catch(e=>{ console.warn('arcAuto',e); return null; });
+    if(!v) continue; await arcPut(k,v); ch=true;
+    toast(`📦 تم تثبيت ${UP_TYPES[t].name} لسنة ${y} تلقائياً`);
+  }
+  return ch;
+}
 $('#upArcInput').onchange=e=>{ const fs=[...e.target.files]; e.target.value=''; if(arcYear&&fs.length) arcAdd(fs,arcYear); };
 
 /* ===== ⚖️ مقارنة الفترات ===== */
@@ -5814,7 +5832,7 @@ async function cpParsed(key){
 }
 const cpYearsOf=(f,t)=>{ const o=[]; for(let y=+f.slice(0,4);y<=+t.slice(0,4);y++) o.push(y); return o; };
 // مصدر سنة y لنوع t: الملف السنوي الثابت، وإلا الملف الحالي إن غطّى شيئاً منها
-function cpSrc(t,y){ if(UP[arcKey(t,y)]) return arcKey(t,y); const c=UP[t]; return c?.from&&c.from<=`${y}-12-31`&&c.to>=`${y}-01-01`?t:null; }
+function cpSrc(t,y){ if(y<new Date().getFullYear()&&UP[arcKey(t,y)]) return arcKey(t,y); const c=UP[t]; return c?.from&&c.from<=`${y}-12-31`&&c.to>=`${y}-01-01`?t:null; }
 async function cpGet(t,ys){
   const out=t==='ops'?{rec:[],prep:[],pool:[],tre:[]}:[];
   let acc=out;
