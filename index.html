@@ -589,6 +589,7 @@ body.rep-printing tr{page-break-inside:avoid;break-inside:avoid}
 .upstat .chip.ok{background:#dff3e6;color:#15693f}
 .upstat .chip.warn{background:#FFF3D6;color:#8A5A00}
 .upstat .chip.bad{background:#FBE3E2;color:var(--bad)}
+.upsrc{display:flex;flex-wrap:wrap;gap:6px;align-items:center;width:100%;margin-bottom:4px;font-size:13px}
 .upwarn{flex-basis:100%;font-size:12px;line-height:1.7;padding:8px 12px;border-radius:10px;background:#FFF6E5;color:#6B4600;border-inline-start:4px solid var(--amber);margin:4px 0}
 .upwarn.bad{background:#FDECEB;color:#7A1C19;border-inline-start-color:var(--bad)}
 .up-card.miss{border-top-color:var(--bad)}.up-card.miss .st{color:var(--bad)}
@@ -987,7 +988,7 @@ table.rk.iss-mx td.nm{text-align:left}table.rk.iss-mx td.tot,table.rk.iss-mx tr.
   </div>
   <div class="card noprint">
     <h3>📥 الملفات والتحليل</h3>
-    <div class="upstat" data-need="donations,discarded"></div>
+    <div class="upstat" data-need="donations,discarded" data-src></div>
     <div class="hint">التحليل يتم تلقائياً من ملفَي List of donations وDiscarded products في «📥 رفع الملفات» (يكفي أحدهما). الفترة تُستخرج من تواريخ السجلات نفسها.</div>
     <div id="repLog" class="hint"></div>
     <div class="row" id="repFilter" style="display:none;margin-top:12px;align-items:flex-end">
@@ -1020,7 +1021,7 @@ table.rk.iss-mx td.nm{text-align:left}table.rk.iss-mx td.tot,table.rk.iss-mx tr.
   </div>
   <div class="card noprint">
     <h3>📥 الملفات</h3>
-    <div class="upstat" data-need="wateen,ops,issue,donations,discarded"></div>
+    <div class="upstat" data-need="wateen,ops,issue,donations,discarded" data-src></div>
     <div class="hint">التحليل تلقائي من «📥 رفع الملفات» (يكفي أحد الملفين؛ List of donations وDiscarded products لمؤشر الأكثر سحباً والمتلف). الربط بين الملفين برقم الكيس: الوحدات المستلمة والمحضّرة تُنسب لتاريخ التبرع ونقطة السحب من Wateen report؛ وحدة غير موجودة فيه (تبرع خارج فترة الملف) تُحسب بتاريخ العملية تحت «غير مرتبطة». </div>
     <div id="dsLog" class="hint"></div>
     <div class="row" id="dsFilter" style="display:none;margin-top:12px;align-items:flex-end">
@@ -2995,7 +2996,7 @@ function aggregateReport(allDon,allDis,range){
     bySite,byType,perStaff,discardReasons,bloodGroups,monthly,...(hasSex?{female,male}:{}),generatedAt:new Date().toISOString()};
 }
 async function repAnalyze(quiet){
-  const fDon=upFile('donations'), fDis=upFile('discarded');
+  const fDon=srcFile('donations'), fDis=srcFile('discarded');
   if(!fDon&&!fDis){
     if(REP_RAW){ REP_RAW=null; curReportAgg=null; repFillFilter(); $('#reportOut').innerHTML=''; $('#repLog').innerHTML=''; } // حُذفت الملفات
     if(!quiet) toast('لا توجد ملفات — ارفعها من «📥 رفع الملفات»'); return;
@@ -4724,7 +4725,7 @@ function dsUnitStaff(){ // رقم الكيس ← رقم الموظف الساح�
 let DS_DRAWS=null; // قائمة السحب لكل موظف في الفترة — لصفحة Draws في التقرير المُصدَّر
 let DS=null, dsMode='all', dsSites=new Set(['F','D','C']), dsCharts={}; // نقاط السحب المختارة (متعددة مثل مقارنة الأقسام)
 async function dsLoad(){
-  const fW=upFile('wateen'), fO=upFile('ops'), fI=upFile('issue');
+  const fW=srcFile('wateen'), fO=srcFile('ops'), fI=srcFile('issue');
   if(!fW&&!fO&&!fI){ DS=null; $('#dsFilter').style.display='none'; $('#dashOut').innerHTML=''; $('#dsLog').textContent=''; return; }
   $('#dsLog').textContent='⏳ جاري قراءة الملفات…';
   try{
@@ -5427,6 +5428,11 @@ const UP_TYPES={
 let UP={}, UP_VER=0, UP_META={}, UP_LOCAL=null, UP_SYNC=Promise.resolve(); const UP_SEEN={};
 let UP_TRASH={}, UP_HIST=[]; // (2026-10-17) سلة المحذوفات السحابية + سجل العمليات
 const upFile=t=>UP[t]?.file||null;
+// (2026-11-23، طلب حسن) مصدر بيانات صفحتي «تقارير التبرعات» و«Donors and Blood Components»: الملفات الحالية (null) أو ملفات سنة ثابتة 📦
+let upSrc=LS.get('bb_up_src',null);
+const upSrcYears=()=>[...new Set(Object.keys(UP).filter(k=>/@\d{4}$/.test(k)).map(k=>+k.split('@')[1]))].sort((a,b)=>b-a);
+const upSrcY=()=>upSrc&&upSrcYears().includes(upSrc)?upSrc:null; // سنة حُذفت ملفاتها ← الملفات الحالية
+const srcFile=t=>{ const y=upSrcY(); return y?UP[`${t}@${y}`]?.file||null:upFile(t); };
 const upProdFiles=()=>Object.keys(UP).filter(k=>k.startsWith('prod:')).sort().map(k=>UP[k].file);
 function upIdb(mode,fn){
   return new Promise((res,rej)=>{
@@ -5675,9 +5681,18 @@ function upRender(){
     if(!confirm(`حذف ملف ${UP[k]?.name||k} من كل الأجهزة؟\nيُنقل إلى «🗑️ المحذوفات» ويمكن استعادته.`)) return;
     delete UP[k]; await upSave(k,null).catch(()=>{}); await upCloudDel(k).catch(e=>toast('تعذّر الحذف من السحابة: '+e.message)); UP_VER++; upRender(); });
   const cs=$('#upCloud'); if(cs) cs.textContent=CLOUD?`☁️ الملفات محفوظة سحابياً (${Object.keys(UP_META).length} ملف) — تظهر على كل الأجهزة`:'💾 بلا اتصال بالسحابة — الملفات على هذا الجهاز فقط';
+  const sy=upSrcY(), sys=upSrcYears();
   $$('.upstat').forEach(el=>{
-    const need=el.dataset.need.split(','), W=upWarnings(need), late=new Set([...W.late,...W.part].map(x=>x.t));
-    el.innerHTML=need.map(t=>{ const ok=t==='prod'?upProdFiles().length:!!UP[t], cls=!ok?'bad':late.has(t)?'warn':'ok';
+    const need=el.dataset.need.split(',');
+    const src=el.hasAttribute('data-src')&&sys.length?`<div class="upsrc"><b>مصدر البيانات:</b><button class="btn sm ${sy?'ghost':''}" data-upsrc="">📂 الملفات الحالية</button>${sys.map(y=>`<button class="btn sm ${sy===y?'':'ghost'}" data-upsrc="${y}">📦 ${y}</button>`).join('')}</div>`:'';
+    if(sy&&el.hasAttribute('data-src')){ // ملفات السنة الثابتة
+      el.innerHTML=src+need.map(t=>{ const v=UP[`${t}@${sy}`];
+        return `<span class="chip ${v?'ok':'bad'}">${v?'✓':'✗'} ${UP_TYPES[t].name} 📦 ${sy}${v?` · <span dir="ltr">${fmtDMY(v.from).slice(0,5)} → ${fmtDMY(v.to).slice(0,5)}</span>`:''}</span>`; }).join('')
+        +`<button class="btn ghost sm" data-goup>📦 الملفات السنوية</button>`;
+      return;
+    }
+    const W=upWarnings(need), late=new Set([...W.late,...W.part].map(x=>x.t));
+    el.innerHTML=src+need.map(t=>{ const ok=t==='prod'?upProdFiles().length:!!UP[t], cls=!ok?'bad':late.has(t)?'warn':'ok';
       return `<span class="chip ${cls}">${!ok?'✗':late.has(t)?'⚠️':'✓'} ${UP_TYPES[t].name}${t==='prod'&&ok?` (${ok})`:''}${ok&&t!=='prod'&&UP[t].to?` · <span dir="ltr">${fmtDMY(UP[t].to).slice(0,5)}</span>`:''}</span>`; }).join('')
       +`<button class="btn ghost sm" data-goup>📥 رفع / تحديث الملفات</button>`+upWarnHtml(W);
   });
@@ -5691,6 +5706,9 @@ function upRender(){
   $$('[data-uprest]').forEach(b=>b.onclick=()=>upRestore(b.dataset.uprest));
   $$('[data-uppurge]').forEach(b=>b.onclick=()=>upPurge(b.dataset.uppurge));
   $$('[data-goup]').forEach(b=>b.onclick=()=>$('.navbtn[data-pg=upload]').click());
+  $$('[data-upsrc]').forEach(b=>b.onclick=()=>{ const y=+b.dataset.upsrc||null; if(y===upSrcY()) return;
+    upSrc=y; LS.set('bb_up_src',y); delete UP_SEEN.reports; delete UP_SEEN.dash; upRender();
+    const pg=$('.navbtn.active')?.dataset.pg; if(pg) upAutoRun(pg); toast(y?`مصدر البيانات: ملفات سنة ${y} الثابتة`:'مصدر البيانات: الملفات الحالية'); });
   arcRender();
 }
 // كل صفحة تُعاد حسابها مرة واحدة فقط لكل تغيير في الملفات (UP_VER) — عند فتحها
