@@ -5745,6 +5745,9 @@ function arcRender(){
   const cy=new Date().getFullYear(), ys=new Set(); for(let y=ARC_FIRST;y<=cy;y++) ys.add(y);
   Object.keys(UP).filter(isArcKey).forEach(k=>ys.add(+k.split('@')[1]));
   el.innerHTML=[...ys].sort((a,b)=>b-a).map(y=>{
+    if(y>=cy) return `<div class="arc-yr"><h4>📦 سنة ${y} <span class="chip ok">تلقائي</span></h4>
+      <div class="chips">${ARC_TYPES.map(t=>{ const v=UP[t]; return v?.from?`<span class="chip ok">✓ <b dir="ltr">${UP_TYPES[t].name}</b> · <span dir="ltr">${fmtDMY(v.from).slice(0,5)} → ${fmtDMY(v.to).slice(0,5)}</span></span>`:`<span class="chip bad">✗ <b dir="ltr">${UP_TYPES[t].name}</b></span>`; }).join('')}</div>
+      <div class="hint" style="margin:6px 0 0">السنة الجارية تُقرأ دائماً من الملفات الحالية أعلاه (ارفع الجديد كالعادة)، و<b>تُثبَّت تلقائياً</b> عند فتح الموقع بعد 1 يناير ${cy+1}.</div></div>`;
     const have=ARC_TYPES.filter(t=>UP[arcKey(t,y)]);
     const pin=y<cy&&ARC_TYPES.some(t=>!UP[arcKey(t,y)]&&UP[t]?.from&&UP[t].from<=`${y}-12-31`&&UP[t].to>=`${y}-01-01`);
     return `<div class="arc-yr"><h4>📦 سنة ${y} <span class="chip ${have.length===ARC_TYPES.length?'ok':have.length?'warn':'bad'}">${have.length} / ${ARC_TYPES.length}</span>
@@ -5752,7 +5755,7 @@ function arcRender(){
       <div class="chips">${ARC_TYPES.map(t=>{ const v=UP[arcKey(t,y)];
         return v?`<span class="chip ok" title="${dsEsc(v.name)}">✓ <b dir="ltr">${UP_TYPES[t].name}</b> · <span dir="ltr">${fmtDMY(v.from).slice(0,5)} → ${fmtDMY(v.to).slice(0,5)}</span> · ${fmtNum(v.rows)} سجل${v.cloud?' ☁️':''}<button data-arcdel="${arcKey(t,y)}" aria-label="حذف">✕</button></span>`
           :`<span class="chip bad">✗ <b dir="ltr">${UP_TYPES[t].name}</b></span>`; }).join('')}</div>
-      ${y===cy?`<div class="hint" style="margin:6px 0 0">السنة الجارية تُقرأ دائماً من الملفات الحالية أعلاه (ارفع الجديد كالعادة)، و<b>تُثبَّت تلقائياً</b> عند فتح الموقع بعد 1 يناير ${cy+1}.</div>`:''}</div>`;
+      </div>`;
   }).join('');
   $$('[data-arcadd]').forEach(b=>b.onclick=()=>{ arcYear=+b.dataset.arcadd; $('#upArcInput').click(); });
   $$('[data-arcpin]').forEach(b=>b.onclick=()=>arcPin(+b.dataset.arcpin));
