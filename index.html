@@ -3537,12 +3537,12 @@ function lvSaudiHolidays(y){
 
 /* ── تحويل هجري/ميلادي ── */
 function lvHijriParts(dateObj){
-  const parts=new Intl.DateTimeFormat('en-US-u-ca-islamic',{year:'numeric',month:'numeric',day:'numeric'}).formatToParts(dateObj);
+  const parts=new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura',{year:'numeric',month:'numeric',day:'numeric'}).formatToParts(dateObj);
   let y=0,m=0,d=0;
   parts.forEach(p=>{ if(p.type==='year')y=+p.value; if(p.type==='month')m=+p.value; if(p.type==='day')d=+p.value; });
   return {year:y,month:m,day:d};
 }
-function lvHijriDay(y,m,d){ try{return new Date(y,m,d).toLocaleDateString('ar-SA-u-ca-islamic',{day:'numeric'});}catch(e){return d;} }
+function lvHijriDay(y,m,d){ try{return new Date(y,m,d).toLocaleDateString('ar-SA-u-ca-islamic-umalqura',{day:'numeric'});}catch(e){return d;} }
 function lvGoToHijri(hYear,hMonth){
   const approxGregYear=Math.floor(hYear*0.970224+621.5);
   let testDate=new Date(approxGregYear,0,1); let found=null;
@@ -3586,7 +3586,7 @@ function lvBuildDayCell(year,month,d,holidayMap,fStart,fEnd,td){
 }
 function lvBuildMonthBlock(year,month,holidayMap,fStart,fEnd,td){
   const greg=`${LV_MONTHS[month]} ${year}`;
-  const hijri=new Date(year,month,15).toLocaleDateString('ar-SA-u-ca-islamic',{month:'long',year:'numeric'});
+  const hijri=new Date(year,month,15).toLocaleDateString('ar-SA-u-ca-islamic-umalqura',{month:'long',year:'numeric'});
   const title=lvCalMode==='ar'?`${hijri} — <span style="color:var(--faint);font-size:.8rem">${greg}</span>`:`${greg} — <span style="color:var(--faint);font-size:.8rem">${hijri}</span>`;
   let cells=LV_DAYS.map(d=>`<div class="lv-cal-dh">${d}</div>`).join('');
   const first=new Date(year,month,1).getDay();
@@ -3626,7 +3626,7 @@ function lvSetMonthView(n){
   lvRenderCal();
 }
 function lvRenderCal(){
-  const hijriFull=new Date(lvCy,lvCm,15).toLocaleDateString('ar-SA-u-ca-islamic',{month:'long',year:'numeric'});
+  const hijriFull=new Date(lvCy,lvCm,15).toLocaleDateString('ar-SA-u-ca-islamic-umalqura',{month:'long',year:'numeric'});
   const gregFull=`${LV_MONTHS[lvCm]} ${lvCy}`;
   const yearNow=new Date().getFullYear();
   const bigTitle=lvCalMode==='ar'?hijriFull:gregFull;
@@ -4134,7 +4134,7 @@ function lvCpSetLang(l){
 function lvRenderCpGrid(){
   const months=lvCpLang==='ar'?LV_AR_MONTHS:LV_EN_MONTHS;
   const days=lvCpLang==='ar'?LV_AR_DAYS:LV_EN_DAYS;
-  const hijriTitle=new Date(lvCpY,lvCpM,15).toLocaleDateString('ar-SA-u-ca-islamic',{month:'long',year:'numeric'});
+  const hijriTitle=new Date(lvCpY,lvCpM,15).toLocaleDateString('ar-SA-u-ca-islamic-umalqura',{month:'long',year:'numeric'});
   const gregTitle=months[lvCpM]+' '+lvCpY;
   const yearNow=new Date().getFullYear();
   let monthOpts='', yearOpts='';
@@ -4165,7 +4165,7 @@ function lvRenderCpGrid(){
   for(let i=first-1;i>=0;i--) html+=`<div class="lv-cp-day other-month"><div>${prevTotal-i}</div></div>`;
   for(let d=1;d<=total;d++){
     const ds=`${lvCpY}-${String(lvCpM+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const hijriDay=new Date(lvCpY,lvCpM,d).toLocaleDateString('ar-SA-u-ca-islamic',{day:'numeric'});
+    const hijriDay=new Date(lvCpY,lvCpM,d).toLocaleDateString('ar-SA-u-ca-islamic-umalqura',{day:'numeric'});
     let cls='lv-cp-day';
     if(ds===tdStr) cls+=' today';
     if(ds===startVal||ds===endVal) cls+=' selected';
@@ -4181,7 +4181,7 @@ function lvSetDateDisplay(fieldId,val){
   if(dispEl&&val){
     const d=new Date(val);
     const mil=d.toLocaleDateString('ar-SA-u-ca-gregory',{year:'numeric',month:'long',day:'numeric'});
-    const hijri=d.toLocaleDateString('ar-SA-u-ca-islamic',{day:'numeric',month:'long',year:'numeric'});
+    const hijri=d.toLocaleDateString('ar-SA-u-ca-islamic-umalqura',{day:'numeric',month:'long',year:'numeric'});
     dispEl.innerHTML=`<span style="display:block;font-weight:800">${mil}</span><span style="display:block;font-size:10.5px;color:var(--muted);margin-top:2px">🗓️ ${hijri}</span>`;
     dispEl.classList.remove('placeholder');
   }
